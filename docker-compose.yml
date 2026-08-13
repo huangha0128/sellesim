@@ -1,0 +1,85 @@
+# ===== YYeSim 一键部署 =====
+# 使用：docker compose up -d --build
+# 访问：
+#   - 管理后台：http://<服务器IP>:80/backend/
+#   - 后端 API：http://<服务器IP>:6501/api/...（或通过 Caddy /api/）
+#   - 直连后台：http://<服务器IP>:6500/backend/（绕过 Caddy）
+# 配置：复制 .env.example 为 .env 后按需修改
+
+name: sellsim
+
+services:
+  # ---------- 后端 API（Express + Prisma + SQLite）----------
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    container_name: sellsim-server
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      PORT: "6660"
+      # JWT 签名密钥（生产环境务必在 .env 中修改）
+      JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-key-change-in-production}
+      # ---- Tiger eSIM 真实下发（可选，留空则本地模拟下发）----
+      TIGER_CLIENT_ID: ${TIGER_CLIENT_ID:-}
+      TIGER_CLIENT_SECRET: ${TIGER_CLIENT_SECRET:-}
+      TIGER_BASE_URL: ${TIGER_BASE_URL:-https://partner.tigeresims.com}
+      TIGER_SMDP_ADDRESS: ${TIGER_SMDP_ADDRESS:-}
+      TIGER_ICCIDS: ${TIGER_ICCIDS:-}
+    ports:
+      - "${SERVER_PORT:-6501}:6660"
+    volumes:
+      # SQLite 数据库持久化（包含 schema 与种子数据）
+      - sellsim-data:/app/apps/server/prisma
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:6660/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ---------- 管理后台（Vue3 构建产物 + nginx）----------
+  admin:
+    build:
+      context: .
+      dockerfile: apps/admin/Dockerfile
+    container_name: sellsim-admin
+    restart: unless-stopped
+    depends_on:
+      server:
+        condition: service_healthy
+    ports:
+      - "${ADMIN_PORT:-6500}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/backend/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ---------- Caddy 反向代理（/backend → 后台，/api → 后端）----------
+  caddy:
+    image: caddy:2-alpine
+    container_name: sellsim-caddy
+    restart: unless-stopped
+    depends_on:
+      admin:
+        condition: service_healthy
+      server:
+        condition: service_healthy
+    environment:
+      # 配置域名（如 example.com）后自动申请 HTTPS；留空则监听 80 端口纯 HTTP
+      CADDY_DOMAIN: ${CADDY_DOMAIN:-:80}
+    ports:
+      - "${HTTP_PORT:-80}:80"
+      - "${HTTPS_PORT:-443}:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  sellsim-data:
+  caddy-data:
+  caddy-config:

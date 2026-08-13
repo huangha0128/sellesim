@@ -1,0 +1,26 @@
+# ===== Docker 构建上下文忽略 =====
+# 减小构建上下文体积，避免覆盖镜像内已安装的依赖
+
+node_modules
+**/node_modules
+dist
+**/dist
+.git
+.gitignore
+.idea
+.agent
+scripts
+*.log
+npm-debug.log*
+
+# 环境文件（密钥不入镜像）
+.env
+.env.*
+!.env.example
+**/.env
+
+# 本地 SQLite 数据库（首次部署由 prisma db push + seed 重建）
+apps/server/prisma/dev.db
+apps/server/prisma/*.db-journal
+apps/server/prisma/*.db-wal
+apps/server/prisma/*.db-shm

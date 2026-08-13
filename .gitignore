@@ -1,0 +1,55 @@
+﻿# ===== 本地旧副本 / 临时目录（保留在磁盘，不入库）=====
+.agent
+tigerapi
+apps/server/Dockerfile.bak
+apps/server/tmp-sync.ts
+
+# ===== 依赖与构建产物 =====
+node_modules
+**/node_modules
+dist
+**/dist
+dist_backup_old_20260813/
+out
+**/out
+
+# ===== 日志 =====
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ===== 环境变量与密钥 =====
+.env
+.env.*
+!.env.example
+**/.env
+**/.env.*
+!.env.example
+*.pem
+*.key
+_enc_test2.txt
+
+# ===== 数据库本地文件 =====
+apps/server/prisma/dev.db
+apps/server/prisma/dev.db-journal
+apps/server/prisma/dev.db-wal
+apps/server/prisma/dev.db-shm
+*.db-journal
+*.db-wal
+*.db-shm
+
+# ===== IDE / 编辑器 =====
+.idea
+.vscode
+*.swp
+
+# ===== 系统文件 =====
+.DS_Store
+Thumbs.db
+
+# ===== 临时文件 =====
+__pycache__
+*.pyc
+outputs/

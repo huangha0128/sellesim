@@ -1,0 +1,30 @@
+# ===== YYeSim 反向代理 (Caddy) =====
+#
+# 默认：监听 80 端口纯 HTTP，局域网 / IP 直连即可使用。
+# 如需域名 + 自动 HTTPS：
+#   1. 将域名解析到本机（如 example.com）
+#   2. 在 .env 中设置 CADDY_DOMAIN=example.com
+#   3. 确保防火墙开放 80/443，重新 docker compose up -d
+#
+# 路由说明：
+#   /api/*      → 后端 API 服务 (server:6660)
+#   /backend/*  → 管理后台 (admin:80)
+
+{$CADDY_DOMAIN:":80"} {
+    encode gzip zstd
+
+    # 后端 API
+    handle /api/* {
+        reverse_proxy server:6660
+    }
+
+    # 管理后台（/backend 路径）
+    handle /backend* {
+        reverse_proxy admin:80
+    }
+
+    # 其余路径提示
+    handle {
+        respond "YYeSim 服务已启动"
+    }
+}

@@ -1,0 +1,121 @@
+{
+  "pages": [
+    {
+      "path": "pages/index/index",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/login/login",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/countries/countries",
+      "style": {
+        "navigationBarTitleText": "选择目的地",
+        "navigationBarBackgroundColor": "#F4FAFF",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/packages/packages",
+      "style": {
+        "navigationBarTitleText": "eSIM 套餐",
+        "navigationBarBackgroundColor": "#F4FAFF",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/detail/detail",
+      "style": {
+        "navigationBarTitleText": "套餐详情",
+        "navigationBarBackgroundColor": "#F4FAFF",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/checkout/checkout",
+      "style": {
+        "navigationBarTitleText": "确认订单",
+        "navigationBarBackgroundColor": "#F4FAFF",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/payment/payment",
+      "style": {
+        "navigationStyle": "custom",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/orders/orders",
+      "style": {
+        "navigationBarTitleText": "我的订单",
+        "navigationBarBackgroundColor": "#F4FAFF",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/esims/esims",
+      "style": {
+        "navigationBarTitleText": "我的 eSIM",
+        "navigationBarBackgroundColor": "#F4FAFF",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/profile/profile",
+      "style": {
+        "navigationBarTitleText": "我的",
+        "navigationBarBackgroundColor": "#F4FAFF",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/guide/guide",
+      "style": {
+        "navigationBarTitleText": "eSIM 安装指南",
+        "navigationBarBackgroundColor": "#F4FAFF",
+        "navigationBarTextStyle": "black"
+      }
+    }
+  ],
+  "tabBar": {
+    "color": "#8CA3B8",
+    "selectedColor": "#0EA5E9",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "white",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "/static/icons/tab-home.png",
+        "selectedIconPath": "/static/icons/tab-home-active.png"
+      },
+      {
+        "pagePath": "pages/esims/esims",
+        "text": "我的 eSIM",
+        "iconPath": "/static/icons/tab-esim.png",
+        "selectedIconPath": "/static/icons/tab-esim-active.png"
+      },
+      {
+        "pagePath": "pages/profile/profile",
+        "text": "我的",
+        "iconPath": "/static/icons/tab-profile.png",
+        "selectedIconPath": "/static/icons/tab-profile-active.png"
+      }
+    ]
+  },
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "YYeSim",
+    "navigationBarBackgroundColor": "#F4FAFF",
+    "backgroundColor": "#F4FAFF"
+  }
+}

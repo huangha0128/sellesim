@@ -1,0 +1,103 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Country {
+  id            String    @id @default(uuid())
+  code          String    @unique
+  name          String
+  en            String
+  flag          String
+  pinyin        String
+  hot           Int       @default(0)
+  tier          Int       @default(1)
+  cat           String
+  intro         String
+  tigerRegionId Int?      @map("tiger_region_id")
+  iconUrl       String?   @map("icon_url")
+  packages      Package[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Package {
+  id           String   @id @default(uuid())
+  countryCode  String
+  country      Country  @relation(fields: [countryCode], references: [code])
+  gb           Int
+  days         Int
+  price        Float
+  network      String   @default("4G/5G")
+  speed        String
+  coverage     String
+  type         String
+  tag          String?
+  tagColor     String?
+  tigerPkgId   Int?     @map("tiger_pkg_id")
+  tigerPid     String?  @map("tiger_pid")
+  tigerRaw     String?  @map("tiger_raw")
+  name         String?
+  isFeatured   Boolean  @default(false) @map("is_featured")
+  desc         String
+  features     String
+  installSteps String
+  orders       Order[]
+  esims        Esim[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([countryCode, gb, days])
+}
+
+model User {
+  id           String   @id @default(uuid())
+  alipayUserId String   @unique @map("alipay_user_id")
+  nickname     String   @default("")
+  avatar       String   @default("")
+  email        String   @default("")
+  orders       Order[]
+  esims        Esim[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+model Order {
+  id        String    @id @default(uuid())
+  orderNo   String    @unique
+  pkgId     String
+  package   Package   @relation(fields: [pkgId], references: [id])
+  userId    String?   @map("user_id")
+  user      User?     @relation(fields: [userId], references: [id])
+  email     String
+  payMethod String    @default("alipay")
+  status    String    @default("pending")
+  price     Float
+  paidAt    DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  esim      Esim?
+}
+
+model Esim {
+  id             String    @id @default(uuid())
+  orderId        String    @unique
+  order          Order     @relation(fields: [orderId], references: [id])
+  pkgId          String
+  package        Package   @relation(fields: [pkgId], references: [id])
+  userId         String?   @map("user_id")
+  user           User?     @relation(fields: [userId], references: [id])
+  activationCode String
+  iccid          String
+  smdp           String
+  status         String    @default("pending")
+  activatedAt    DateTime?
+  expireAt       DateTime
+  used           Float     @default(0)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+}

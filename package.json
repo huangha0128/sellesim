@@ -1,0 +1,22 @@
+{
+  "name": "sellsim-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "YYeSim - 全球 eSIM 上网卡商城（monorepo）",
+  "scripts": {
+    "dev:miniapp": "pnpm --filter @sellsim/miniapp dev:h5",
+    "dev:server": "pnpm --filter @sellsim/server dev",
+    "dev:admin": "pnpm --filter @sellsim/admin dev",
+    "dev": "concurrently \"pnpm dev:server\" \"pnpm dev:miniapp\" \"pnpm dev:admin\"",
+    "build:miniapp": "pnpm --filter @sellsim/miniapp build:h5",
+    "build:server": "pnpm --filter @sellsim/server build",
+    "build:admin": "pnpm --filter @sellsim/admin build",
+    "build": "pnpm build:server && pnpm build:miniapp && pnpm build:admin",
+    "db:push": "pnpm --filter @sellsim/server db:push",
+    "db:seed": "pnpm --filter @sellsim/server db:seed"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "packageManager": "pnpm@11.16.0+sha512.b767e9a98fc87aec0f42daefcd0e84941c2cdb45d73c4e1e68860fb2bdfdbe032ab592105479e5e05c237f740c8a5ffdbbb52385797ddc2296745a1bbb883e8d"
+}

@@ -1,0 +1,35 @@
+﻿name: Deploy Backend & Admin
+
+on:
+  push:
+    branches:
+      - master
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy via Docker Compose
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: SSH 到服务器并构建部署
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT }}
+          command_timeout: 25m
+          script: |
+            set -e
+            cd "${{ vars.DEPLOY_DIR }}"
+            git fetch origin master
+            git reset --hard origin/master
+            docker compose up -d --build
+            docker image prune -f
