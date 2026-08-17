@@ -1,4 +1,4 @@
-﻿# ===== 本地旧副本 / 临时目录（保留在磁盘，不入库）=====
+# ===== 本地旧副本 / 临时目录（保留在磁盘，不入库）=====
 .agent
 tigerapi
 apps/server/Dockerfile.bak
@@ -32,10 +32,10 @@ pnpm-debug.log*
 _enc_test2.txt
 
 # ===== 数据库本地文件 =====
-apps/server/prisma/dev.db
-apps/server/prisma/dev.db-journal
-apps/server/prisma/dev.db-wal
-apps/server/prisma/dev.db-shm
+apps/server/prisma/data/*.db
+apps/server/prisma/data/*.db-journal
+apps/server/prisma/data/*.db-wal
+apps/server/prisma/data/*.db-shm
 *.db-journal
 *.db-wal
 *.db-shm

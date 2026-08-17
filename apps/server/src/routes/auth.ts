@@ -8,7 +8,13 @@ import { config } from '../config';
 
 const JWT_SECRET = config.jwt.secret;
 const ALIPAY_APP_ID = config.alipay.appId;
-const ALIPAY_PRIVATE_KEY = config.alipay.privateKey;
+const ALIPAY_PRIVATE_KEY = normalizePrivateKey(config.alipay.privateKey);
+
+/** 支付宝私钥：已是 PEM 直接使用，否则按 PKCS8 包裹（RSA2 = SHA256withRSA） */
+function normalizePrivateKey(key: string): string {
+  if (key.includes('-----BEGIN')) return key;
+  return `-----BEGIN PRIVATE KEY-----\n${key.replace(/\s+/g, '')}\n-----END PRIVATE KEY-----`;
+}
 
 export default (prisma: PrismaClient) => {
   const router = Router();
@@ -16,7 +22,7 @@ export default (prisma: PrismaClient) => {
   function sign(params: Record<string, string>): string {
     const sortedKeys = Object.keys(params).sort();
     const signContent = sortedKeys.map(key => `${key}=${params[key]}`).join('&');
-    const sign = crypto.createSign('RSA2');
+    const sign = crypto.createSign('RSA-SHA256');
     sign.update(signContent);
     return sign.sign(ALIPAY_PRIVATE_KEY, 'base64');
   }
@@ -77,11 +83,13 @@ export default (prisma: PrismaClient) => {
       const result = await request(params);
       const tokenResponse = result.alipay_system_oauth_token_response;
 
-      if (!tokenResponse || tokenResponse.code !== '10000') {
+      // 支付宝 oauth token 成功时不返回 code 字段（失败时才返回 code != 10000），故以 access_token 为准
+      if (!tokenResponse || (tokenResponse.code && tokenResponse.code !== '10000') || !tokenResponse.access_token) {
         return res.json({ code: 1, message: '支付宝授权失败', detail: tokenResponse });
       }
 
-      const alipayUserId = tokenResponse.user_id;
+      // 新开放平台只返回 open_id，旧平台返回 user_id / alipay_user_id
+      const alipayUserId = tokenResponse.alipay_user_id || tokenResponse.user_id || tokenResponse.open_id;
       const accessToken = tokenResponse.access_token;
 
       let user = await prisma.user.findUnique({ where: { alipayUserId } });

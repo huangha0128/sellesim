@@ -1,4 +1,4 @@
-const BASE_URL = 'http://localhost:6660/api';
+const BASE_URL = 'http://8.138.193.6/api';
 
 // 将后端嵌套的 package.country 扁平化为前端所需字段
 function flattenPkg(p) {

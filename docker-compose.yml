@@ -30,8 +30,8 @@ services:
     ports:
       - "${SERVER_PORT:-6501}:6660"
     volumes:
-      # SQLite 数据库持久化（包含 schema 与种子数据）
-      - sellsim-data:/app/apps/server/prisma
+      # 只持久化 SQLite 数据库文件，避免卷遮蔽镜像内的 schema.prisma
+      - sellsim-data:/app/apps/server/prisma/data
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:6660/health"]
       interval: 15s

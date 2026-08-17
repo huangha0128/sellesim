@@ -1,4 +1,4 @@
-# ===== Docker 构建上下文忽略 =====
+﻿# ===== Docker 构建上下文忽略 =====
 # 减小构建上下文体积，避免覆盖镜像内已安装的依赖
 
 node_modules
@@ -20,7 +20,7 @@ npm-debug.log*
 **/.env
 
 # 本地 SQLite 数据库（首次部署由 prisma db push + seed 重建）
-apps/server/prisma/dev.db
-apps/server/prisma/*.db-journal
-apps/server/prisma/*.db-wal
-apps/server/prisma/*.db-shm
+apps/server/prisma/data/*.db
+apps/server/prisma/data/*.db-journal
+apps/server/prisma/data/*.db-wal
+apps/server/prisma/data/*.db-shm
