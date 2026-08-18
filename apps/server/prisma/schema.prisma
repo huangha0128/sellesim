@@ -69,20 +69,25 @@ model User {
 }
 
 model Order {
-  id        String    @id @default(uuid())
-  orderNo   String    @unique
-  pkgId     String
-  package   Package   @relation(fields: [pkgId], references: [id])
-  userId    String?   @map("user_id")
-  user      User?     @relation(fields: [userId], references: [id])
-  email     String
-  payMethod String    @default("alipay")
-  status    String    @default("pending")
-  price     Float
-  paidAt    DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  esim      Esim?
+  id            String    @id @default(uuid())
+  orderNo       String    @unique
+  pkgId         String
+  package       Package   @relation(fields: [pkgId], references: [id])
+  userId        String?   @map("user_id")
+  user          User?     @relation(fields: [userId], references: [id])
+  email         String
+  payMethod     String    @default("alipay")
+  status        String    @default("pending")
+  price         Float
+  paidAt        DateTime?
+  alipayTradeNo String?   @map("alipay_trade_no")
+  refundAmount  Float?    @map("refund_amount")
+  refundTradeNo String?   @map("refund_trade_no")
+  refundReason  String?   @map("refund_reason")
+  refundedAt    DateTime? @map("refunded_at")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  esim          Esim?
 }
 
 model Esim {
@@ -102,4 +107,12 @@ model Esim {
   used           Float     @default(0)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
+}
+
+model Card {
+  id        String   @id @default(uuid())
+  iccid     String   @unique
+  remark    String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }

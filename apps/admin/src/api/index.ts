@@ -15,7 +15,12 @@ export const adminApi = {
   syncTigerAll: () => http.post('/admin/tiger/sync-all'),
   getDashboard: () => http.get('/admin/dashboard'),
   getOrders: () => http.get('/admin/orders'),
+  refundOrder: (orderNo: string, reason?: string) =>
+    http.post(`/admin/orders/${orderNo}/refund`, { reason }),
   getEsims: () => http.get('/admin/esims'),
+  getCards: () => http.get('/admin/cards'),
+  addCards: (iccids: string[], remark?: string) => http.post('/admin/cards', { iccids, remark }),
+  deleteCard: (iccid: string) => http.delete(`/admin/cards/${iccid}`),
   getCountries: (params?: any) => http.get('/admin/countries', { params }),
   getPackagesPage: (params?: any) => http.get('/admin/packages/page', { params }),
   createCountry: (data: any) => http.post('/admin/countries', data),

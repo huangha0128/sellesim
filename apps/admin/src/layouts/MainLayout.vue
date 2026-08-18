@@ -26,9 +26,13 @@
           <el-icon><Iphone /></el-icon>
           <span>eSIM 管理</span>
         </el-menu-item>
+        <el-menu-item index="/cards">
+          <el-icon><CreditCard /></el-icon>
+          <span>卡片管理</span>
+        </el-menu-item>
         <el-menu-item index="/tiger-sync">
           <el-icon><Refresh /></el-icon>
-          <span>????</span>
+          <span>Tiger 同步</span>
         </el-menu-item>
       </el-menu>
     </el-aside>

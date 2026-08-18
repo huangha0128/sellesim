@@ -24,7 +24,7 @@
       >
         <view class="ec-head" @click="toggle(esim.id)">
           <view class="ec-flag">
-            <text class="ec-flag-emoji">{{ esim.pkg.flag }}</text>
+            <image class="ec-flag-img" :src="getFlagImage(esim.pkg.countryCode)" mode="aspectFit" />
           </view>
           <view class="ec-main">
             <view class="ec-title-row">
@@ -151,6 +151,10 @@ export default {
         }
       })
     },
+    getFlagImage(code) {
+      if (!code) return '/static/icons/flag-unknown.png'
+      return `/static/icons/flag-${code.toLowerCase()}.png`
+    },
     goBuy() {
       uni.switchTab({ url: '/pages/index/index' })
     }
@@ -276,10 +280,13 @@ export default {
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
-.ec-flag-emoji {
-  font-size: 46rpx;
+.ec-flag-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .ec-main {

@@ -6,9 +6,10 @@
         <image v-else class="uc-avatar-img" src="/static/icons/hero-avatar.png" mode="aspectFit" />
       </view>
       <view class="uc-info">
-        <text class="uc-name">{{ store.isLoggedIn ? store.user.nickname : '点击登录' }}</text>
+        <text class="uc-name">{{ store.isLoggedIn ? (store.user.nickname || '全球旅行者') : '点击登录' }}</text>
         <text class="uc-email" v-if="store.isLoggedIn && store.user.email">{{ maskEmail(store.user.email) }}</text>
-        <text class="uc-email" v-else>登录后享受更多服务</text>
+        <text class="uc-email" v-else-if="!store.isLoggedIn">登录后享受更多服务</text>
+        <text class="uc-email" v-else>欢迎回来</text>
       </view>
       <view class="uc-badge" v-if="store.isLoggedIn">全球旅行者</view>
     </view>

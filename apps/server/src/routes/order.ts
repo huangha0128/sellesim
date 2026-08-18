@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import { tigerClient, extractEsimInfo, getAvailableIccid } from '../tiger';
+import { alipay } from '../utils/alipay';
 
 /**
  * 支付成功后下发 eSIM：
@@ -12,15 +13,12 @@ async function provisionEsim(prisma: PrismaClient, order: any, pkg: any) {
   const expireAt = new Date(Date.now() + (pkg?.days || 7) * 86400000);
 
   if (tigerClient.configured) {
-    // 1. 取一张未使用的卡片
     const iccid = await getAvailableIccid(prisma);
     if (!iccid) {
       throw new Error('Tiger 卡片池已用完或未配置 TIGER_ICCIDS，请补充卡片库存');
     }
-    // 2. 确定 Tiger 套餐 ID（本地套餐上配置的 tigerPkgId）
     let tigerPkgId: number | null = pkg?.tigerPkgId ?? null;
     if (!tigerPkgId) {
-      // 未配置映射时，尝试按流量/天数从 Tiger 套餐列表匹配
       const listRes = await tigerClient.listPackages({ package_type: 'data', is_active: true, limit: 500 });
       const items: any[] = listRes?.data?.items || listRes?.items || [];
       const matched = items.find(
@@ -31,9 +29,7 @@ async function provisionEsim(prisma: PrismaClient, order: any, pkg: any) {
       }
       tigerPkgId = Number(matched.pid || matched.id);
     }
-    // 3. 调用 Tiger 为卡片绑定套餐
     const bindRes = await tigerClient.bindPackage(iccid, tigerPkgId);
-    // 4. 从返回数据提取真实激活信息
     const info = extractEsimInfo(bindRes?.data, process.env.TIGER_SMDP_ADDRESS);
     if (!info || !info.activationCode) {
       console.error('[tiger] 绑定成功但未能解析激活信息：', JSON.stringify(bindRes?.data));
@@ -94,6 +90,57 @@ export default (prisma: PrismaClient) => {
     res.json({ code: 0, data: { order } });
   });
 
+  /**
+   * 创建支付宝支付（H5 手机网站支付）
+   * 返回支付宝支付链接，前端跳转即可唤起支付宝收银台
+   */
+  router.post('/:orderNo/create-payment', async (req: Request, res: Response) => {
+    const order = await prisma.order.findUnique({
+      where: { orderNo: req.params.orderNo },
+    });
+    if (!order) {
+      return res.json({ code: 1, message: '订单不存在' });
+    }
+    if (order.status === 'paid') {
+      return res.json({ code: 0, data: { order, paid: true } });
+    }
+
+    const pkg = await prisma.package.findUnique({ where: { id: order.pkgId } });
+    const subject = `${pkg?.countryCode || 'eSIM'} eSIM（${pkg?.gb}GB / ${pkg?.days}天）`;
+    const totalAmount = Number(order.price).toFixed(2);
+
+    const host = process.env.ALIPAY_NOTIFY_HOST || `http://localhost:${process.env.PORT || 6660}`;
+    const notifyUrl = `${host}/api/alipay/notify`;
+    const returnUrl = `${host.replace(/:\d+$/, '')}/api/orders/${order.orderNo}/return`;
+
+    try {
+      const paymentUrl = alipay.buildPaymentUrl(
+        order.orderNo,
+        subject,
+        totalAmount,
+        notifyUrl,
+        returnUrl,
+        order.id,
+      );
+
+      res.json({
+        code: 0,
+        data: {
+          paymentUrl,
+          orderNo: order.orderNo,
+          totalAmount,
+        },
+      });
+    } catch (e: any) {
+      console.error('[alipay] 创建支付失败：', e.message);
+      res.json({ code: 1, message: `创建支付失败：${e.message}` });
+    }
+  });
+
+  /**
+   * 模拟支付（开发/测试用）
+   * 直接标记订单为已支付并下发 eSIM，不走真实支付宝
+   */
   router.post('/:orderNo/pay', async (req: Request, res: Response) => {
     const order = await prisma.order.findUnique({
       where: { orderNo: req.params.orderNo },
@@ -114,10 +161,30 @@ export default (prisma: PrismaClient) => {
       const esim = await prisma.esim.create({ data: esimData });
       res.json({ code: 0, data: { order: updated, esim } });
     } catch (e: any) {
-      // 下发失败：订单保持已支付，返回错误提示（可重试/人工处理）
       console.error('[tiger] eSIM 下发失败：', e.message);
       res.json({ code: 2, message: `eSIM 下发失败：${e.message}`, data: { order: updated } });
     }
+  });
+
+  /**
+   * 查询订单支付状态
+   */
+  router.get('/:orderNo', async (req: Request, res: Response) => {
+    const order = await prisma.order.findUnique({
+      where: { orderNo: req.params.orderNo },
+      include: { package: { include: { country: true } }, esim: true },
+    });
+    if (!order) {
+      return res.json({ code: 1, message: '订单不存在' });
+    }
+    res.json({ code: 0, data: { order } });
+  });
+
+  /**
+   * 支付宝支付成功后的同步回跳（H5 支付完成后跳转到此）
+   */
+  router.get('/:orderNo/return', async (req: Request, res: Response) => {
+    res.redirect(`/h5/pages/payment/payment?orderNo=${req.params.orderNo}`);
   });
 
   router.get('/', async (req: Request, res: Response) => {

@@ -1,7 +1,9 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { tigerClient, iccidPoolCount } from '../tiger';
+import { tigerClient, iccidPoolCount, getIccidPool } from '../tiger';
 import { syncAllFromTiger, syncRegionsFromTiger, syncPackagesFromTiger } from '../tiger/sync';
+import { refundOrder } from '../services/refund';
+import { alipay } from '../utils/alipay';
 
 export default (prisma: PrismaClient) => {
   const router = Router();
@@ -39,6 +41,36 @@ export default (prisma: PrismaClient) => {
       include: { package: { include: { country: true } } },
     });
     res.json({ code: 0, data: { orders } });
+  });
+
+  /**
+   * POST /api/admin/orders/:orderNo/refund 订单退款
+   * - 仅已支付订单可退款
+   * - 调用支付宝退款（alipay.trade.refund，out_request_no 保证幂等）
+   * - 退款成功后订单置为 refunded，删除 eSIM 记录（ICCID 归还卡片池）
+   */
+  router.post('/orders/:orderNo/refund', async (req: Request, res: Response) => {
+    const { reason } = req.body || {};
+    try {
+      const result = await refundOrder(
+        {
+          findOrder: (orderNo) => prisma.order.findUnique({ where: { orderNo } }),
+          updateOrder: (orderNo, data) => prisma.order.update({ where: { orderNo }, data }),
+          findEsimByOrderId: (orderId) => prisma.esim.findUnique({ where: { orderId } }),
+          deleteEsimByOrderId: async (orderId) => {
+            await prisma.esim.delete({ where: { orderId } });
+          },
+          alipayRefund: (params) =>
+            alipay.refund(params.outTradeNo, params.refundAmount, params.outRequestNo, params.refundReason),
+        },
+        req.params.orderNo,
+        reason,
+      );
+      res.json({ code: 0, data: result });
+    } catch (e: any) {
+      console.error(`[refund] 订单 ${req.params.orderNo} 退款失败：`, e.message);
+      res.json({ code: 1, message: e.message });
+    }
   });
 
   router.get('/esims', async (req: Request, res: Response) => {
@@ -149,22 +181,82 @@ export default (prisma: PrismaClient) => {
 
   /** GET /api/admin/tiger/status 查看 Tiger 接入状态 */
   router.get('/tiger/status', async (_req: Request, res: Response) => {
-    const [countryCount, packageCount] = await Promise.all([
+    const [countryCount, packageCount, poolCount] = await Promise.all([
       prisma.country.count(),
       prisma.package.count(),
+      iccidPoolCount(prisma),
     ]);
     res.json({
       code: 0,
       data: {
         configured: tigerClient.configured,
         baseUrl: tigerClient.baseUrl,
-        iccidPoolSize: iccidPoolCount(),
+        iccidPoolSize: poolCount,
         mode: tigerClient.configured ? 'tiger' : 'mock',
         countryCount,
         packageCount,
         synced: packageCount > 0,
       },
     });
+  });
+
+  // ===== 卡片（ICCID）池管理 =====
+
+  /** GET /api/admin/cards 卡片列表与统计（已使用状态按 esim 表判断） */
+  router.get('/cards', async (_req: Request, res: Response) => {
+    const [cards, esims, envCards] = await Promise.all([
+      prisma.card.findMany({ orderBy: { createdAt: 'desc' } }),
+      prisma.esim.findMany({ select: { iccid: true } }),
+      getIccidPool(prisma),
+    ]);
+    const usedSet = new Set(esims.map((e) => e.iccid));
+    const list = cards.map((c) => ({ ...c, used: usedSet.has(c.iccid) }));
+    const used = list.filter((c) => c.used).length;
+    const available = list.length - used;
+    res.json({
+      code: 0,
+      data: {
+        cards: list,
+        stats: {
+          total: list.length,
+          available,
+          used,
+          envOnly: Math.max(0, envCards.length - list.length),
+        },
+      },
+    });
+  });
+
+  /** POST /api/admin/cards 批量新增卡片（跳过已存在的 ICCID，新增即时生效） */
+  router.post('/cards', async (req: Request, res: Response) => {
+    const { iccids, remark } = req.body || {};
+    const list: string[] = (Array.isArray(iccids) ? iccids : []).map((s) => String(s).trim()).filter(Boolean);
+    if (list.length === 0) {
+      return res.json({ code: 1, message: '请至少提供一个 ICCID' });
+    }
+    const existing = new Set(
+      (await prisma.card.findMany({ select: { iccid: true } })).map((c) => c.iccid),
+    );
+    const toAdd = Array.from(new Set(list)).filter((i) => !existing.has(i));
+    for (const iccid of toAdd) {
+      await prisma.card.create({ data: { iccid, remark: remark || '' } });
+    }
+    res.json({
+      code: 0,
+      data: { added: toAdd.length, skipped: list.length - toAdd.length },
+    });
+  });
+
+  /** DELETE /api/admin/cards/:iccid 删除卡片（已使用的卡片删除后其 ICCID 不再参与取卡） */
+  router.delete('/cards/:iccid', async (req: Request, res: Response) => {
+    const iccid = String(req.params.iccid || '');
+    const card = await prisma.card.findUnique({ where: { iccid } });
+    if (!card) {
+      return res.json({ code: 1, message: '卡片不存在' });
+    }
+    const used = await prisma.esim.findFirst({ where: { iccid }, select: { id: true } });
+    await prisma.card.delete({ where: { iccid } });
+    res.json({ code: 0, data: { deleted: iccid, wasUsed: Boolean(used) } });
   });
 
   /** POST /api/admin/tiger/sync-all ????????/?? + ?? */

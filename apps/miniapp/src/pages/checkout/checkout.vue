@@ -171,10 +171,12 @@ export default {
           store.pushOrder(order)
           uni.navigateTo({ url: `/pages/payment/payment?orderNo=${res.data.order.orderNo}` })
         } else {
-          uni.showToast({ title: res.message, icon: 'none' })
+          uni.showToast({ title: res.message || '下单失败', icon: 'none' })
+          this.submitting = false
         }
-      } finally {
+      } catch (e) {
         this.submitting = false
+        uni.showToast({ title: '网络错误，请重试', icon: 'none' })
       }
     }
   }

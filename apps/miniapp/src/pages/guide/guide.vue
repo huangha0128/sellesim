@@ -209,8 +209,10 @@ export default {
 }
 
 .pt-emoji {
-  font-size: 30rpx;
+  width: 36rpx;
+  height: 36rpx;
   margin-right: 10rpx;
+  flex-shrink: 0;
 }
 
 .pt-txt {

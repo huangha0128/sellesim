@@ -140,10 +140,11 @@ export default {
 }
 
 .search-icon {
-  font-size: 38rpx;
+  width: 30rpx;
+  height: 30rpx;
   color: $brand;
   margin-right: 14rpx;
-  font-weight: 700;
+  flex-shrink: 0;
 }
 
 .search-input {
@@ -218,7 +219,8 @@ export default {
 }
 
 .empty-emoji {
-  font-size: 90rpx;
+  width: 90rpx;
+  height: 90rpx;
 }
 
 .empty-txt {

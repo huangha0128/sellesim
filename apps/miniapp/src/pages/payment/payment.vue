@@ -1,11 +1,5 @@
 <template>
-  <view class="payment-page" :style="{ paddingTop: statusBarHeight + 'px' }">
-    <view class="pay-nav">
-      <view class="nav-back" hover-class="nav-back--hover" @click="goBack">‹</view>
-      <text class="nav-title">收银台</text>
-      <view class="nav-spacer"></view>
-    </view>
-
+  <view class="payment-page">
     <view v-if="!paid" class="pay-content">
       <view class="amount-box">
         <text class="amount-label">支付金额</text>
@@ -39,7 +33,7 @@
       <view class="pay-btn" hover-class="pay-btn--hover" @click="pay">立即支付</view>
       <view class="pay-cancel" @click="goBack">暂不支付</view>
 
-      <view class="pay-note">演示环境 · 点击立即支付将模拟支付宝扣款并自动发卡</view>
+      <view class="pay-note">{{ useRealPayment ? '将跳转至支付宝完成安全支付' : '演示环境 · 点击立即支付将模拟支付宝扣款并自动发卡' }}</view>
     </view>
 
     <view v-else class="success-wrap">
@@ -87,15 +81,16 @@ import { store } from '@/store'
 export default {
   data() {
     return {
-      statusBarHeight: 44,
       orderNo: '',
       order: null,
       paying: false,
-      paid: false
+      paid: false,
+      useRealPayment: true
     }
   },
   computed: {
     amountText() {
+      if (!this.order) return '0'
       const n = Number(this.order.price)
       return n % 1 === 0 ? n.toFixed(0) : n.toFixed(1)
     },
@@ -105,22 +100,78 @@ export default {
     }
   },
   async onLoad(options) {
-    const info = uni.getSystemInfoSync()
-    this.statusBarHeight = info.statusBarHeight || 44
     this.orderNo = options.orderNo || ''
-    this.order = store.orders.find((o) => o.orderNo === this.orderNo) || null
-    if (!this.order) {
-      const res = await api.getOrders()
-      this.order = (res.data.orders || []).find((o) => o.orderNo === this.orderNo) || null
+    this.useRealPayment = this.getUseRealPayment()
+    try {
+      const res = await api.getOrder(this.orderNo)
+      if (res.code === 0 && res.data.order) {
+        const o = res.data.order
+        const pkg = o.package || {}
+        const c = pkg.country || {}
+        const order = {
+          id: o.id,
+          orderNo: o.orderNo,
+          pkgId: o.pkgId,
+          email: o.email,
+          payMethod: o.payMethod,
+          status: o.status,
+          price: o.price,
+          paidAt: o.paidAt,
+          createdAt: o.createdAt,
+          countryName: c.name || pkg.countryCode || '未知',
+          countryCode: pkg.countryCode,
+          gb: pkg.gb,
+          days: pkg.days,
+          flag: c.flag,
+        }
+        store.updateOrder(this.orderNo, order)
+        this.order = order
+      }
+    } catch (e) {
+      this.order = store.orders.find((o) => o.orderNo === this.orderNo) || null
     }
     if (!this.order) {
       uni.showToast({ title: '订单不存在', icon: 'none' })
       setTimeout(() => this.goBack(), 1200)
+      return
     }
+    this.paid = this.order.status === 'paid'
   },
   methods: {
-    async pay() {
-      if (this.paying) return
+    getUseRealPayment() {
+      try {
+        return uni.getStorageSync('use_real_payment') !== 'false'
+      } catch (e) {
+        return true
+      }
+    },
+    async realPay() {
+      this.paying = true
+      try {
+        const res = await api.createPayment(this.orderNo)
+        if (res.code === 0) {
+          if (res.data.paid) {
+            store.updateOrder(this.orderNo, { status: 'paid' })
+            this.paying = false
+            this.paid = true
+            return
+          }
+          const paymentUrl = res.data.paymentUrl
+          if (paymentUrl) {
+            window.location.href = paymentUrl
+          } else {
+            throw new Error('未获取到支付链接')
+          }
+        } else {
+          this.paying = false
+          uni.showToast({ title: res.message || '创建支付失败', icon: 'none' })
+        }
+      } catch (e) {
+        this.paying = false
+        uni.showToast({ title: '创建支付失败，请重试', icon: 'none' })
+      }
+    },
+    async simulatePay() {
       this.paying = true
       try {
         const res = await api.payOrder(this.orderNo)
@@ -133,11 +184,23 @@ export default {
           }, 500)
         } else {
           this.paying = false
-          uni.showToast({ title: res.message, icon: 'none' })
+          uni.showToast({ title: res.message || '支付失败', icon: 'none' })
         }
       } catch (e) {
         this.paying = false
         uni.showToast({ title: '支付失败，请重试', icon: 'none' })
+      }
+    },
+    async pay() {
+      if (this.paying) return
+      if (!this.order) {
+        uni.showToast({ title: '订单信息异常', icon: 'none' })
+        return
+      }
+      if (this.useRealPayment) {
+        await this.realPay()
+      } else {
+        await this.simulatePay()
       }
     },
     goEsims() {
@@ -168,41 +231,6 @@ export default {
 .payment-page {
   min-height: 100vh;
   background: $bg-page;
-}
-
-.pay-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 88rpx;
-  padding: 0 $page-pad;
-}
-
-.nav-back {
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 50%;
-  background: $bg-card;
-  box-shadow: $shadow-sm;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 44rpx;
-  color: $ink;
-
-  &--hover {
-    transform: scale(0.92);
-  }
-}
-
-.nav-title {
-  font-size: 32rpx;
-  font-weight: 800;
-  color: $ink;
-}
-
-.nav-spacer {
-  width: 64rpx;
 }
 
 .pay-content {

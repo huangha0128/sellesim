@@ -14,6 +14,7 @@ const router = createRouter({
         { path: 'packages', name: 'Packages', component: () => import('../views/Packages.vue'), meta: { title: '套餐管理' } },
         { path: 'orders', name: 'Orders', component: () => import('../views/Orders.vue'), meta: { title: '订单管理' } },
         { path: 'esims', name: 'Esims', component: () => import('../views/Esims.vue'), meta: { title: 'eSIM 管理' } },
+        { path: 'cards', name: 'Cards', component: () => import('../views/Cards.vue'), meta: { title: '卡片管理' } },
       ],
     },
   ],
