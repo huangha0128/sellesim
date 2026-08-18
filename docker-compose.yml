@@ -60,7 +60,9 @@ services:
 
   # ---------- Caddy 反向代理（/backend → 后台，/api → 后端）----------
   caddy:
-    image: caddy:2-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.caddy
     container_name: sellsim-caddy
     restart: unless-stopped
     depends_on:
@@ -69,13 +71,17 @@ services:
       server:
         condition: service_healthy
     environment:
-      # 配置域名（如 example.com）后自动申请 HTTPS；留空则监听 80 端口纯 HTTP
+      # 配置域名（如 www.example.com）后启用 HTTPS（使用手动生成的证书）；留空则监听 80 端口纯 HTTP
       CADDY_DOMAIN: ${CADDY_DOMAIN:-:80}
+      # 手动证书在容器内的路径（由 CERT_DIR 挂载）
+      CADDY_CERT_FILE: ${CADDY_CERT_FILE:-}
+      CADDY_KEY_FILE: ${CADDY_KEY_FILE:-}
     ports:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # 挂载手动生成的证书目录（certbot 生成，宿主机路径通过 CERT_DIR 配置）
+      - ${CERT_DIR:-/serve/nginx/cert}:/etc/caddy/cert:ro
       - caddy-data:/data
       - caddy-config:/config
 

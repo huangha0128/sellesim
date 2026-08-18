@@ -1,16 +1,21 @@
 # ===== YYeSim 反向代理 (Caddy) =====
+# 注意：本文件仅为参考，实际运行时的配置由 caddy-entrypoint.sh 根据环境变量动态生成。
 #
-# 默认：监听 80 端口纯 HTTP，局域网 / IP 直连即可使用。
-# 如需域名 + 自动 HTTPS：
-#   1. 将域名解析到本机（如 example.com）
-#   2. 在 .env 中设置 CADDY_DOMAIN=example.com
-#   3. 确保防火墙开放 80/443，重新 docker compose up -d
+# 手动证书 HTTPS 模式：
+#   1. 用 certbot 生成证书（覆盖 www.bjyyxx.com）
+#   2. 在 .env 中设置：
+#        CADDY_DOMAIN=www.bjyyxx.com
+#        CERT_DIR=/serve/nginx/cert   （证书所在宿主机目录）
+#   3. 确保证书位于 ${CERT_DIR}/live/www.bjyyxx.com/{fullchain.pem,privkey.pem}
+#   4. 重新 docker compose up -d
 #
 # 路由说明：
 #   /api/*      → 后端 API 服务 (server:6660)
 #   /backend/*  → 管理后台 (admin:80)
 
-{$CADDY_DOMAIN:":80"} {
+www.bjyyxx.com {
+    tls /etc/caddy/cert/live/www.bjyyxx.com/fullchain.pem /etc/caddy/cert/live/www.bjyyxx.com/privkey.pem
+
     encode gzip zstd
 
     # 后端 API
