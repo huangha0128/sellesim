@@ -1,4 +1,4 @@
-const BASE_URL = 'http://8.138.193.6/api';
+const BASE_URL = 'https://www.bjyyxx.com/api';
 
 // 将后端嵌套的 package.country 扁平化为前端所需字段
 function flattenPkg(p) {
@@ -134,8 +134,16 @@ export const api = {
     return res;
   },
 
+  async createPayment(orderNo) {
+    return request('POST', `/orders/${orderNo}/create-payment`);
+  },
+
   async payOrder(orderNo) {
     return request('POST', `/orders/${orderNo}/pay`);
+  },
+
+  async getOrder(orderNo) {
+    return request('GET', `/orders/${orderNo}`);
   },
 
   async getMyEsims() {
