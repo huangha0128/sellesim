@@ -259,23 +259,23 @@ export default (prisma: PrismaClient) => {
     res.json({ code: 0, data: { deleted: iccid, wasUsed: Boolean(used) } });
   });
 
-  /** POST /api/admin/tiger/sync-all ????????/?? + ?? */
+  /** POST /api/admin/tiger/sync-all 全量同步所有数据 */
   router.post('/tiger/sync-all', async (_req: Request, res: Response) => {
     try {
       const result = await syncAllFromTiger(prisma);
       res.json({ code: 0, data: result });
     } catch (e: any) {
-      res.json({ code: 2, message: `???????${e.message}` });
+      res.json({ code: 2, message: `同步失败：${e.message}` });
     }
   });
 
-  /** POST /api/admin/tiger/sync-regions ??????/?? */
+  /** POST /api/admin/tiger/sync-regions 同步国家/地区 */
   router.post('/tiger/sync-regions', async (_req: Request, res: Response) => {
     try {
       const result = await syncRegionsFromTiger(prisma);
       res.json({ code: 0, data: result });
     } catch (e: any) {
-      res.json({ code: 2, message: `???????${e.message}` });
+      res.json({ code: 2, message: `同步失败：${e.message}` });
     }
   });
 

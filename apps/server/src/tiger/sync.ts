@@ -1,7 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { tigerClient } from './client';
 
-/** Tiger -> ???????? */
+/** Tiger -> 本地同步结果 */
 export interface SyncResult {
   regionsSynced: number;
   packagesSynced: number;

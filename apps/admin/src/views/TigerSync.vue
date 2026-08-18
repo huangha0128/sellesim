@@ -5,38 +5,38 @@
         <el-card class="status-card">
           <template #header>
             <div class="card-head">
-              <span style="font-weight: 700;">Tiger ??????</span>
+              <span style="font-weight: 700;">Tiger 同步状态</span>
               <el-tag :type="status.configured ? 'success' : 'danger'">
-                {{ status.configured ? '??? Tiger ????' : '???' }}
+                {{ status.configured ? '已连接 Tiger' : '未连接' }}
               </el-tag>
             </div>
           </template>
 
           <el-descriptions :column="2" border>
-            <el-descriptions-item label="API ??">{{ status.baseUrl || '-' }}</el-descriptions-item>
-            <el-descriptions-item label="????">{{ status.mode === 'tiger' ? 'Tiger ????' : '????' }}</el-descriptions-item>
-            <el-descriptions-item label="??/??">
-              <span>{{ status.countryCount || 0 }} ?</span>
+            <el-descriptions-item label="API 地址">{{ status.baseUrl || '-' }}</el-descriptions-item>
+            <el-descriptions-item label="连接模式">{{ status.mode === 'tiger' ? 'Tiger 模式' : '模拟模式' }}</el-descriptions-item>
+            <el-descriptions-item label="国家/地区">
+              <span>{{ status.countryCount || 0 }} 个</span>
             </el-descriptions-item>
-            <el-descriptions-item label="????">
-              <span>{{ status.packageCount || 0 }} ?</span>
+            <el-descriptions-item label="套餐总数">
+              <span>{{ status.packageCount || 0 }} 个</span>
             </el-descriptions-item>
-            <el-descriptions-item label="ICCID ??">
-              <span>{{ status.iccidPoolSize || 0 }} ?</span>
+            <el-descriptions-item label="ICCID 池">
+              <span>{{ status.iccidPoolSize || 0 }} 个</span>
             </el-descriptions-item>
-            <el-descriptions-item label="???">
+            <el-descriptions-item label="同步状态">
               <el-tag :type="status.synced ? 'success' : 'info'" size="small">
-                {{ status.synced ? '???' : '???' }}
+                {{ status.synced ? '已同步' : '未同步' }}
               </el-tag>
             </el-descriptions-item>
           </el-descriptions>
 
           <div class="actions" style="margin-top: 20px;">
             <el-button type="primary" :loading="syncingAll" @click="syncAll">
-              ??????????
+              全量同步所有数据
             </el-button>
-            <el-button :loading="syncingRegions" @click="syncRegions">????/??</el-button>
-            <el-button :loading="syncingPkgs" @click="syncPackages">????</el-button>
+            <el-button :loading="syncingRegions" @click="syncRegions">同步国家/地区</el-button>
+            <el-button :loading="syncingPkgs" @click="syncPackages">同步套餐</el-button>
           </div>
           <div v-if="lastResult" style="margin-top: 16px;">
             <el-alert
@@ -47,9 +47,9 @@
               style="margin-bottom: 8px;"
             />
             <el-descriptions :column="3" size="small" border>
-              <el-descriptions-item label="??">{{ lastResult.regionsSynced || 0 }}</el-descriptions-item>
-              <el-descriptions-item label="??">{{ lastResult.packagesSynced || 0 }}</el-descriptions-item>
-              <el-descriptions-item label="??????">{{ lastResult.packageTotal || 0 }}</el-descriptions-item>
+              <el-descriptions-item label="新增">{{ lastResult.regionsSynced || 0 }}</el-descriptions-item>
+              <el-descriptions-item label="套餐">{{ lastResult.packagesSynced || 0 }}</el-descriptions-item>
+              <el-descriptions-item label="套餐总数">{{ lastResult.packageTotal || 0 }}</el-descriptions-item>
             </el-descriptions>
           </div>
           <div v-if="errorMsg" style="margin-top: 16px;">
@@ -59,13 +59,13 @@
       </el-col>
       <el-col :span="8">
         <el-card>
-          <template #header><span style="font-weight: 700;">??</span></template>
+          <template #header><span style="font-weight: 700;">说明</span></template>
           <ul style="line-height: 1.9; padding-left: 18px; color: #5B7A95;">
-            <li>???? Tiger ??????/????? eSIM ?????</li>
-            <li>??????????????????????</li>
-            <li>????????????????????</li>
-            <li>????? Tiger ????USD??</li>
-            <li>?????????????????????</li>
+            <li>从 Tiger eSIM 合作伙伴平台同步国家/地区、套餐数据</li>
+            <li>同步后会自动创建或更新本地数据库中的套餐信息</li>
+            <li>套餐价格以 Tiger API 返回的 USD 价格为准</li>
+            <li>全量同步会先同步国家，再同步套餐</li>
+            <li>建议在套餐变动时手动触发同步</li>
           </ul>
         </el-card>
       </el-col>
@@ -90,7 +90,7 @@ async function load() {
     const res = await adminApi.getTigerStatus();
     status.value = res.data.data || {};
   } catch (e: any) {
-    errorMsg.value = e?.response?.data?.message || '?? Tiger ????';
+    errorMsg.value = e?.response?.data?.message || '获取 Tiger 状态失败';
   }
 }
 
@@ -101,13 +101,13 @@ async function syncAll() {
     const res = await adminApi.syncTigerAll();
     if (res.data.code === 0) {
       lastResult.value = res.data.data;
-      ElMessage.success('??????');
+      ElMessage.success('同步成功');
       load();
     } else {
       errorMsg.value = res.data.message;
     }
   } catch (e: any) {
-    errorMsg.value = e?.response?.data?.message || '??????';
+    errorMsg.value = e?.response?.data?.message || '同步失败';
   } finally {
     syncingAll.value = false;
   }
@@ -120,13 +120,13 @@ async function syncRegions() {
     const res = await adminApi.syncTigerRegions();
     if (res.data.code === 0) {
       lastResult.value = res.data.data;
-      ElMessage.success('??????');
+      ElMessage.success('同步成功');
       load();
     } else {
       errorMsg.value = res.data.message;
     }
   } catch (e: any) {
-    errorMsg.value = e?.response?.data?.message || '??????';
+    errorMsg.value = e?.response?.data?.message || '同步失败';
   } finally {
     syncingRegions.value = false;
   }
@@ -139,13 +139,13 @@ async function syncPackages() {
     const res = await adminApi.syncTigerPackages();
     if (res.data.code === 0) {
       lastResult.value = res.data.data;
-      ElMessage.success('??????');
+      ElMessage.success('同步成功');
       load();
     } else {
       errorMsg.value = res.data.message;
     }
   } catch (e: any) {
-    errorMsg.value = e?.response?.data?.message || '??????';
+    errorMsg.value = e?.response?.data?.message || '同步失败';
   } finally {
     syncingPkgs.value = false;
   }

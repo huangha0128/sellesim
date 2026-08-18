@@ -15,6 +15,7 @@ const router = createRouter({
         { path: 'orders', name: 'Orders', component: () => import('../views/Orders.vue'), meta: { title: '订单管理' } },
         { path: 'esims', name: 'Esims', component: () => import('../views/Esims.vue'), meta: { title: 'eSIM 管理' } },
         { path: 'cards', name: 'Cards', component: () => import('../views/Cards.vue'), meta: { title: '卡片管理' } },
+        { path: 'tiger-sync', name: 'TigerSync', component: () => import('../views/TigerSync.vue'), meta: { title: 'Tiger 同步' } },
       ],
     },
   ],
