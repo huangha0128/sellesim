@@ -36,7 +36,9 @@ echo "==> [3/6] 构建并启动容器"
 # 避免复用到旧的、未固化 engine 的缓存层
 # admin 也一并构建：后台已迁移到 Next.js(shadcn/ui)，产物打进 admin 镜像，
 # 不重建则线上会一直停留在旧的 Vue 页面
-docker compose build --no-cache server admin
+# 注意：admin 不加 --no-cache，依赖安装层可复用缓存，避免全量重装依赖占用磁盘与时间
+docker compose build --no-cache server
+docker compose build admin
 docker compose up -d
 
 echo "==> [4/6] 等待后端健康检查通过"
