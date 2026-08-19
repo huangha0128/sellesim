@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* 莫兰迪暖底色系 */
+    --background: 42 33% 96%;
+    --foreground: 218 24% 19%;
+
+    --card: 44 40% 99%;
+    --card-foreground: 218 24% 19%;
+
+    --popover: 44 40% 99%;
+    --popover-foreground: 218 24% 19%;
+
+    /* 主色：灰绿莫兰迪 teal */
+    --primary: 178 22% 42%;
+    --primary-foreground: 40 30% 98%;
+
+    --secondary: 40 18% 91%;
+    --secondary-foreground: 218 20% 24%;
+
+    --muted: 42 18% 92%;
+    --muted-foreground: 217 10% 46%;
+
+    --accent: 178 24% 88%;
+    --accent-foreground: 178 30% 22%;
+
+    --destructive: 4 60% 58%;
+    --destructive-foreground: 40 30% 98%;
+
+    --border: 40 16% 87%;
+    --input: 40 16% 83%;
+    --ring: 178 22% 55%;
+
+    /* 自定义墨色与柔和色 */
+    --ink: 218 26% 16%;
+    --soft: 42 26% 92%;
+
+    --radius: 0.9rem;
+  }
+
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'tnum';
+  }
+}
+
+/* 全局渐变氛围背景点缀 */
+.app-canvas {
+  min-height: 100vh;
+  background:
+    radial-gradient(1100px 520px at 88% -10%, rgba(143, 170, 166, 0.18), transparent 60%),
+    radial-gradient(900px 480px at -8% 0%, rgba(202, 178, 141, 0.16), transparent 55%),
+    hsl(var(--background));
+}
+
+/* 侧边栏渐变墨绿背景 */
+.sidebar-canvas {
+  background:
+    radial-gradient(600px 320px at 0% 0%, rgba(120, 160, 156, 0.22), transparent 55%),
+    linear-gradient(180deg, hsl(var(--ink)) 0%, #16232f 100%);
+}

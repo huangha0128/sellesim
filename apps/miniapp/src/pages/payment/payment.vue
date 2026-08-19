@@ -140,7 +140,9 @@ export default {
   methods: {
     getUseRealPayment() {
       try {
-        return uni.getStorageSync('use_real_payment') !== 'false'
+        return false;
+        // TODO 后续注释掉
+        // return uni.getStorageSync('use_real_payment') !== 'false'
       } catch (e) {
         return true
       }

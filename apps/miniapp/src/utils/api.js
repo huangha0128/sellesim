@@ -94,7 +94,14 @@ export const api = {
   },
 
   async getPackages(countryCode) {
-    const res = await request('GET', `/packages?countryCode=${countryCode}`);
+    const res = await request('GET', `/packages?countryCode=${countryCode}&all=1`);
+    res.data.packages = (res.data.packages || []).map(flattenPkg);
+    return res;
+  },
+
+  // 获取某国家所有套餐（用于 detail 页提取天数和流量选项）
+  async getPackagesByCountry(countryCode) {
+    const res = await request('GET', `/packages?countryCode=${countryCode}&all=1`);
     res.data.packages = (res.data.packages || []).map(flattenPkg);
     return res;
   },
@@ -105,8 +112,8 @@ export const api = {
     return res;
   },
 
-  async createOrder({ pkgId, email, payMethod = 'alipay' }) {
-    return request('POST', '/orders', { pkgId, email, payMethod });
+  async createOrder({ pkgId, dataIndex, days, email, payMethod = 'alipay' }) {
+    return request('POST', '/orders', { pkgId, dataIndex, days, email, payMethod });
   },
 
   async getOrders() {

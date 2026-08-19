@@ -32,11 +32,9 @@
             <text v-if="p.tag" class="pkg-tag" :style="{ color: p.tagColor, background: p.tagColor + '1A' }">{{ p.tag }}</text>
           </view>
           <view class="pkg-meta">
-            <text class="pkg-meta-item">{{ p.gb }}GB 流量</text>
+            <text class="pkg-meta-item">{{ p.dayOptions ? p.dayOptions[0] + '-' + p.dayOptions[p.dayOptions.length - 1] + '天可选' : p.days + '天有效' }}</text>
             <text class="pkg-dot">·</text>
-            <text class="pkg-meta-item">{{ p.days }}天有效</text>
-            <text class="pkg-dot">·</text>
-            <text class="pkg-meta-item">{{ p.network }}</text>
+            <text class="pkg-meta-item">多种流量包</text>
           </view>
           <view class="pkg-type">{{ p.type }}</view>
         </view>

@@ -12,6 +12,8 @@ dist
 dist_backup_old_20260813/
 out
 **/out
+.next
+**/.next
 
 # ===== 日志 =====
 *.log
@@ -32,6 +34,7 @@ pnpm-debug.log*
 _enc_test2.txt
 
 # ===== 数据库本地文件 =====
+apps/server/prisma/*.db
 apps/server/prisma/data/*.db
 apps/server/prisma/data/*.db-journal
 apps/server/prisma/data/*.db-wal

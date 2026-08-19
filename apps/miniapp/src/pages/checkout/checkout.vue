@@ -11,7 +11,7 @@
           </view>
           <view class="sum-main">
             <text class="sum-name">{{ pkg.countryName }} eSIM</text>
-            <text class="sum-meta">{{ pkg.gb }}GB · {{ pkg.days }}天 · {{ pkg.network }}</text>
+            <text class="sum-meta">{{ dataLabel }} · {{ days }}天 · {{ pkg.network }}</text>
           </view>
           <view class="sum-price">¥{{ priceNum }}</view>
         </view>
@@ -114,6 +114,11 @@ export default {
     return {
       pkgId: '',
       pkg: null,
+      allPackages: [],
+      dataIndex: 4,
+      days: 15,
+      dataLabel: '',
+      dataPackages: [],
       email: '',
       payMethod: 'alipay',
       agreed: true,
@@ -122,24 +127,128 @@ export default {
     }
   },
   computed: {
+    currentDataPkg() {
+      if (!this.dataPackages || this.dataPackages.length === 0) return null
+      return this.dataPackages[this.dataIndex]
+    },
     priceNum() {
-      const n = Number(this.pkg.price)
-      return n % 1 === 0 ? n.toFixed(0) : n.toFixed(1)
+      if (!this.currentDataPkg) return 0
+      const price = this.calcPrice(this.currentDataPkg, this.days)
+      return price % 1 === 0 ? price.toFixed(0) : price.toFixed(1)
     }
   },
   onLoad(options) {
     this.pkgId = options.pkgId || ''
+    this.dataIndex = Number(options.dataIndex) || 4
+    this.days = Number(options.days) || 15
     this.load()
   },
   methods: {
     getFlagImage(code) {
       return `/static/icons/flag-${code.toLowerCase()}.png`
     },
+    // 从后端套餐数据中提取天数和流量包选项
+    extractOptions(packages) {
+      if (!packages || packages.length === 0) return
+
+      const daysSet = new Set()
+      packages.forEach(p => {
+        if (p.days) daysSet.add(p.days)
+      })
+
+      const gbSet = new Set()
+      let hasPerDay = false
+      packages.forEach(p => {
+        if (p.gb) {
+          gbSet.add(p.gb)
+          if (p.days && p.gb >= p.days) {
+            hasPerDay = true
+          }
+        }
+      })
+      const gbList = Array.from(gbSet).sort((a, b) => a - b)
+
+      this.dataPackages = []
+
+      if (hasPerDay) {
+        const perDayUnits = packages
+          .filter(p => p.days && p.gb >= p.days)
+          .map(p => Math.round(p.gb / p.days))
+        const uniquePerDayUnits = [...new Set(perDayUnits)].sort((a, b) => a - b)
+
+        uniquePerDayUnits.forEach(unit => {
+          const basePkg = packages.find(p => p.days === 1 && p.gb === unit)
+          const base = basePkg ? basePkg.price : (unit * 8.9)
+
+          this.dataPackages.push({
+            label: `${unit}GB/天`,
+            type: 'perday',
+            value: unit,
+            base: base
+          })
+        })
+      }
+
+      const totalGbs = hasPerDay
+        ? gbList.filter(gb => {
+            return packages.some(p => p.gb === gb && p.days && p.gb < p.days)
+          })
+        : gbList
+
+      totalGbs.forEach(gb => {
+        const basePkg = packages
+          .filter(p => p.gb === gb)
+          .sort((a, b) => a.days - b.days)[0]
+        const base = basePkg ? basePkg.price : (gb * 5)
+
+        this.dataPackages.push({
+          label: `总量 ${gb}GB`,
+          type: 'total',
+          value: gb,
+          base: base
+        })
+      })
+    },
+
+    // 计算价格
+    calcPrice(dataPkg, days) {
+      if (!dataPkg || !this.allPackages || this.allPackages.length === 0) return 0
+
+      if (dataPkg.type === 'perday') {
+        const basePkg = this.allPackages.find(p => p.days === 1 && p.gb === dataPkg.value)
+        if (basePkg) {
+          return Math.round(basePkg.price * days * 10) / 10
+        }
+        const anyPkg = this.allPackages.find(p => p.gb === dataPkg.value && p.days)
+        if (anyPkg) {
+          const pricePerDay = anyPkg.price / anyPkg.days
+          return Math.round(pricePerDay * days * 10) / 10
+        }
+        return dataPkg.base * days
+      } else if (dataPkg.type === 'total') {
+        const basePkg = this.allPackages.find(p => p.gb === dataPkg.value && p.days)
+        if (basePkg) {
+          return Math.round(basePkg.price * 10) / 10
+        }
+        return dataPkg.base
+      }
+      return 0
+    },
+
     async load() {
       uni.showLoading({ title: '加载中', mask: true })
       try {
         const res = await api.getPackageDetail(this.pkgId)
         this.pkg = res.data.pkg
+
+        const allRes = await api.getPackagesByCountry(this.pkg.countryCode)
+        this.allPackages = allRes.data.packages || []
+
+        this.extractOptions(this.allPackages)
+
+        if (this.dataPackages && this.dataPackages[this.dataIndex]) {
+          this.dataLabel = this.dataPackages[this.dataIndex].label
+        }
       } finally {
         uni.hideLoading()
       }
@@ -157,6 +266,8 @@ export default {
       try {
         const res = await api.createOrder({
           pkgId: this.pkgId,
+          dataIndex: this.dataIndex,
+          days: this.days,
           email: this.email,
           payMethod: this.payMethod
         })
@@ -164,8 +275,8 @@ export default {
           const order = {
             ...res.data.order,
             countryName: this.pkg.countryName,
-            gb: this.pkg.gb,
-            days: this.pkg.days,
+            dataLabel: this.dataLabel,
+            days: this.days,
             flag: this.pkg.flag,
           }
           store.pushOrder(order)
