@@ -34,7 +34,9 @@ git reset --hard origin/master
 echo "==> [3/6] 构建并启动容器"
 # server 使用 --no-cache：强制重新生成 Prisma Client 并从国内镜像固化 engine，
 # 避免复用到旧的、未固化 engine 的缓存层
-docker compose build --no-cache server
+# admin 也一并构建：后台已迁移到 Next.js(shadcn/ui)，产物打进 admin 镜像，
+# 不重建则线上会一直停留在旧的 Vue 页面
+docker compose build --no-cache server admin
 docker compose up -d
 
 echo "==> [4/6] 等待后端健康检查通过"
