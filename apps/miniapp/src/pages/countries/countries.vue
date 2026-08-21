@@ -6,7 +6,7 @@
         <input
           v-model="keyword"
           class="search-input"
-          placeholder="搜索国家/地区，如 日本 / Japan"
+          :placeholder="fmt('countries.searchPlaceholder')"
           confirm-type="search"
           @input="onInput"
         />
@@ -17,29 +17,29 @@
     <view class="cat-tabs">
       <scroll-view scroll-x class="cat-scroll" :show-scrollbar="false">
         <view
-          v-for="tab in tabs"
-          :key="tab"
+          v-for="cat in cats"
+          :key="cat.key"
           class="cat-tab"
-          :class="{ active: activeCat === tab }"
-          @click="switchCat(tab)"
+          :class="{ active: activeCat === cat.key }"
+          @click="switchCat(cat.key)"
         >
-          {{ tab }}
+          {{ fmt(cat.labelKey) }}
         </view>
       </scroll-view>
     </view>
 
     <scroll-view scroll-y class="country-list" :show-scrollbar="false">
-      <view v-if="activeCat === '全部' && !keyword" class="region-block">
-        <view class="block-title"><image src="/static/icons/region-global.png" mode="aspectFit" style="width: 28rpx; height: 28rpx; margin-right: 8rpx; vertical-align: middle;" /> 多国通用套餐</view>
+      <view v-if="activeCat === '' && !keyword" class="region-block">
+        <view class="block-title"><image src="/static/icons/region-global.png" mode="aspectFit" style="width: 28rpx; height: 28rpx; margin-right: 8rpx; vertical-align: middle;" /> {{ fmt('countries.multiRegion') }}</view>
         <CountryCell v-for="r in regions" :key="r.code" :country="r" @tap="goPackages" />
-        <view class="block-title">国家与地区</view>
+        <view class="block-title">{{ fmt('countries.nationalRegions') }}</view>
       </view>
 
       <CountryCell v-for="c in filtered" :key="c.code" :country="c" @tap="goPackages" />
 
       <view v-if="!filtered.length" class="empty">
         <image class="empty-emoji" src="/static/icons/region-global.png" mode="aspectFit" />
-        <text class="empty-txt">没有找到「{{ keyword }}」，换个关键词试试</text>
+        <text class="empty-txt">{{ fmt('countries.empty', { kw: keyword }) }}</text>
       </view>
 
       <view class="list-safe"></view>
@@ -50,25 +50,45 @@
 <script>
 import CountryCell from '@/components/CountryCell.vue'
 import { api } from '@/utils/api'
+import { setNavTitle, t as translate } from '@/locales'
+
+// 命名占位符兜底替换（如 {kw}）
+function fmtNamed(str, p) {
+  return String(str).replace(/\{(\w+)\}/g, (m, k) =>
+    p && p[k] !== undefined && p[k] !== null ? p[k] : m
+  )
+}
 
 export default {
   components: { CountryCell },
   data() {
     return {
       keyword: '',
-      activeCat: '全部',
-      tabs: ['全部', '亚洲', '欧洲', '美洲', '大洋洲', '非洲', '中东'],
+      activeCat: '',
+      cats: [
+        { key: '', labelKey: 'countries.catAll' },
+        { key: '亚洲', labelKey: 'countries.catAsia' },
+        { key: '欧洲', labelKey: 'countries.catEurope' },
+        { key: '美洲', labelKey: 'countries.catAmericas' },
+        { key: '大洋洲', labelKey: 'countries.catOceania' },
+        { key: '非洲', labelKey: 'countries.catAfrica' },
+        { key: '中东', labelKey: 'countries.catMiddleEast' }
+      ],
       all: [],
       regions: [],
       filtered: []
     }
   },
   onShow() {
+    setNavTitle('pageTitle.countries')
     this.loadCountries()
   },
   methods: {
+    fmt(key, params) {
+      return fmtNamed(translate(key, params), params)
+    },
     async loadCountries() {
-      uni.showLoading({ title: '加载中', mask: true })
+      uni.showLoading({ title: this.fmt('common.loading'), mask: true })
       try {
         const res = await api.getCountries()
         const countries = res.data.countries || []
@@ -89,11 +109,11 @@ export default {
       clearTimeout(this._t)
       this._t = setTimeout(() => this.switchCat(this.activeCat), 260)
     },
-    switchCat(tab) {
-      this.activeCat = tab
+    switchCat(key) {
+      this.activeCat = key
       const kw = this.keyword.trim().toLowerCase()
       let list = this.all
-      if (tab !== '全部') list = list.filter((c) => c.cat === tab)
+      if (key !== '') list = list.filter((c) => c.cat === key)
       if (kw) {
         list = list.filter(
           (c) =>

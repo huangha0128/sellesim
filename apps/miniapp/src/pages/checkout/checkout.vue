@@ -3,15 +3,15 @@
     <view v-if="pkg" class="checkout-body">
       <view class="section-card">
         <view class="order-head">
-          <text class="order-title">商品信息</text>
+          <text class="order-title">{{ fmt('checkout.title') }}</text>
         </view>
         <view class="pkg-summary">
           <view class="sum-flag">
             <image class="sum-flag-img" :src="getFlagImage(pkg.countryCode)" mode="aspectFit" />
           </view>
           <view class="sum-main">
-            <text class="sum-name">{{ pkg.countryName }} eSIM</text>
-            <text class="sum-meta">{{ dataLabel }} · {{ days }}天 · {{ pkg.network }}</text>
+            <text class="sum-name">{{ fmt('checkout.skuName', { name: pkg.countryName }) }}</text>
+            <text class="sum-meta">{{ fmt('checkout.sumMeta', { label: dataLabel, days, network: pkg.network }) }}</text>
           </view>
           <view class="sum-price">¥{{ priceNum }}</view>
         </view>
@@ -19,29 +19,29 @@
 
       <view class="section-card">
         <view class="form-item">
-          <text class="form-label">接收邮箱</text>
+          <text class="form-label">{{ fmt('checkout.emailLabel') }}</text>
           <input
             v-model="email"
             class="form-input"
-            placeholder="用于接收 eSIM 激活信息"
+            :placeholder="fmt('checkout.emailPlaceholder')"
             type="text"
           />
         </view>
         <view class="form-tip">
           <image src="/static/icons/co-info.png" mode="aspectFit" style="width: 28rpx; height: 28rpx; margin-right: 8rpx; vertical-align: middle;" />
-          <text>购买后激活码将自动发放至「我的 eSIM」，邮箱仅用于消息提醒</text>
+          <text>{{ fmt('checkout.emailTip') }}</text>
         </view>
       </view>
 
       <view class="section-card">
         <view class="order-head">
-          <text class="order-title">支付方式</text>
+          <text class="order-title">{{ fmt('checkout.payMethod') }}</text>
         </view>
         <view class="pay-item" :class="{ active: payMethod === 'alipay' }" @click="payMethod = 'alipay'">
           <view class="pay-logo alipay">支</view>
           <view class="pay-info">
-            <text class="pay-name">支付宝</text>
-            <text class="pay-desc">安全快捷 · 支持余额/花呗/银行卡</text>
+            <text class="pay-name">{{ fmt('checkout.alipayName') }}</text>
+            <text class="pay-desc">{{ fmt('checkout.alipayDesc') }}</text>
           </view>
           <view class="pay-check" :class="{ checked: payMethod === 'alipay' }">
             <image v-if="payMethod === 'alipay'" src="/static/icons/co-check.png" mode="aspectFit" class="check-icon" />
@@ -50,24 +50,24 @@
         <view class="pay-item disabled">
           <view class="pay-logo wechat">微</view>
           <view class="pay-info">
-            <text class="pay-name">微信支付</text>
-            <text class="pay-desc">即将上线</text>
+            <text class="pay-name">{{ fmt('checkout.wechatName') }}</text>
+            <text class="pay-desc">{{ fmt('checkout.wechatDesc') }}</text>
           </view>
-          <view class="pay-soon">敬请期待</view>
+          <view class="pay-soon">{{ fmt('checkout.soon') }}</view>
         </view>
       </view>
 
       <view class="section-card">
         <view class="amount-row">
-          <text class="amount-label">商品金额</text>
+          <text class="amount-label">{{ fmt('checkout.amountLabel') }}</text>
           <text class="amount-value">¥{{ priceNum }}</text>
         </view>
         <view class="amount-row">
-          <text class="amount-label">优惠</text>
+          <text class="amount-label">{{ fmt('checkout.discountLabel') }}</text>
           <text class="amount-value free">- ¥0</text>
         </view>
         <view class="amount-row total">
-          <text class="amount-label">应付总额</text>
+          <text class="amount-label">{{ fmt('checkout.totalLabel') }}</text>
           <view class="total-price">
             <text class="total-symbol">¥</text>
             <text class="total-num">{{ priceNum }}</text>
@@ -79,7 +79,7 @@
         <view class="agree-box" :class="{ checked: agreed }">
           <image v-if="agreed" src="/static/icons/co-check.png" mode="aspectFit" class="check-icon" />
         </view>
-        <text class="agree-txt">我已阅读并同意《购买服务协议》与《eSIM 使用须知》</text>
+        <text class="agree-txt">{{ fmt('checkout.agree') }}</text>
       </view>
 
       <view class="footer-safe"></view>
@@ -87,7 +87,7 @@
 
     <view v-if="pkg" class="bottom-bar">
       <view class="pay-total">
-        <text class="pay-total-label">实付</text>
+        <text class="pay-total-label">{{ fmt('checkout.payActual') }}</text>
         <view class="pay-total-price">
           <text class="pts">¥</text>
           <text class="ptn">{{ priceNum }}</text>
@@ -99,7 +99,7 @@
         hover-class="submit-btn--hover"
         @click="submit"
       >
-        {{ submitting ? '提交中...' : '提交订单' }}
+        {{ submitting ? fmt('checkout.submitting') : fmt('checkout.submit') }}
       </view>
     </view>
   </view>
@@ -108,17 +108,22 @@
 <script>
 import { api } from '@/utils/api'
 import { store } from '@/store'
+import { setNavTitle, t as translate } from '@/locales'
+
+// 命名占位符兜底替换（如 {name}、{label}、{days}、{network}）
+function fmtNamed(str, p) {
+  return String(str).replace(/\{(\w+)\}/g, (m, k) =>
+    p && p[k] !== undefined && p[k] !== null ? p[k] : m
+  )
+}
 
 export default {
   data() {
     return {
       pkgId: '',
+      mode: '',
+      esimId: '',
       pkg: null,
-      allPackages: [],
-      dataIndex: 4,
-      days: 15,
-      dataLabel: '',
-      dataPackages: [],
       email: '',
       payMethod: 'alipay',
       agreed: true,
@@ -127,167 +132,87 @@ export default {
     }
   },
   computed: {
-    currentDataPkg() {
-      if (!this.dataPackages || this.dataPackages.length === 0) return null
-      return this.dataPackages[this.dataIndex]
+    // 详情页已传入唯一真实套餐，此处直接取套餐字段展示
+    dataLabel() {
+      return this.pkg ? this.fmt('detail.totalGb', { gb: this.pkg.gb }) : ''
+    },
+    days() {
+      return this.pkg ? this.pkg.days : 0
     },
     priceNum() {
-      if (!this.currentDataPkg) return 0
-      const price = this.calcPrice(this.currentDataPkg, this.days)
-      return price % 1 === 0 ? price.toFixed(0) : price.toFixed(1)
+      // pkgId 已精确对应所选天数×流量，直接展示该套餐真实价格
+      if (!this.pkg) return '0.00'
+      const price = this.pkg.price
+      return Number(price).toFixed(2)
     }
   },
   onLoad(options) {
     this.pkgId = options.pkgId || ''
-    this.dataIndex = Number(options.dataIndex) || 4
-    this.days = Number(options.days) || 15
+    this.mode = options.mode || ''
+    this.esimId = options.esimId || ''
+    setNavTitle('pageTitle.checkout')
     this.load()
   },
   methods: {
+    fmt(key, params) {
+      return fmtNamed(translate(key, params), params)
+    },
     getFlagImage(code) {
       return `/static/icons/flag-${code.toLowerCase()}.png`
     },
-    // 从后端套餐数据中提取天数和流量包选项
-    extractOptions(packages) {
-      if (!packages || packages.length === 0) return
-
-      const daysSet = new Set()
-      packages.forEach(p => {
-        if (p.days) daysSet.add(p.days)
-      })
-
-      const gbSet = new Set()
-      let hasPerDay = false
-      packages.forEach(p => {
-        if (p.gb) {
-          gbSet.add(p.gb)
-          if (p.days && p.gb >= p.days) {
-            hasPerDay = true
-          }
-        }
-      })
-      const gbList = Array.from(gbSet).sort((a, b) => a - b)
-
-      this.dataPackages = []
-
-      if (hasPerDay) {
-        const perDayUnits = packages
-          .filter(p => p.days && p.gb >= p.days)
-          .map(p => Math.round(p.gb / p.days))
-        const uniquePerDayUnits = [...new Set(perDayUnits)].sort((a, b) => a - b)
-
-        uniquePerDayUnits.forEach(unit => {
-          const basePkg = packages.find(p => p.days === 1 && p.gb === unit)
-          const base = basePkg ? basePkg.price : (unit * 8.9)
-
-          this.dataPackages.push({
-            label: `${unit}GB/天`,
-            type: 'perday',
-            value: unit,
-            base: base
-          })
-        })
-      }
-
-      const totalGbs = hasPerDay
-        ? gbList.filter(gb => {
-            return packages.some(p => p.gb === gb && p.days && p.gb < p.days)
-          })
-        : gbList
-
-      totalGbs.forEach(gb => {
-        const basePkg = packages
-          .filter(p => p.gb === gb)
-          .sort((a, b) => a.days - b.days)[0]
-        const base = basePkg ? basePkg.price : (gb * 5)
-
-        this.dataPackages.push({
-          label: `总量 ${gb}GB`,
-          type: 'total',
-          value: gb,
-          base: base
-        })
-      })
-    },
-
-    // 计算价格
-    calcPrice(dataPkg, days) {
-      if (!dataPkg || !this.allPackages || this.allPackages.length === 0) return 0
-
-      if (dataPkg.type === 'perday') {
-        const basePkg = this.allPackages.find(p => p.days === 1 && p.gb === dataPkg.value)
-        if (basePkg) {
-          return Math.round(basePkg.price * days * 10) / 10
-        }
-        const anyPkg = this.allPackages.find(p => p.gb === dataPkg.value && p.days)
-        if (anyPkg) {
-          const pricePerDay = anyPkg.price / anyPkg.days
-          return Math.round(pricePerDay * days * 10) / 10
-        }
-        return dataPkg.base * days
-      } else if (dataPkg.type === 'total') {
-        const basePkg = this.allPackages.find(p => p.gb === dataPkg.value && p.days)
-        if (basePkg) {
-          return Math.round(basePkg.price * 10) / 10
-        }
-        return dataPkg.base
-      }
-      return 0
-    },
-
     async load() {
-      uni.showLoading({ title: '加载中', mask: true })
+      uni.showLoading({ title: this.fmt('common.loading'), mask: true })
       try {
         const res = await api.getPackageDetail(this.pkgId)
         this.pkg = res.data.pkg
-
-        const allRes = await api.getPackagesByCountry(this.pkg.countryCode)
-        this.allPackages = allRes.data.packages || []
-
-        this.extractOptions(this.allPackages)
-
-        if (this.dataPackages && this.dataPackages[this.dataIndex]) {
-          this.dataLabel = this.dataPackages[this.dataIndex].label
-        }
       } finally {
         uni.hideLoading()
       }
     },
     async submit() {
       if (!this.agreed) {
-        uni.showToast({ title: '请先阅读并同意协议', icon: 'none' })
+        uni.showToast({ title: this.fmt('checkout.agreeFirst'), icon: 'none' })
         return
       }
       if (!this.email || !this.email.includes('@')) {
-        uni.showToast({ title: '请填写正确的邮箱', icon: 'none' })
+        uni.showToast({ title: this.fmt('checkout.emailInvalid'), icon: 'none' })
+        return
+      }
+      // 下单前强制登录，确保订单归属当前账号
+      if (!store.isLoggedIn) {
+        uni.showToast({ title: this.fmt('checkout.needLogin'), icon: 'none' })
+        const redirect = `/pages/checkout/checkout?pkgId=${this.pkgId}&mode=${this.mode || ''}&esimId=${this.esimId || ''}`
+        uni.navigateTo({
+          url: `/pages/login/login?redirect=${encodeURIComponent(redirect)}`,
+        })
         return
       }
       this.submitting = true
       try {
         const res = await api.createOrder({
           pkgId: this.pkgId,
-          dataIndex: this.dataIndex,
-          days: this.days,
           email: this.email,
-          payMethod: this.payMethod
+          payMethod: this.payMethod,
+          orderType: this.mode || 'new',
+          targetEsimId: this.esimId || undefined
         })
         if (res.code === 0) {
           const order = {
             ...res.data.order,
             countryName: this.pkg.countryName,
             dataLabel: this.dataLabel,
-            days: this.days,
+            days: this.pkg.days,
             flag: this.pkg.flag,
           }
           store.pushOrder(order)
           uni.navigateTo({ url: `/pages/payment/payment?orderNo=${res.data.order.orderNo}` })
         } else {
-          uni.showToast({ title: res.message || '下单失败', icon: 'none' })
+          uni.showToast({ title: res.message || this.fmt('checkout.orderFailed'), icon: 'none' })
           this.submitting = false
         }
       } catch (e) {
         this.submitting = false
-        uni.showToast({ title: '网络错误，请重试', icon: 'none' })
+        uni.showToast({ title: this.fmt('common.networkError'), icon: 'none' })
       }
     }
   }

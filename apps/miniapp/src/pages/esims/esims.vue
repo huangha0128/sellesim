@@ -2,17 +2,17 @@
   <view class="esims-page">
     <view class="head-banner">
       <view class="hb-left">
-        <text class="hb-title">我的 eSIM</text>
-        <text class="hb-sub">共 {{ store.esims.length }} 张 · 全球流量随时可用</text>
+        <text class="hb-title">{{ fmt('esims.title') }}</text>
+        <text class="hb-sub">{{ fmt('esims.sub', { n: store.esims.length }) }}</text>
       </view>
-      <view class="hb-btn" hover-class="hb-btn--hover" @click="goBuy">+ 购买</view>
+      <view class="hb-btn" hover-class="hb-btn--hover" @click="goBuy">{{ fmt('esims.buy') }}</view>
     </view>
 
     <view v-if="!store.esims.length" class="empty">
       <image class="empty-emoji" src="/static/icons/prof-esim.png" mode="aspectFit" />
-      <text class="empty-title">还没有 eSIM</text>
-      <text class="empty-sub">去挑选一张适合你的全球流量套餐吧</text>
-      <view class="empty-btn" hover-class="empty-btn--hover" @click="goBuy">去购买</view>
+      <text class="empty-title">{{ fmt('esims.emptyTitle') }}</text>
+      <text class="empty-sub">{{ fmt('esims.emptySub') }}</text>
+      <view class="empty-btn" hover-class="empty-btn--hover" @click="goBuy">{{ fmt('esims.goBuy') }}</view>
     </view>
 
     <view v-else class="esim-list">
@@ -31,7 +31,7 @@
               <text class="ec-name">{{ esim.pkg.countryName }} eSIM</text>
               <text class="ec-status" :class="esim.status">{{ statusText(esim) }}</text>
             </view>
-            <text class="ec-meta">{{ esim.pkg.gb }}GB · {{ esim.pkg.days }}天有效</text>
+            <text class="ec-meta">{{ fmt('esims.meta', { gb: esim.pkg.gb, days: esim.pkg.days }) }}</text>
           </view>
           <text class="ec-arrow">{{ expandedId === esim.id ? '⌃' : '⌄' }}</text>
         </view>
@@ -40,12 +40,12 @@
           <view class="usage-bar">
             <view class="usage-fill" :style="{ width: usagePercent(esim) + '%' }"></view>
           </view>
-          <text class="usage-txt">已用 {{ Number(esim.used || 0).toFixed(1) }}GB / {{ esim.pkg.gb }}GB</text>
+          <text class="usage-txt">{{ fmt('esims.usage', { used: Number(esim.used || 0).toFixed(1), total: esim.pkg.gb }) }}</text>
         </view>
 
         <view class="ec-info">
           <view class="ec-info-row">
-            <text class="eci-label">有效期至</text>
+            <text class="eci-label">{{ fmt('esims.expireLabel') }}</text>
             <text class="eci-value">{{ formatDate(esim.expireAt) }}</text>
           </view>
           <view class="ec-info-row">
@@ -58,58 +58,82 @@
           <view class="qr-box">
             <EsimQr :text="esim.activationCode" :size="230" />
           </view>
-          <text class="qr-tip">扫描上方二维码，或复制激活码在手机「设置 → 蜂窝网络 → 添加 eSIM」中安装</text>
+          <text class="qr-tip">{{ fmt('esims.qrTip') }}</text>
           <view class="code-row">
             <text class="code-txt">{{ esim.activationCode }}</text>
-            <view class="copy-btn" hover-class="copy-btn--hover" @click.stop="copy(esim.activationCode)">复制</view>
+            <view class="copy-btn" hover-class="copy-btn--hover" @click.stop="copy(esim.activationCode)">{{ fmt('esims.copy') }}</view>
           </view>
         </view>
 
+        <view v-if="esim.status === 'activated'" class="ec-topup">
+          <view class="topup-btn primary" hover-class="topup-btn--hover" @click="goTopup(esim, 'renew')">{{ fmt('esims.renew') }}</view>
+          <view class="topup-btn" hover-class="topup-btn--hover" @click="goTopup(esim, 'change')">{{ fmt('esims.change') }}</view>
+        </view>
+
         <view class="ec-actions">
-          <view v-if="esim.status === 'pending'" class="act-btn primary" @click="activate(esim.id)">标记已激活</view>
+          <view v-if="esim.status === 'pending'" class="act-btn primary" @click="activate(esim.id)">{{ fmt('esims.markActivated') }}</view>
           <view class="act-btn" @click="toggle(esim.id)">
-            {{ expandedId === esim.id ? '收起' : '查看激活码' }}
+            {{ expandedId === esim.id ? fmt('esims.collapse') : fmt('esims.viewCode') }}
           </view>
-          <view class="act-btn danger" @click="remove(esim.id)">删除</view>
+          <view class="act-btn danger" @click="remove(esim.id)">{{ fmt('esims.delete') }}</view>
         </view>
       </view>
     </view>
 
     <view class="footer-safe"></view>
+
+    <FloatingTabBar current="esims" />
   </view>
 </template>
 
 <script>
+import FloatingTabBar from '@/components/FloatingTabBar.vue'
 import EsimQr from '@/components/EsimQr.vue'
 import { api } from '@/utils/api'
 import { store } from '@/store'
 import { formatDate } from '@/utils/format'
+import { setNavTitle, t as translate } from '@/locales'
+
+// 命名占位符兜底替换（如 {n}、{gb}、{days}、{used}、{total}）
+function fmtNamed(str, p) {
+  return String(str).replace(/\{(\w+)\}/g, (m, k) =>
+    p && p[k] !== undefined && p[k] !== null ? p[k] : m
+  )
+}
 
 export default {
-  components: { EsimQr },
+  components: { FloatingTabBar, EsimQr },
   data() {
     return {
       store,
       expandedId: null
     }
   },
-  onLoad() {
-    this.refresh()
-  },
   onShow() {
+    setNavTitle('pageTitle.esims')
     this.refresh()
   },
   methods: {
     formatDate,
+    fmt(key, params) {
+      return fmtNamed(translate(key, params), params)
+    },
     async refresh() {
       try {
         const res = await api.getMyEsims()
-        store.setEsims(res.data.esims || [])
+        if (res.code === 401) {
+          uni.showToast({ title: this.fmt('common.needLogin'), icon: 'none' })
+          uni.navigateTo({ url: '/pages/login/login' })
+          return
+        }
+        if (res.data.esims) {
+          store.setEsims(res.data.esims)
+        }
       } catch (e) {}
     },
     statusText(esim) {
-      if (esim.status === 'activated') return '已激活'
-      return '待激活'
+      if (esim.status === 'activated') return this.fmt('esims.activated')
+      return this.fmt('esims.pending')
     },
     usagePercent(esim) {
       const p = (Number(esim.used || 0) / Number(esim.pkg.gb)) * 100
@@ -121,31 +145,31 @@ export default {
     async activate(id) {
       try {
         await api.activateEsim(id)
-        uni.showToast({ title: '已标记为激活', icon: 'success' })
+        uni.showToast({ title: this.fmt('esims.activateSuccess'), icon: 'success' })
         this.refresh()
       } catch (e) {
-        uni.showToast({ title: '操作失败', icon: 'none' })
+        uni.showToast({ title: this.fmt('common.opFailed'), icon: 'none' })
       }
     },
     copy(text) {
       uni.setClipboardData({
         data: text,
-        success: () => uni.showToast({ title: '激活码已复制', icon: 'none' })
+        success: () => uni.showToast({ title: this.fmt('esims.copied'), icon: 'none' })
       })
     },
     remove(id) {
       uni.showModal({
-        title: '删除 eSIM',
-        content: '删除后该 eSIM 将无法恢复，确定删除吗？',
+        title: this.fmt('esims.deleteTitle'),
+        content: this.fmt('esims.deleteConfirm'),
         confirmColor: '#FF7A59',
         success: async (res) => {
           if (res.confirm) {
             try {
               await api.deleteEsim(id)
-              uni.showToast({ title: '已删除', icon: 'none' })
+              uni.showToast({ title: this.fmt('esims.deleted'), icon: 'none' })
               this.refresh()
             } catch (e) {
-              uni.showToast({ title: '删除失败', icon: 'none' })
+              uni.showToast({ title: this.fmt('esims.deleteFailed'), icon: 'none' })
             }
           }
         }
@@ -156,7 +180,12 @@ export default {
       return `/static/icons/flag-${code.toLowerCase()}.png`
     },
     goBuy() {
-      uni.switchTab({ url: '/pages/index/index' })
+      uni.reLaunch({ url: '/pages/index/index' })
+    },
+    goTopup(esim, mode) {
+      uni.navigateTo({
+        url: `/pages/detail/detail?country=${esim.pkg.countryCode}&mode=${mode}&esimId=${esim.id}`
+      })
     }
   }
 }
@@ -451,6 +480,34 @@ export default {
   }
 }
 
+.ec-topup {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 24rpx;
+}
+
+.topup-btn {
+  flex: 1;
+  text-align: center;
+  font-size: 24rpx;
+  color: $ink-2;
+  background: $bg-soft;
+  border-radius: 999rpx;
+  padding: 16rpx 0;
+  transition: transform 0.15s ease;
+
+  &.primary {
+    background: $gradient-brand;
+    color: #ffffff;
+    font-weight: 700;
+    box-shadow: $shadow-brand;
+  }
+
+  &--hover {
+    transform: scale(0.97);
+  }
+}
+
 .ec-actions {
   display: flex;
   margin-top: 24rpx;
@@ -480,6 +537,6 @@ export default {
 }
 
 .footer-safe {
-  height: calc(40rpx + env(safe-area-inset-bottom));
+  height: calc(176rpx + env(safe-area-inset-bottom));
 }
 </style>

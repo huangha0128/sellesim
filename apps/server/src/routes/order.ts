@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 import { tigerClient, extractEsimInfo, getAvailableIccid } from '../tiger';
 import { alipay } from '../utils/alipay';
+import { authMiddleware, AuthRequest } from '../middleware/auth';
 
 /**
  * 支付成功后下发 eSIM：
@@ -67,7 +68,7 @@ async function provisionEsim(prisma: PrismaClient, order: any, pkg: any) {
 export default (prisma: PrismaClient) => {
   const router = Router();
 
-  router.post('/', async (req: Request, res: Response) => {
+  router.post('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     const { pkgId, email, payMethod = 'alipay' } = req.body;
     if (!pkgId || !email) {
       return res.json({ code: 1, message: '缺少必要参数' });
@@ -85,6 +86,7 @@ export default (prisma: PrismaClient) => {
         payMethod,
         price: pkg.price,
         status: 'pending',
+        userId: req.userId,
       },
     });
     res.json({ code: 0, data: { order } });
@@ -94,9 +96,9 @@ export default (prisma: PrismaClient) => {
    * 创建支付宝支付（H5 手机网站支付）
    * 返回支付宝支付链接，前端跳转即可唤起支付宝收银台
    */
-  router.post('/:orderNo/create-payment', async (req: Request, res: Response) => {
-    const order = await prisma.order.findUnique({
-      where: { orderNo: req.params.orderNo },
+  router.post('/:orderNo/create-payment', authMiddleware, async (req: AuthRequest, res: Response) => {
+    const order = await prisma.order.findFirst({
+      where: { orderNo: req.params.orderNo, userId: req.userId },
     });
     if (!order) {
       return res.json({ code: 1, message: '订单不存在' });
@@ -141,9 +143,9 @@ export default (prisma: PrismaClient) => {
    * 模拟支付（开发/测试用）
    * 直接标记订单为已支付并下发 eSIM，不走真实支付宝
    */
-  router.post('/:orderNo/pay', async (req: Request, res: Response) => {
-    const order = await prisma.order.findUnique({
-      where: { orderNo: req.params.orderNo },
+  router.post('/:orderNo/pay', authMiddleware, async (req: AuthRequest, res: Response) => {
+    const order = await prisma.order.findFirst({
+      where: { orderNo: req.params.orderNo, userId: req.userId },
     });
     if (!order) {
       return res.json({ code: 1, message: '订单不存在' });
@@ -158,7 +160,7 @@ export default (prisma: PrismaClient) => {
     const pkg = await prisma.package.findUnique({ where: { id: order.pkgId } });
     try {
       const esimData = await provisionEsim(prisma, order, pkg);
-      const esim = await prisma.esim.create({ data: esimData });
+      const esim = await prisma.esim.create({ data: { ...esimData, userId: req.userId } });
       res.json({ code: 0, data: { order: updated, esim } });
     } catch (e: any) {
       console.error('[tiger] eSIM 下发失败：', e.message);
@@ -169,7 +171,7 @@ export default (prisma: PrismaClient) => {
   /**
    * 查询订单支付状态
    */
-  router.get('/:orderNo', async (req: Request, res: Response) => {
+  router.get('/:orderNo', authMiddleware, async (req: AuthRequest, res: Response) => {
     const order = await prisma.order.findUnique({
       where: { orderNo: req.params.orderNo },
       include: { package: { include: { country: true } }, esim: true },
@@ -187,8 +189,9 @@ export default (prisma: PrismaClient) => {
     res.redirect(`/h5/pages/payment/payment?orderNo=${req.params.orderNo}`);
   });
 
-  router.get('/', async (req: Request, res: Response) => {
+  router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
     const orders = await prisma.order.findMany({
+      where: { userId: req.userId },
       orderBy: { createdAt: 'desc' },
       include: { package: { include: { country: true } } },
     });

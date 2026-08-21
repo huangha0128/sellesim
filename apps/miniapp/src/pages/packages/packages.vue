@@ -9,55 +9,56 @@
         <text class="head-intro">{{ country.intro }}</text>
         <view class="head-tags">
           <text class="head-tag">4G/5G</text>
-          <text class="head-tag">免实名</text>
-          <text class="head-tag">即买即用</text>
+          <text class="head-tag">{{ fmt('packages.noRealName') }}</text>
+          <text class="head-tag">{{ fmt('packages.instant') }}</text>
         </view>
       </view>
     </view>
 
     <view class="pkg-list">
       <view
-        v-for="p in packages"
-        :key="p.id"
+        v-if="series"
         class="pkg-card"
         hover-class="pkg-card--hover"
-        @click="goDetail(p.id)"
+        @click="goDetail()"
       >
         <view class="pkg-flag">
-          <image class="pkg-flag-img" :src="getFlagImage(p.countryCode)" mode="aspectFit" />
+          <image class="pkg-flag-img" :src="getFlagImage(series.countryCode)" mode="aspectFit" />
         </view>
         <view class="pkg-main">
           <view class="pkg-head">
-            <text class="pkg-country">{{ p.countryName }}</text>
-            <text v-if="p.tag" class="pkg-tag" :style="{ color: p.tagColor, background: p.tagColor + '1A' }">{{ p.tag }}</text>
+            <text class="pkg-country">{{ series.countryName }}</text>
+            <text v-if="series.tag" class="pkg-tag" :style="{ color: series.tagColor, background: series.tagColor + '1A' }">{{ series.tag }}</text>
+            <view class="pkg-type">{{ series.type }}</view>
           </view>
           <view class="pkg-meta">
-            <text class="pkg-meta-item">{{ p.dayOptions ? p.dayOptions[0] + '-' + p.dayOptions[p.dayOptions.length - 1] + '天可选' : p.days + '天有效' }}</text>
+            <text class="pkg-meta-item">{{ fmt('packages.daysSelectable', { min: series.dayOptions[0], max: series.dayOptions[series.dayOptions.length - 1] }) }}</text>
             <text class="pkg-dot">·</text>
-            <text class="pkg-meta-item">多种流量包</text>
+            <text class="pkg-meta-item">{{ fmt('packages.multiData') }}</text>
           </view>
-          <view class="pkg-type">{{ p.type }}</view>
+          <view class="pkg-coverage">{{ series.coverage }}</view>
         </view>
         <view class="pkg-right">
           <view class="pkg-price">
             <text class="pkg-price-symbol">¥</text>
-            <text class="pkg-price-num">{{ fmtPrice(p.price) }}</text>
+            <text class="pkg-price-num">{{ fmtPrice(series.startPrice) }}</text>
+            <text class="pkg-price-unit">起</text>
           </view>
           <view class="pkg-buy">
-            <text>查看</text>
+            <text>{{ fmt('packages.view') }}</text>
             <text class="pkg-arrow">›</text>
           </view>
         </view>
       </view>
-      <view v-if="!loading && !packages.length" class="empty">
+      <view v-if="!loading && !series" class="empty">
         <image class="empty-emoji" src="/static/icons/feat-signal.png" mode="aspectFit" />
-        <text class="empty-txt">该目的地暂未上架套餐</text>
+        <text class="empty-txt">{{ fmt('packages.empty') }}</text>
       </view>
     </view>
 
     <view class="tip-bar">
       <image class="tip-icon" src="/static/icons/co-info.png" mode="aspectFit" />
-      <text class="tip-txt">购买后激活码将自动发放到「我的 eSIM」，扫码即可安装</text>
+      <text class="tip-txt">{{ fmt('packages.tip') }}</text>
     </view>
 
     <view class="footer-safe"></view>
@@ -66,6 +67,14 @@
 
 <script>
 import { api } from '@/utils/api'
+import { setNavTitle, t as translate } from '@/locales'
+
+// 命名占位符兜底替换（如 {min}、{max}）
+function fmtNamed(str, p) {
+  return String(str).replace(/\{(\w+)\}/g, (m, k) =>
+    p && p[k] !== undefined && p[k] !== null ? p[k] : m
+  )
+}
 
 export default {
   data() {
@@ -73,21 +82,26 @@ export default {
       code: '',
       country: null,
       packages: [],
+      series: null,
       loading: true
     }
   },
   onLoad(options) {
     this.code = options.code || ''
+    setNavTitle('pageTitle.packages')
     this.loadCountry()
     this.load()
   },
   methods: {
+    fmt(key, params) {
+      return fmtNamed(translate(key, params), params)
+    },
     getFlagImage(code) {
       return `/static/icons/flag-${code.toLowerCase()}.png`
     },
     fmtPrice(n) {
       const v = Number(n)
-      return v % 1 === 0 ? v.toFixed(0) : v.toFixed(1)
+      return Number(v).toFixed(2)
     },
     async loadCountry() {
       try {
@@ -103,12 +117,21 @@ export default {
       try {
         const res = await api.getPackages(this.code)
         this.packages = res.data.packages || []
+        this.series = this.buildSeries(this.packages)
       } finally {
         this.loading = false
       }
     },
-    goDetail(id) {
-      uni.navigateTo({ url: `/pages/detail/detail?id=${id}` })
+    // 将同一目的地的所有套餐组合折叠为一个套餐卡片
+    buildSeries(list) {
+      if (!list || list.length === 0) return null
+      const first = list[0]
+      const dayOptions = Array.from(new Set(list.map((p) => p.days).filter(Boolean))).sort((a, b) => a - b)
+      const startPrice = list.reduce((min, p) => (p.price < min.price ? p : min), first).price
+      return { ...first, dayOptions, startPrice }
+    },
+    goDetail() {
+      uni.navigateTo({ url: `/pages/detail/detail?country=${this.code}` })
     }
   }
 }
@@ -247,6 +270,15 @@ export default {
   line-height: 1.4;
 }
 
+.pkg-tag {
+  font-size: 20rpx;
+  font-weight: 600;
+  padding: 4rpx 14rpx;
+  border-radius: 999rpx;
+  line-height: 1.4;
+  margin-right: 12rpx;
+}
+
 .pkg-meta {
   display: flex;
   align-items: center;
@@ -274,6 +306,12 @@ export default {
   padding: 4rpx 12rpx;
 }
 
+.pkg-coverage {
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  color: $ink-3;
+}
+
 .pkg-right {
   display: flex;
   flex-direction: column;
@@ -296,6 +334,13 @@ export default {
     font-size: 44rpx;
     line-height: 1;
   }
+}
+
+.pkg-price-unit {
+  font-size: 24rpx;
+  font-weight: 400;
+  color: $coral;
+  margin-left: 6rpx;
 }
 
 .pkg-buy {

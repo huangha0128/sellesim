@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { tigerClient, iccidPoolCount, getIccidPool } from '../tiger';
 import { syncAllFromTiger, syncRegionsFromTiger, syncPackagesFromTiger } from '../tiger/sync';
 import { refundOrder } from '../services/refund';
+import { sendRefundEmail } from '../services/email';
 import { alipay } from '../utils/alipay';
 
 export default (prisma: PrismaClient) => {
@@ -38,7 +39,10 @@ export default (prisma: PrismaClient) => {
   router.get('/orders', async (req: Request, res: Response) => {
     const orders = await prisma.order.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { package: { include: { country: true } } },
+      include: {
+        package: { include: { country: true } },
+        user: true,
+      },
     });
     res.json({ code: 0, data: { orders } });
   });
@@ -60,12 +64,29 @@ export default (prisma: PrismaClient) => {
           deleteEsimByOrderId: async (orderId) => {
             await prisma.esim.delete({ where: { orderId } });
           },
-          alipayRefund: (params) =>
-            alipay.refund(params.outTradeNo, params.refundAmount, params.outRequestNo, params.refundReason),
+          alipayRefund: async (params) => {
+            // 演示/测试环境（订单由模拟支付产生、无真实支付宝交易号）直接记为退款成功
+            const order = await prisma.order.findUnique({ where: { orderNo: params.outTradeNo } });
+            if (!order?.alipayTradeNo) {
+              return { code: '10000', tradeNo: `RF${Date.now()}` };
+            }
+            return alipay.refund(params.outTradeNo, params.refundAmount, params.outRequestNo, params.refundReason);
+          },
         },
         req.params.orderNo,
         reason,
       );
+
+      // 退款成功后向用户邮箱发送退款通知（发送失败不影响退款结果）
+      const order = result?.order || (await prisma.order.findUnique({ where: { orderNo: req.params.orderNo } }));
+      if (order?.email) {
+        sendRefundEmail({
+          to: order.email,
+          orderNo: order.orderNo,
+          amount: Number(order.price).toFixed(2),
+        }).catch((e) => console.error(`[email] 订单 ${order.orderNo} 退款通知发送失败：`, e.message));
+      }
+
       res.json({ code: 0, data: result });
     } catch (e: any) {
       console.error(`[refund] 订单 ${req.params.orderNo} 退款失败：`, e.message);

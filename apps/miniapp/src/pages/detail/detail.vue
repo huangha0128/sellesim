@@ -2,14 +2,8 @@
   <view class="detail-page">
     <!-- 顶部 Tab 栏 -->
     <view class="tab-bar">
-      <view
-        v-for="(tab, i) in tabs"
-        :key="i"
-        class="tab-item"
-        :class="{ active: currentTab === i }"
-        @click="currentTab = i"
-      >
-        <text class="tab-text">{{ tab }}</text>
+      <view v-for="(tab, i) in tabs" :key="i" class="tab-item" :class="{ active: currentTab === i }" @click="currentTab = i">
+        <text class="tab-text">{{ fmt(tab) }}</text>
       </view>
     </view>
 
@@ -17,35 +11,35 @@
       <!-- 套餐名称卡片 -->
       <view class="pkg-name-card">
         <view class="pkg-name-row">
-          <text class="pkg-name-text">{{ pkg.countryName }}流量套餐</text>
+          <text class="pkg-name-text">{{ fmt('detail.nameSuffix', { name: pkg.countryName }) }}</text>
           <text class="pkg-name-arrow">⌄</text>
         </view>
         <view class="pkg-tags">
-          <text class="pkg-tag sold">已售 9999+</text>
-          <text class="pkg-tag normal">即时激活</text>
-          <text class="pkg-tag normal">无需实名</text>
-          <text class="pkg-tag normal">支持全球app</text>
+          <text class="pkg-tag sold">{{ fmt('detail.sold') }}</text>
+          <text class="pkg-tag normal">{{ fmt('detail.instant') }}</text>
+          <text class="pkg-tag normal">{{ fmt('detail.noRealName') }}</text>
+          <text class="pkg-tag normal">{{ fmt('detail.globalApp') }}</text>
         </view>
       </view>
 
       <!-- 警告横幅 -->
       <view class="warn-banner">
         <text class="warn-icon">🔔</text>
-        <text class="warn-txt">本套餐仅限在{{ pkg.countryName }}境内使用，请谨慎购买！</text>
+        <text class="warn-txt">{{ fmt('detail.warn', { name: pkg.countryName }) }}</text>
       </view>
 
       <!-- 选择天数 -->
       <view class="select-section">
-        <text class="select-title">选择天数</text>
+        <text class="select-title">{{ fmt('detail.selectDays') }}</text>
         <view class="day-grid">
           <view
-            v-for="d in dayOptions"
+            v-for="d in dayCells"
             :key="d"
             class="day-cell"
             :class="{ active: selectedDays === d }"
             @click="selectDays(d)"
           >
-            <text class="day-text">{{ d }}天</text>
+            <text class="day-text">{{ fmt('detail.dayUnit', { d }) }}</text>
             <view v-if="selectedDays === d" class="day-check-icon">✓</view>
           </view>
         </view>
@@ -53,40 +47,39 @@
 
       <!-- 选择数据用量包 -->
       <view class="select-section">
-        <text class="select-title">选择数据用量包</text>
+        <text class="select-title">{{ fmt('detail.selectData') }}</text>
         <view class="data-grid">
           <view
-            v-for="(dp, i) in dataPackages"
-            :key="i"
+            v-for="c in dataCells"
+            :key="c.gb"
             class="data-cell"
-            :class="{ active: selectedDataIndex === i }"
-            @click="selectData(i)"
+            :class="{ active: selectedGb === c.gb }"
+            @click="selectData(c.gb)"
           >
-            <text class="data-text" :class="{ unlimited: dp.type === 'unlimited' }">{{ dp.label }}</text>
-            <text v-if="dp.type === 'unlimited'" class="data-price-hint">{{ selectedDays }}天仅需{{ calcDataPrice(dp) }}元</text>
-            <view v-if="selectedDataIndex === i" class="data-check-icon">✓</view>
+            <text class="data-text">{{ fmt('detail.totalGb', { gb: c.gb }) }}</text>
+            <view v-if="selectedGb === c.gb" class="data-check-icon">✓</view>
           </view>
         </view>
       </view>
 
       <!-- 套餐详情 -->
       <view class="info-section">
-        <text class="info-title">套餐详情</text>
+        <text class="info-title">{{ fmt('detail.detailTitle') }}</text>
         <view class="info-item">
           <text class="info-icon">📍</text>
-          <text class="info-label">覆盖地区：</text>
+          <text class="info-label">{{ fmt('detail.coverage') }}</text>
           <text class="info-value">{{ pkg.coverage }}</text>
         </view>
         <view class="info-item">
           <text class="info-icon">🪪</text>
-          <text class="info-label">身份登记：</text>
-          <text class="info-value">不需要</text>
+          <text class="info-label">{{ fmt('detail.registration') }}</text>
+          <text class="info-value">{{ fmt('detail.noNeed') }}</text>
         </view>
       </view>
 
       <!-- 套餐说明 -->
       <view class="info-section">
-        <text class="info-title">套餐说明</text>
+        <text class="info-title">{{ fmt('detail.descTitle') }}</text>
         <text class="desc-text">{{ pkg.desc }}</text>
         <view class="feature-list">
           <view v-for="f in pkg.features" :key="f" class="feature-item">
@@ -98,17 +91,17 @@
 
       <!-- 安装步骤 -->
       <view class="info-section">
-        <text class="info-title">安装步骤</text>
+        <text class="info-title">{{ fmt('detail.installTitle') }}</text>
         <view v-for="(s, i) in pkg.installSteps" :key="i" class="step-row">
           <view class="step-num">{{ i + 1 }}</view>
           <text class="step-txt">{{ s }}</text>
         </view>
-        <view class="step-link" @click="goGuide">查看完整安装指南 ›</view>
+        <view class="step-link" @click="goGuide">{{ fmt('detail.viewFullGuide') }}</view>
       </view>
 
       <view class="notice">
-        <text class="notice-title">温馨提示</text>
-        <text class="notice-txt">1. 有效期从激活当日起算，请到达目的地后再激活。&#10;2. 流量遵循公平使用原则，超出高速额度后限速。&#10;3. 请先确认手机支持 eSIM 功能（iPhone XS 及以上等）。</text>
+        <text class="notice-title">{{ fmt('detail.noticeTitle') }}</text>
+        <text class="notice-txt">{{ fmt('detail.noticeText') }}</text>
       </view>
 
       <view class="footer-safe"></view>
@@ -119,215 +112,129 @@
       <view class="price-area">
         <text class="price-currency">RMB</text>
         <text class="price-main">{{ priceNum }}</text>
-        <view class="price-original">
-          <text class="price-orig-text">原价 ¥{{ originalPrice }}</text>
-          <text class="price-discount">立减{{ discountPercent }}%</text>
-        </view>
       </view>
-      <view class="buy-btn" hover-class="buy-btn--hover" @click="buy">立即购买</view>
+      <view class="buy-btn" hover-class="buy-btn--hover" @click="buy">{{ fmt('detail.buyNow') }}</view>
     </view>
   </view>
 </template>
 
 <script>
 import { api } from '@/utils/api'
+import { setNavTitle, t as translate } from '@/locales'
+
+// 渲染名称占位符兜底（v 存在则使用）
+function fmtNamed(str, p) {
+  return String(str).replace(/\{(\w+)\}/g, (m, k) =>
+    p && p[k] !== undefined && p[k] !== null ? p[k] : m
+  )
+}
 
 export default {
   data() {
     return {
       id: '',
+      country: '',
+      mode: '',
+      esimId: '',
       pkg: null,
       allPackages: [], // 该国家所有套餐
       currentTab: 0,
-      tabs: ['套餐选择', '套餐详情', '热门推荐', '使用须知'],
-      selectedDays: 15,
-      selectedDataIndex: 4,
-      dayOptions: [],
-      dataPackages: []
+      tabs: ['detail.tabSelect', 'detail.tabDetail', 'detail.tabHot', 'detail.tabNotice'],
+      selectedDays: 0,
+      selectedGb: 0
     }
   },
   computed: {
-    currentDataPkg() {
-      if (!this.dataPackages || this.dataPackages.length === 0) return null
-      return this.dataPackages[this.selectedDataIndex]
+    // 当前所选流量下，存在哪些天数档位（与所选流量联动）
+    dayCells() {
+      if (!this.allPackages.length || !this.selectedGb) return []
+      return Array.from(new Set(
+        this.allPackages.filter(p => p.gb === this.selectedGb && p.days).map(p => p.days)
+      )).sort((a, b) => a - b)
+    },
+    // 当前所选天数下，存在哪些流量档位（与所选天数联动）
+    dataCells() {
+      if (!this.allPackages.length || !this.selectedDays) return []
+      return this.allPackages
+        .filter(p => p.days === this.selectedDays && p.gb)
+        .map(p => ({ gb: p.gb, price: p.price }))
+        .sort((a, b) => a.gb - b.gb)
+    },
+    // 由「天数×流量」唯一确定一个真实套餐，价格直接取库内真实价
+    selectedPkg() {
+      if (!this.allPackages.length) return null
+      return this.allPackages.find(p => p.days === this.selectedDays && p.gb === this.selectedGb) || null
     },
     priceNum() {
-      if (!this.pkg || !this.currentDataPkg) return '0'
-      const price = this.calcPrice(this.currentDataPkg, this.selectedDays)
-      return price % 1 === 0 ? price.toFixed(0) : price.toFixed(1)
-    },
-    originalPrice() {
-      if (!this.pkg || !this.currentDataPkg) return '0'
-      const base = this.calcPrice(this.currentDataPkg, this.selectedDays)
-      const orig = Math.round(base * 1.5 * 10) / 10
-      return orig % 1 === 0 ? orig.toFixed(0) : orig.toFixed(1)
-    },
-    discountPercent() {
-      const orig = parseFloat(this.originalPrice)
-      const cur = parseFloat(this.priceNum)
-      if (!orig || !cur) return 0
-      return Math.round((1 - cur / orig) * 100)
+      const price = this.selectedPkg ? this.selectedPkg.price : 0
+      return Number(price).toFixed(2)
     }
   },
   onLoad(options) {
     this.id = options.id || ''
+    this.country = options.country || ''
+    this.mode = options.mode || ''
+    this.esimId = options.esimId || ''
     this.load()
   },
   methods: {
-    // 从后端套餐数据中提取天数和流量包选项
-    extractOptions(packages) {
-      if (!packages || packages.length === 0) return
-
-      // 提取所有唯一的天数
-      const daysSet = new Set()
-      packages.forEach(p => {
-        if (p.days) daysSet.add(p.days)
-      })
-      this.dayOptions = Array.from(daysSet).sort((a, b) => a - b)
-
-      // 提取所有唯一的 GB 值，并区分 per-day 和 total
-      const gbSet = new Set()
-      let hasPerDay = false
-      packages.forEach(p => {
-        if (p.gb) {
-          gbSet.add(p.gb)
-          // 如果 gb 和 days 相等或接近，可能是 per-day 类型
-          if (p.days && p.gb >= p.days) {
-            hasPerDay = true
-          }
-        }
-      })
-      const gbList = Array.from(gbSet).sort((a, b) => a - b)
-
-      // 构建 dataPackages
-      this.dataPackages = []
-      
-      // 如果有 per-day 类型的包（gb >= days），添加 per-day 选项
-      if (hasPerDay) {
-        // 找出最小的 per-day 单位作为基础
-        const perDayUnits = packages
-          .filter(p => p.days && p.gb >= p.days)
-          .map(p => Math.round(p.gb / p.days))
-        const uniquePerDayUnits = [...new Set(perDayUnits)].sort((a, b) => a - b)
-        
-        uniquePerDayUnits.forEach(unit => {
-          // 找对应的基础价格（1天的价格）
-          const basePkg = packages.find(p => p.days === 1 && p.gb === unit)
-          const base = basePkg ? basePkg.price : (unit * 8.9)
-          
-          this.dataPackages.push({
-            label: `${unit}GB/天`,
-            type: 'perday',
-            value: unit,
-            base: base
-          })
-        })
-      }
-
-      // 添加 total 选项（gb < days 的包，或者没有 per-day 时所有包）
-      const totalGbs = hasPerDay 
-        ? gbList.filter(gb => {
-            // 检查是否存在 gb < days 的包
-            return packages.some(p => p.gb === gb && p.days && p.gb < p.days)
-          })
-        : gbList
-      
-      totalGbs.forEach(gb => {
-        // 找对应的总价（取最小 days 的价格作为基础）
-        const basePkg = packages
-          .filter(p => p.gb === gb)
-          .sort((a, b) => a.days - b.days)[0]
-        const base = basePkg ? basePkg.price : (gb * 5)
-        
-        this.dataPackages.push({
-          label: `总量 ${gb}GB`,
-          type: 'total',
-          value: gb,
-          base: base
-        })
-      })
-
-      // 默认选中
-      if (this.dayOptions.length > 0) {
-        this.selectedDays = this.dayOptions.includes(15) ? 15 : this.dayOptions[0]
-      }
-      if (this.dataPackages.length > 0) {
-        // 优先选中无限流量或最大的 total 包
-        const unlimitedIdx = this.dataPackages.findIndex(p => p.type === 'unlimited')
-        const lastTotalIdx = this.dataPackages.map((p, i) => ({...p, idx: i})).filter(p => p.type === 'total').pop()?.idx
-        this.selectedDataIndex = unlimitedIdx >= 0 ? unlimitedIdx : (lastTotalIdx || this.dataPackages.length - 1)
+    // 翻译并确保 {name}/{d}/{gb} 等占位符被替换
+    fmt(key, params) {
+      return fmtNamed(translate(key, params), params)
+    },
+    // 默认选中某个真实套餐（取价格最低档），保证初次进入就落在库内已有档位
+    pickDefault() {
+      if (!this.allPackages.length) return
+      const best = [...this.allPackages].sort((a, b) => a.price - b.price)[0]
+      this.selectedDays = best.days
+      this.selectedGb = best.gb
+    },
+    // 选择天数：与所选流量联动，自动收敛到该天数下存在的流量档
+    selectDays(d) {
+      this.selectedDays = d
+      if (!this.dataCells.some(c => c.gb === this.selectedGb)) {
+        this.selectedGb = this.dataCells[0] ? this.dataCells[0].gb : 0
       }
     },
-
-    // 计算价格
-    calcPrice(dataPkg, days) {
-      if (!dataPkg || !this.allPackages || this.allPackages.length === 0) return 0
-
-      // 优先精确匹配 (gb, days) 的套餐
-      const exact = this.allPackages.find(p => p.gb === dataPkg.value && p.days === days)
-      if (exact) return Math.round(exact.price * 10) / 10
-
-      if (dataPkg.type === 'perday') {
-        // per-day 类型：找 1 天的包，然后乘以天数
-        const basePkg = this.allPackages.find(p => p.days === 1 && p.gb === dataPkg.value)
-        if (basePkg) {
-          return Math.round(basePkg.price * days * 10) / 10
-        }
-        // 用同 gb/days 比例的包计算单价
-        const ratioPkg = this.allPackages.find(p => p.days && Math.round(p.gb / p.days) === dataPkg.value)
-        if (ratioPkg) {
-          const pricePerDay = ratioPkg.price / ratioPkg.days
-          return Math.round(pricePerDay * days * 10) / 10
-        }
-        return dataPkg.base * days
-      } else if (dataPkg.type === 'total') {
-        // total 类型：找同 GB 最接近天数的包，按天等比缩放
-        const sameGbPkgs = this.allPackages.filter(p => p.gb === dataPkg.value && p.days)
-        if (sameGbPkgs.length > 0) {
-          const closest = sameGbPkgs.reduce((a, b) =>
-            Math.abs(b.days - days) < Math.abs(a.days - days) ? b : a
-          )
-          const pricePerDay = closest.price / closest.days
-          return Math.round(pricePerDay * days * 10) / 10
-        }
-        return dataPkg.base
+    // 选择流量：与所选天数联动，自动收敛到该流量下存在的天数档
+    selectData(gb) {
+      this.selectedGb = gb
+      if (!this.dayCells.includes(this.selectedDays)) {
+        this.selectedDays = this.dayCells[0] || 0
       }
-      return 0
     },
 
     async load() {
-      uni.showLoading({ title: '加载中', mask: true })
+      uni.showLoading({ title: this.fmt('common.loading'), mask: true })
       try {
-        // 获取套餐详情
-        const res = await api.getPackageDetail(this.id)
-        this.pkg = res.data.pkg
-        
-        // 获取该国家所有套餐
-        const allRes = await api.getPackagesByCountry(this.pkg.countryCode)
-        this.allPackages = allRes.data.packages || []
-        
-        // 提取天数和流量包选项
-        this.extractOptions(this.allPackages)
-        
-        uni.setNavigationBarTitle({ title: 'eSIM 详情' })
+        if (this.country) {
+          // 从已有 eSIM 进入（续费/变更）：加载该国家套餐供选择
+          const allRes = await api.getPackagesByCountry(this.country)
+          const list = allRes.data.packages || []
+          this.allPackages = list
+          this.pkg = list[0] || null
+          this.pickDefault()
+        } else {
+          // 常规入口：获取套餐详情
+          const res = await api.getPackageDetail(this.id)
+          this.pkg = res.data.pkg
+
+          // 获取该国家所有套餐
+          const allRes = await api.getPackagesByCountry(this.pkg.countryCode)
+          this.allPackages = allRes.data.packages || []
+
+          this.pickDefault()
+        }
+
+        setNavTitle('detail.navTitle')
       } finally {
         uni.hideLoading()
       }
     },
-    calcDataPrice(dp) {
-      if (!dp || !this.allPackages || this.allPackages.length === 0) return '0'
-      const price = this.calcPrice(dp, this.selectedDays)
-      return price % 1 === 0 ? price.toFixed(0) : price.toFixed(1)
-    },
-    selectDays(d) {
-      this.selectedDays = d
-    },
-    selectData(i) {
-      this.selectedDataIndex = i
-    },
     buy() {
+      const pkgId = (this.selectedPkg && this.selectedPkg.id) || (this.pkg ? this.pkg.id : '')
       uni.navigateTo({
-        url: `/pages/checkout/checkout?pkgId=${this.pkg.id}&dataIndex=${this.selectedDataIndex}&days=${this.selectedDays}`
+        url: `/pages/checkout/checkout?pkgId=${pkgId}&mode=${this.mode}&esimId=${this.esimId}`
       })
     },
     goGuide() {
@@ -340,7 +247,7 @@ export default {
 <style lang="scss" scoped>
 .detail-page {
   min-height: 100vh;
-  background: #EEF0FF;
+  background: $bg-page;
 }
 
 /* Tab 栏 */
@@ -364,7 +271,7 @@ export default {
     transform: translateX(-50%);
     width: 48rpx;
     height: 6rpx;
-    background: #6C63FF;
+    background: $brand;
     border-radius: 3rpx;
   }
 }
@@ -374,7 +281,7 @@ export default {
   color: #999999;
 
   .active & {
-    color: #6C63FF;
+    color: $brand;
     font-weight: 700;
   }
 }
@@ -401,7 +308,7 @@ export default {
 .pkg-name-text {
   font-size: 40rpx;
   font-weight: 800;
-  color: #1A1A2E;
+  color: $ink;
 }
 
 .pkg-name-arrow {
@@ -424,13 +331,13 @@ export default {
   margin-bottom: 8rpx;
 
   &.sold {
-    color: #F5A623;
-    background: #FFF8EC;
+    color: $sun;
+    background: $sun-light;
   }
 
   &.normal {
-    color: #6C63FF;
-    background: #F0F0FF;
+    color: $brand;
+    background: $brand-light;
   }
 }
 
@@ -438,7 +345,7 @@ export default {
 .warn-banner {
   display: flex;
   align-items: center;
-  background: #6C63FF;
+  background: $brand;
   border-radius: 16rpx;
   padding: 24rpx 28rpx;
   margin-top: 20rpx;
@@ -467,7 +374,7 @@ export default {
 .select-title {
   font-size: 32rpx;
   font-weight: 800;
-  color: #1A1A2E;
+  color: $ink;
   display: block;
   margin-bottom: 24rpx;
 }
@@ -482,7 +389,7 @@ export default {
   width: calc(25% - 12rpx);
   margin-right: 16rpx;
   margin-bottom: 16rpx;
-  background: #F5F5FF;
+  background: $bg-soft;
   border-radius: 16rpx;
   padding: 28rpx 0;
   display: flex;
@@ -498,8 +405,8 @@ export default {
   }
 
   &.active {
-    border-color: #6C63FF;
-    background: #F0EEFF;
+    border-color: $brand;
+    background: $brand-light;
   }
 }
 
@@ -509,7 +416,7 @@ export default {
   font-weight: 600;
 
   .active & {
-    color: #6C63FF;
+    color: $brand;
     font-weight: 700;
   }
 }
@@ -519,7 +426,7 @@ export default {
   bottom: 4rpx;
   right: 8rpx;
   font-size: 20rpx;
-  color: #6C63FF;
+  color: $brand;
   font-weight: 700;
 }
 
@@ -533,7 +440,7 @@ export default {
   width: calc(33.33% - 14rpx);
   margin-right: 20rpx;
   margin-bottom: 16rpx;
-  background: #F5F5FF;
+  background: $bg-soft;
   border-radius: 16rpx;
   padding: 28rpx 16rpx;
   display: flex;
@@ -550,7 +457,7 @@ export default {
   }
 
   &.active {
-    border-color: #FF4D4F;
+    border-color: $coral;
     background: #FFF5F5;
   }
 }
@@ -562,12 +469,12 @@ export default {
   text-align: center;
 
   .active & {
-    color: #FF4D4F;
+    color: $coral;
     font-weight: 700;
   }
 
   &.unlimited {
-    color: #FF4D4F;
+    color: $coral;
     font-size: 30rpx;
     font-weight: 700;
   }
@@ -575,7 +482,7 @@ export default {
 
 .data-price-hint {
   font-size: 20rpx;
-  color: #FF4D4F;
+  color: $coral;
   margin-top: 6rpx;
   text-align: center;
 }
@@ -585,7 +492,7 @@ export default {
   bottom: 4rpx;
   right: 8rpx;
   font-size: 20rpx;
-  color: #FF4D4F;
+  color: $coral;
   font-weight: 700;
 }
 
@@ -600,7 +507,7 @@ export default {
 .info-title {
   font-size: 32rpx;
   font-weight: 800;
-  color: #1A1A2E;
+  color: $ink;
   display: block;
   margin-bottom: 24rpx;
 }
@@ -623,7 +530,7 @@ export default {
 
 .info-value {
   font-size: 26rpx;
-  color: #1A1A2E;
+  color: $ink;
   font-weight: 600;
 }
 
@@ -660,7 +567,7 @@ export default {
 
 .feature-txt {
   font-size: 26rpx;
-  color: #1A1A2E;
+  color: $ink;
 }
 
 .step-row {
@@ -673,7 +580,7 @@ export default {
   width: 44rpx;
   height: 44rpx;
   border-radius: 50%;
-  background: #6C63FF;
+  background: $brand;
   color: #ffffff;
   font-size: 24rpx;
   font-weight: 700;
@@ -688,14 +595,14 @@ export default {
 .step-txt {
   flex: 1;
   font-size: 26rpx;
-  color: #1A1A2E;
+  color: $ink;
   line-height: 1.6;
 }
 
 .step-link {
   margin-top: 24rpx;
   font-size: 24rpx;
-  color: #6C63FF;
+  color: $brand;
   font-weight: 600;
 }
 
@@ -749,49 +656,26 @@ export default {
 
 .price-currency {
   font-size: 24rpx;
-  color: #1A1A2E;
+  color: $ink;
   font-weight: 700;
   margin-right: 4rpx;
 }
 
 .price-main {
   font-size: 56rpx;
-  color: #1A1A2E;
+  color: $ink;
   font-weight: 800;
   line-height: 1;
 }
 
-.price-original {
-  display: flex;
-  flex-direction: column;
-  margin-left: 16rpx;
-}
-
-.price-orig-text {
-  font-size: 22rpx;
-  color: #999999;
-  text-decoration: line-through;
-}
-
-.price-discount {
-  font-size: 20rpx;
-  color: #ffffff;
-  background: #FF6B35;
-  border-radius: 6rpx;
-  padding: 2rpx 10rpx;
-  margin-top: 4rpx;
-  display: inline-block;
-  align-self: flex-start;
-}
-
 .buy-btn {
-  background: #6C63FF;
+  background: $gradient-brand;
   color: #ffffff;
   font-size: 32rpx;
   font-weight: 700;
   padding: 24rpx 64rpx;
   border-radius: 999rpx;
-  box-shadow: 0 8rpx 24rpx rgba(108, 99, 255, 0.35);
+  box-shadow: $shadow-brand;
   transition: transform 0.15s ease;
 
   &--hover {

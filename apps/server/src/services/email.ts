@@ -135,3 +135,65 @@ ICCID：${opts.iccid}
 
   console.log(`[email] 激活码邮件已发送至 ${opts.to}（订单 ${opts.orderNo}）`);
 }
+
+interface SendRefundEmailOptions {
+  to: string;
+  orderNo: string;
+  amount: string;
+}
+
+/** 订单退款成功通知邮件 */
+export async function sendRefundEmail(opts: SendRefundEmailOptions): Promise<void> {
+  const transporter = createTransporter();
+  const fromName = process.env.SMTP_FROM_NAME || 'YYeSim';
+  const fromAddr = process.env.SMTP_FROM || process.env.SMTP_USER || '';
+  const refundTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+
+  const html = `
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:24px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+        <tr><td style="background:linear-gradient(135deg,#1a6fb5 0%,#0d4a7a 100%);padding:32px 40px;">
+          <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">退款成功通知</h1>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">订单号：${opts.orderNo}</p>
+        </td></tr>
+        <tr><td style="padding:28px 40px 0;">
+          <div style="background:#f0f7ff;border-radius:8px;padding:20px 24px;">
+            <p style="margin:0 0 8px;font-size:13px;color:#666;">您购买的 eSIM 套餐已成功退款</p>
+            <p style="margin:0;font-size:20px;font-weight:700;color:#1a1a1a;">退款金额：¥${opts.amount}</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#888;">退款时间：${refundTime}</p>
+          </div>
+        </td></tr>
+        <tr><td style="padding:24px 40px 0;">
+          <p style="margin:0;font-size:13px;color:#666;line-height:1.8;">退款将按原支付渠道原路退回，一般 1～3 个工作日到账，具体以支付宝到账提示为准。</p>
+        </td></tr>
+        <tr><td style="padding:32px 40px 24px;text-align:center;">
+          <p style="margin:0;font-size:12px;color:#bbb;">如有疑问请联系客服 · YYeSim</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `退款成功
+订单号：${opts.orderNo}
+退款金额：¥${opts.amount}
+退款时间：${refundTime}
+退款将按原支付渠道原路退回，一般 1～3 个工作日到账。
+如有疑问请联系客服 · YYeSim`;
+
+  await transporter.sendMail({
+    from: `"${fromName}" <${fromAddr}>`,
+    to: opts.to,
+    subject: `【YYeSim】订单退款成功 - ${opts.orderNo}`,
+    html,
+    text,
+  });
+
+  console.log(`[email] 退款通知已发送至 ${opts.to}（订单 ${opts.orderNo}）`);
+}

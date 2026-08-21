@@ -1,7 +1,10 @@
 <script>
+import { applyAppLocale } from './locales'
+
 export default {
   onLaunch() {
     console.log('YYeSim App Launch')
+    applyAppLocale()
   }
 }
 </script>

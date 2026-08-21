@@ -9,6 +9,8 @@ export interface ProvisionResult {
   smdp: string;
   status: string;
   expireAt: Date;
+  gb?: number;
+  days?: number;
 }
 
 /**
@@ -50,6 +52,8 @@ export async function provisionEsim(prisma: PrismaClient, order: any, pkg: any):
       smdp: info.smdp,
       status: 'pending',
       expireAt,
+      gb: pkg?.gb || 0,
+      days: pkg?.days || 0,
     };
   }
 
@@ -68,5 +72,7 @@ export async function provisionEsim(prisma: PrismaClient, order: any, pkg: any):
     smdp,
     status: 'pending',
     expireAt,
+    gb: pkg?.gb || 0,
+    days: pkg?.days || 0,
   };
 }

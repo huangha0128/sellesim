@@ -112,8 +112,8 @@ export const api = {
     return res;
   },
 
-  async createOrder({ pkgId, dataIndex, days, email, payMethod = 'alipay' }) {
-    return request('POST', '/orders', { pkgId, dataIndex, days, email, payMethod });
+  async createOrder({ pkgId, dataIndex, days, email, payMethod = 'alipay', orderType = 'new', targetEsimId }) {
+    return request('POST', '/orders', { pkgId, dataIndex, days, email, payMethod, orderType, targetEsimId });
   },
 
   async getOrders() {
@@ -171,8 +171,8 @@ export const api = {
           countryCode: pkg.countryCode,
           countryName: c.name,
           flag: c.flag,
-          gb: pkg.gb,
-          days: pkg.days,
+          gb: e.gb ?? pkg.gb,
+          days: e.days ?? pkg.days,
           price: pkg.price,
         },
       };

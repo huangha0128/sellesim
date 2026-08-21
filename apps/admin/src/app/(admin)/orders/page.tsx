@@ -65,7 +65,12 @@ export default function OrdersPage() {
     if (!refundTarget) return;
     setRefunding(true);
     try {
-      await adminApi.refundOrder(refundTarget.orderNo, reason.trim() || undefined);
+      const res = await adminApi.refundOrder(refundTarget.orderNo, reason.trim() || undefined);
+      const body = unwrap<any>(res);
+      if (body.code !== 0) {
+        toast.error(body.message || '退款失败，请重试');
+        return;
+      }
       toast.success('退款成功');
       setRefundTarget(null);
       setReason('');
@@ -93,29 +98,42 @@ export default function OrdersPage() {
           {orders.length === 0 && !loading ? (
             <EmptyState title="暂无订单" />
           ) : (
-            <Table>
+            <Table className="min-w-[1040px]">
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-52">订单号</TableHead>
-                  <TableHead>套餐</TableHead>
-                  <TableHead>邮箱</TableHead>
-                  <TableHead>支付方式</TableHead>
-                  <TableHead>金额</TableHead>
-                  <TableHead>状态</TableHead>
-                  <TableHead>退款时间</TableHead>
-                  <TableHead>创建时间</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
+                <TableRow className="whitespace-nowrap">
+                  <TableHead className="w-56">订单号</TableHead>
+                  <TableHead className="w-52">套餐</TableHead>
+                  <TableHead className="w-32">归属用户</TableHead>
+                  <TableHead className="w-44">邮箱</TableHead>
+                  <TableHead className="w-24">支付方式</TableHead>
+                  <TableHead className="w-20">金额</TableHead>
+                  <TableHead className="w-20">状态</TableHead>
+                  <TableHead className="w-44">退款时间</TableHead>
+                  <TableHead className="w-44">创建时间</TableHead>
+                  <TableHead className="w-20 text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {orders.map((o) => {
                   const st = statusInfo(o);
                   return (
-                    <TableRow key={o.id}>
+                    <TableRow key={o.id} className="whitespace-nowrap">
                       <TableCell className="font-mono text-[12.5px]">{o.orderNo}</TableCell>
                       <TableCell>
-                        {o.package?.country?.flag} {o.package?.country?.name} {o.package?.gb}GB/{o.package?.days}天
+                        <span className="inline-flex items-center gap-1.5">
+                          {o.package?.country?.flag && (
+                            <img
+                              src={o.package.country.flag}
+                              alt=""
+                              className="h-4 w-6 rounded-sm object-cover"
+                            />
+                          )}
+                          <span>
+                            {o.package?.country?.name} {o.package?.gb}GB/{o.package?.days}天
+                          </span>
+                        </span>
                       </TableCell>
+                      <TableCell>{o.user?.nickname || o.user?.id || '未登录/未归属'}</TableCell>
                       <TableCell className="text-muted-foreground">{o.email || '—'}</TableCell>
                       <TableCell>{o.payMethod === 'alipay' ? '支付宝' : '微信'}</TableCell>
                       <TableCell className="font-medium text-ink">¥{o.price}</TableCell>

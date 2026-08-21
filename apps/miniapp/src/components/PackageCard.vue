@@ -9,9 +9,9 @@
         <text v-if="pkg.tag" class="pkg-tag" :style="{ color: pkg.tagColor, background: pkg.tagColor + '1A' }">{{ pkg.tag }}</text>
       </view>
       <view class="pkg-meta">
-        <text class="pkg-meta-item">{{ pkg.gb }}GB 流量</text>
+        <text class="pkg-meta-item">{{ fmt('index.gbTraffic', { gb: pkg.gb }) }}</text>
         <text class="pkg-dot">·</text>
-        <text class="pkg-meta-item">{{ pkg.days }}天有效</text>
+        <text class="pkg-meta-item">{{ fmt('index.daysValid', { days: pkg.days }) }}</text>
         <text class="pkg-dot">·</text>
         <text class="pkg-meta-item">{{ pkg.network }}</text>
       </view>
@@ -23,7 +23,7 @@
         <text class="pkg-price-num">{{ priceNum }}</text>
       </view>
       <view class="pkg-buy">
-        <text>查看</text>
+        <text>{{ fmt('common.view') }}</text>
         <text class="pkg-arrow">›</text>
       </view>
     </view>
@@ -32,6 +32,14 @@
 
 <script>
 import { formatPrice } from '@/utils/format'
+import { t as translate } from '@/locales'
+
+// 命名占位符兜底替换（如 {gb}、{days}）
+function fmtNamed(str, p) {
+  return String(str).replace(/\{(\w+)\}/g, (m, k) =>
+    p && p[k] !== undefined && p[k] !== null ? p[k] : m
+  )
+}
 
 export default {
   name: 'PackageCard',
@@ -41,11 +49,14 @@ export default {
   computed: {
     priceNum() {
       const n = Number(this.pkg.price)
-      return n % 1 === 0 ? n.toFixed(0) : n.toFixed(1)
+      return Number(n).toFixed(2)
     }
   },
   emits: ['tap'],
   methods: {
+    fmt(key, params) {
+      return fmtNamed(translate(key, params), params)
+    },
     onTap() {
       this.$emit('tap', JSON.stringify(this.pkg.id))
     }

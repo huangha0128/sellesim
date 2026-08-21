@@ -6,55 +6,61 @@
         <image v-else class="uc-avatar-img" src="/static/icons/hero-avatar.png" mode="aspectFit" />
       </view>
       <view class="uc-info">
-        <text class="uc-name">{{ store.isLoggedIn ? (store.user.nickname || '全球旅行者') : '点击登录' }}</text>
+        <text class="uc-name">{{ store.isLoggedIn ? (store.user.nickname || $t('profile.traveler')) : $t('profile.clickLogin') }}</text>
         <text class="uc-email" v-if="store.isLoggedIn && store.user.email">{{ maskEmail(store.user.email) }}</text>
-        <text class="uc-email" v-else-if="!store.isLoggedIn">登录后享受更多服务</text>
-        <text class="uc-email" v-else>欢迎回来</text>
+        <text class="uc-email" v-else-if="!store.isLoggedIn">{{ $t('profile.loginBenefits') }}</text>
+        <text class="uc-email" v-else>{{ $t('profile.welcomeBack') }}</text>
       </view>
-      <view class="uc-badge" v-if="store.isLoggedIn">全球旅行者</view>
+      <view class="uc-badge" v-if="store.isLoggedIn">{{ $t('profile.traveler') }}</view>
     </view>
 
     <view class="stat-row">
       <view class="stat-item" @click="goEsims">
         <text class="stat-num">{{ store.esims.length }}</text>
-        <text class="stat-label">我的 eSIM</text>
+        <text class="stat-label">{{ $t('profile.statEsims') }}</text>
       </view>
       <view class="stat-divider"></view>
       <view class="stat-item" @click="goEsims">
         <text class="stat-num">{{ store.orders.filter((o) => o.status === 'paid').length }}</text>
-        <text class="stat-label">已完成订单</text>
+        <text class="stat-label">{{ $t('profile.statOrders') }}</text>
       </view>
       <view class="stat-divider"></view>
       <view class="stat-item" @click="goCountries">
         <text class="stat-num">200+</text>
-        <text class="stat-label">覆盖地区</text>
+        <text class="stat-label">{{ $t('profile.statRegions') }}</text>
       </view>
     </view>
 
     <view class="menu-card">
       <view class="menu-item" hover-class="menu-item--hover" @click="goEsims">
         <view class="menu-icon ic-blue"><image src="/static/icons/prof-esim.png" mode="aspectFit" style="width: 36rpx; height: 36rpx;" /></view>
-        <text class="menu-txt">我的 eSIM</text>
+        <text class="menu-txt">{{ $t('profile.menuEsims') }}</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" hover-class="menu-item--hover" @click="goOrders">
         <view class="menu-icon ic-coral"><image src="/static/icons/prof-order.png" mode="aspectFit" style="width: 36rpx; height: 36rpx;" /></view>
-        <text class="menu-txt">我的订单</text>
+        <text class="menu-txt">{{ $t('profile.menuOrders') }}</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" hover-class="menu-item--hover" @click="goGuide">
         <view class="menu-icon ic-teal"><image src="/static/icons/feat-signal.png" mode="aspectFit" style="width: 36rpx; height: 36rpx;" /></view>
-        <text class="menu-txt">eSIM 安装指南</text>
+        <text class="menu-txt">{{ $t('profile.menuGuide') }}</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" hover-class="menu-item--hover" @click="about">
         <view class="menu-icon ic-gray"><image src="/static/icons/prof-about.png" mode="aspectFit" style="width: 36rpx; height: 36rpx;" /></view>
-        <text class="menu-txt">关于YYeSim</text>
+        <text class="menu-txt">{{ $t('profile.menuAbout') }}</text>
+        <text class="menu-arrow">›</text>
+      </view>
+      <view class="menu-item" hover-class="menu-item--hover" @click="switchLanguage">
+        <view class="menu-icon ic-teal"><image src="/static/icons/prof-settings.png" mode="aspectFit" style="width: 36rpx; height: 36rpx;" /></view>
+        <text class="menu-txt">{{ $t('profile.menuLanguage') }}</text>
+        <text class="menu-value">{{ currentLocaleLabel }}</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" hover-class="menu-item--hover" @click="handleLogout" v-if="store.isLoggedIn">
         <view class="menu-icon ic-red"><image src="/static/icons/prof-about.png" mode="aspectFit" style="width: 36rpx; height: 36rpx;" /></view>
-        <text class="menu-txt">退出登录</text>
+        <text class="menu-txt">{{ $t('profile.menuLogout') }}</text>
         <text class="menu-arrow">›</text>
       </view>
     </view>
@@ -62,21 +68,35 @@
     <view class="demo-badge">
       <text class="demo-txt">
         <image src="/static/icons/prof-demo.png" mode="aspectFit" style="width: 24rpx; height: 24rpx; margin-right: 8rpx; vertical-align: middle;" />
-        <text>演示环境 · 数据已对接本地后端服务</text>
+        <text>{{ $t('profile.demo') }}</text>
       </text>
     </view>
 
     <view class="footer-safe"></view>
+
+    <FloatingTabBar current="profile" />
   </view>
 </template>
 
 <script>
+import FloatingTabBar from '@/components/FloatingTabBar.vue'
 import { store } from '@/store'
 import { maskEmail } from '@/utils/format'
+import { getLocale, setLocale, LOCALES } from '@/locales'
 
 export default {
+  components: { FloatingTabBar },
   data() {
-    return { store }
+    return { store, locale: getLocale() }
+  },
+  computed: {
+    currentLocaleLabel() {
+      const found = LOCALES.find((l) => l.value === this.locale)
+      return found ? found.label : this.locale
+    }
+  },
+  onShow() {
+    this.locale = getLocale()
   },
   methods: {
     maskEmail,
@@ -86,7 +106,7 @@ export default {
       }
     },
     goEsims() {
-      uni.switchTab({ url: '/pages/esims/esims' })
+      uni.reLaunch({ url: '/pages/esims/esims' })
     },
     goOrders() {
       uni.navigateTo({ url: '/pages/orders/orders' })
@@ -97,24 +117,38 @@ export default {
     goCountries() {
       uni.navigateTo({ url: '/pages/countries/countries' })
     },
+    switchLanguage() {
+      const items = LOCALES.map((l) => ({ name: l.label, value: l.value }))
+      uni.showActionSheet({
+        itemList: items.map((i) => i.name),
+        success: (res) => {
+          const target = items[res.tapIndex]
+          if (target && target.value !== this.locale) {
+            setLocale(target.value)
+            this.locale = target.value
+            uni.showToast({ title: this.$t('profile.languageTitle'), icon: 'none' })
+          }
+        }
+      })
+    },
     about() {
       uni.showModal({
-        title: '关于YYeSim',
-        content: 'YYeSim v1.0.0（演示版）\n全球 200+ 国家与地区流量套餐，即买即用。',
+        title: this.$t('profile.menuAbout'),
+        content: this.$t('profile.aboutContent'),
         showCancel: false,
-        confirmText: '知道了',
+        confirmText: this.$t('common.know'),
         confirmColor: '#0EA5E9'
       })
     },
     handleLogout() {
       uni.showModal({
-        title: '退出登录',
-        content: '确定要退出登录吗？',
+        title: this.$t('profile.menuLogout'),
+        content: this.$t('profile.logoutConfirm'),
         success: (res) => {
           if (res.confirm) {
             store.logout()
             uni.showToast({
-              title: '已退出登录',
+              title: this.$t('profile.loggedOut'),
               icon: 'success'
             })
           }
@@ -283,6 +317,12 @@ export default {
   font-weight: 600;
 }
 
+.menu-value {
+  font-size: 24rpx;
+  color: $ink-3;
+  margin-right: 16rpx;
+}
+
 .menu-tag {
   font-size: 20rpx;
   color: $coral;
@@ -309,6 +349,6 @@ export default {
 }
 
 .footer-safe {
-  height: calc(40rpx + env(safe-area-inset-bottom));
+  height: calc(176rpx + env(safe-area-inset-bottom));
 }
 </style>

@@ -63,7 +63,7 @@ export default (prisma: PrismaClient) => {
       const pkg = await prisma.package.findUnique({ where: { id: order.pkgId } });
       try {
         const esimData = await provisionEsim(prisma, order, pkg);
-        await prisma.esim.create({ data: esimData });
+        await prisma.esim.create({ data: { ...esimData, userId: order.userId } });
         console.log(`[alipay] 订单 ${outTradeNo} 支付成功，eSIM 已下发`);
 
         // 发送激活码邮件（非阻塞，失败不影响下单结果）

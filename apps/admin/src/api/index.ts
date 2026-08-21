@@ -63,9 +63,11 @@ export interface Order {
   payMethod?: string;
   price: number;
   status: string;
+  userId?: string | null;
   refundedAt?: string | null;
   createdAt?: string;
   package?: PackageItem;
+  user?: { id: string; nickname?: string; alipayUserId?: string } | null;
 }
 
 export interface Esim {

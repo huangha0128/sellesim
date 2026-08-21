@@ -2,73 +2,73 @@
   <view class="payment-page">
     <view v-if="!paid" class="pay-content">
       <view class="amount-box">
-        <text class="amount-label">支付金额</text>
+        <text class="amount-label">{{ $t('payment.amountLabel') }}</text>
         <view class="amount">
           <text class="a-sym">¥</text>
           <text class="a-num">{{ amountText }}</text>
         </view>
-        <text class="amount-sub">订单号 {{ orderNo }}</text>
+        <text class="amount-sub">{{ $t('payment.orderNoPrefix', { no: orderNo }) }}</text>
       </view>
 
       <view class="order-card">
         <view class="oc-row">
-          <text class="oc-label">商品</text>
+          <text class="oc-label">{{ $t('payment.goodsLabel') }}</text>
           <text class="oc-value">{{ orderLabel }}</text>
         </view>
         <view class="oc-row">
-          <text class="oc-label">支付方式</text>
-          <text class="oc-value">支付宝</text>
+          <text class="oc-label">{{ $t('payment.payMethodLabel') }}</text>
+          <text class="oc-value">{{ $t('checkout.alipayName') }}</text>
         </view>
       </view>
 
       <view class="alipay-sheet">
         <view class="alipay-logo">支</view>
         <view class="alipay-info">
-          <text class="alipay-name">支付宝</text>
-          <text class="alipay-balance">余额支付 · 尾号 8848</text>
+          <text class="alipay-name">{{ $t('checkout.alipayName') }}</text>
+          <text class="alipay-balance">{{ $t('payment.alipayBalance') }}</text>
         </view>
         <view class="alipay-arrow">›</view>
       </view>
 
-      <view class="pay-btn" hover-class="pay-btn--hover" @click="pay">立即支付</view>
-      <view class="pay-cancel" @click="goBack">暂不支付</view>
+      <view class="pay-btn" hover-class="pay-btn--hover" @click="pay">{{ $t('payment.payNow') }}</view>
+      <view class="pay-cancel" @click="goBack">{{ $t('payment.cancel') }}</view>
 
-      <view class="pay-note">{{ useRealPayment ? '将跳转至支付宝完成安全支付' : '演示环境 · 点击立即支付将模拟支付宝扣款并自动发卡' }}</view>
+      <view class="pay-note">{{ useRealPayment ? $t('payment.noteReal') : $t('payment.noteDemo') }}</view>
     </view>
 
     <view v-else class="success-wrap">
       <view class="success-circle">
         <image class="check-mark" src="/static/icons/co-check.png" mode="aspectFit" />
       </view>
-      <text class="success-title">支付成功</text>
-      <text class="success-sub">eSIM 已自动发放至你的账户</text>
+      <text class="success-title">{{ $t('payment.success') }}</text>
+      <text class="success-sub">{{ $t('payment.successSub') }}</text>
 
       <view class="success-card">
         <view class="sc-row">
-          <text class="sc-label">订单号</text>
+          <text class="sc-label">{{ $t('payment.orderNo') }}</text>
           <text class="sc-value">{{ orderNo }}</text>
         </view>
         <view class="sc-row">
-          <text class="sc-label">套餐</text>
+          <text class="sc-label">{{ $t('payment.pkgLabel') }}</text>
           <text class="sc-value">{{ orderLabel }}</text>
         </view>
         <view class="sc-row">
-          <text class="sc-label">实付金额</text>
+          <text class="sc-label">{{ $t('payment.actualAmount') }}</text>
           <text class="sc-value sc-price">¥{{ amountText }}</text>
         </view>
       </view>
 
       <view class="success-actions">
-        <view class="sa-primary" hover-class="sa-primary--hover" @click="goEsims">查看我的 eSIM</view>
-        <view class="sa-secondary" hover-class="sa-secondary--hover" @click="goHome">返回首页</view>
+        <view class="sa-primary" hover-class="sa-primary--hover" @click="goEsims">{{ $t('payment.viewEsims') }}</view>
+        <view class="sa-secondary" hover-class="sa-secondary--hover" @click="goHome">{{ $t('payment.backHome') }}</view>
       </view>
     </view>
 
     <view v-if="paying" class="mask">
       <view class="mask-card">
         <view class="spinner"></view>
-        <text class="mask-title">正在支付...</text>
-        <text class="mask-sub">正在通过支付宝完成扣款</text>
+        <text class="mask-title">{{ $t('payment.paying') }}</text>
+        <text class="mask-sub">{{ $t('payment.payingSub') }}</text>
       </view>
     </view>
   </view>
@@ -77,6 +77,7 @@
 <script>
 import { api } from '@/utils/api'
 import { store } from '@/store'
+import { setNavTitle } from '@/locales'
 
 export default {
   data() {
@@ -96,11 +97,12 @@ export default {
     },
     orderLabel() {
       if (!this.order) return ''
-      return `${this.order.countryName} eSIM（${this.order.gb}GB / ${this.order.days}天）`
+      return this.$t('payment.orderLabel', { name: this.order.countryName, gb: this.order.gb, days: this.order.days })
     }
   },
   async onLoad(options) {
     this.orderNo = options.orderNo || ''
+    setNavTitle('pageTitle.payment')
     this.useRealPayment = this.getUseRealPayment()
     try {
       const res = await api.getOrder(this.orderNo)

@@ -3,24 +3,24 @@
     <view class="login-header">
       <image class="logo" src="/static/icons/hero-avatar.png" mode="aspectFit" />
       <text class="title">YYeSim</text>
-      <text class="subtitle">全球流量，即买即用</text>
+      <text class="subtitle">{{ $t('login.subtitle') }}</text>
     </view>
 
     <view class="login-content">
       <button class="login-btn" @click="handleLogin" :loading="loading">
-        <text class="btn-text">支付宝一键登录</text>
+        <text class="btn-text">{{ $t('login.btn') }}</text>
       </button>
 
       <view class="login-tips">
-        <text class="tips-text">登录即表示同意</text>
-        <text class="link">《用户协议》</text>
-        <text class="tips-text">和</text>
-        <text class="link">《隐私政策》</text>
+        <text class="tips-text">{{ $t('login.agreePrefix') }}</text>
+        <text class="link">{{ $t('login.agreement') }}</text>
+        <text class="tips-text">{{ $t('login.and') }}</text>
+        <text class="link">{{ $t('login.privacy') }}</text>
       </view>
     </view>
 
     <view class="login-footer">
-      <text class="footer-text">全球200+国家和地区可用</text>
+      <text class="footer-text">{{ $t('login.footer') }}</text>
     </view>
   </view>
 </template>
@@ -32,10 +32,23 @@ import { api } from '@/utils/api'
 export default {
   data() {
     return {
-      loading: false
+      loading: false,
+      redirectUrl: ''
+    }
+  },
+  onLoad(options) {
+    if (options && options.redirect) {
+      this.redirectUrl = decodeURIComponent(options.redirect)
     }
   },
   methods: {
+    afterLogin() {
+      if (this.redirectUrl) {
+        uni.redirectTo({ url: this.redirectUrl })
+      } else {
+        uni.reLaunch({ url: '/pages/profile/profile' })
+      }
+    },
     async handleLogin() {
       if (this.loading) return
 
@@ -52,25 +65,23 @@ export default {
               if (loginRes.code === 0) {
                 store.login(loginRes.data.token, loginRes.data.user)
                 uni.showToast({
-                  title: '登录成功',
+                  title: this.$t('login.success'),
                   icon: 'success'
                 })
 
                 setTimeout(() => {
-                  uni.switchTab({
-                    url: '/pages/profile/profile'
-                  })
+                  this.afterLogin()
                 }, 1500)
               } else {
                 uni.showToast({
-                  title: loginRes.message || '登录失败',
+                  title: loginRes.message || this.$t('login.failed'),
                   icon: 'none'
                 })
               }
             } catch (error) {
               console.error('登录请求失败:', error)
               uni.showToast({
-                title: '网络错误，请重试',
+                title: this.$t('common.networkError'),
                 icon: 'none'
               })
             } finally {
@@ -80,7 +91,7 @@ export default {
           fail: (err) => {
             console.error('获取授权码失败:', err)
             uni.showToast({
-              title: '授权失败，请重试',
+              title: this.$t('login.authFailed'),
               icon: 'none'
             })
             this.loading = false
@@ -90,7 +101,7 @@ export default {
 
         // #ifndef MP-ALIPAY
         uni.showToast({
-          title: '仅支持支付宝小程序登录',
+          title: this.$t('login.alipayOnly'),
           icon: 'none'
         })
         this.loading = false
@@ -98,7 +109,7 @@ export default {
       } catch (error) {
         console.error('登录流程错误:', error)
         uni.showToast({
-          title: '登录失败，请重试',
+          title: this.$t('login.failedRetry'),
           icon: 'none'
         })
         this.loading = false

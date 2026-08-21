@@ -2,9 +2,9 @@
   <view class="orders-page">
     <view v-if="!store.orders.length" class="empty">
       <image class="empty-icon" src="/static/icons/prof-order.png" mode="aspectFit" />
-      <text class="empty-title">暂无订单</text>
-      <text class="empty-sub">去挑选一张适合你的全球流量套餐吧</text>
-      <view class="empty-btn" hover-class="empty-btn--hover" @click="goBuy">去购买</view>
+      <text class="empty-title">{{ fmt('orders.emptyTitle') }}</text>
+      <text class="empty-sub">{{ fmt('orders.emptySub') }}</text>
+      <view class="empty-btn" hover-class="empty-btn--hover" @click="goBuy">{{ fmt('orders.goBuy') }}</view>
     </view>
 
     <view v-else class="order-list">
@@ -19,39 +19,39 @@
           </view>
           <view class="oc-main">
             <view class="oc-title-row">
-              <text class="oc-name">{{ order.countryName }} eSIM</text>
-              <text class="oc-status" :class="order.status">{{ order.status === 'paid' ? '已支付' : '待支付' }}</text>
+              <text class="oc-name">{{ fmt('checkout.skuName', { name: order.countryName }) }}</text>
+              <text class="oc-status" :class="order.status">{{ order.status === 'paid' ? fmt('orders.paid') : fmt('orders.pending') }}</text>
             </view>
-            <text class="oc-meta">{{ order.gb }}GB · {{ order.days }}天有效</text>
+            <text class="oc-meta">{{ fmt('orders.meta', { gb: order.gb, days: order.days }) }}</text>
           </view>
           <text class="oc-price">¥{{ priceText(order) }}</text>
         </view>
 
         <view class="oc-info">
           <view class="oc-info-row">
-            <text class="oci-label">订单号</text>
+            <text class="oci-label">{{ fmt('orders.orderNoLabel') }}</text>
             <text class="oci-value">{{ order.orderNo }}</text>
           </view>
           <view class="oc-info-row">
-            <text class="oci-label">下单时间</text>
+            <text class="oci-label">{{ fmt('orders.createdAtLabel') }}</text>
             <text class="oci-value">{{ formatDateTime(order.createdAt) }}</text>
           </view>
           <view class="oc-info-row">
-            <text class="oci-label">接收邮箱</text>
+            <text class="oci-label">{{ fmt('orders.emailLabel') }}</text>
             <text class="oci-value">{{ order.email }}</text>
           </view>
           <view class="oc-info-row">
-            <text class="oci-label">支付方式</text>
-            <text class="oci-value">{{ order.payMethod === 'alipay' ? '支付宝' : order.payMethod }}</text>
+            <text class="oci-label">{{ fmt('orders.payMethodLabel') }}</text>
+            <text class="oci-value">{{ order.payMethod === 'alipay' ? fmt('checkout.alipayName') : order.payMethod }}</text>
           </view>
           <view v-if="order.paidAt" class="oc-info-row">
-            <text class="oci-label">支付时间</text>
+            <text class="oci-label">{{ fmt('orders.paidAtLabel') }}</text>
             <text class="oci-value">{{ formatDateTime(order.paidAt) }}</text>
           </view>
         </view>
 
         <view v-if="order.status === 'pending'" class="oc-actions">
-          <view class="act-btn primary" @click="goPay(order.orderNo)">去支付</view>
+          <view class="act-btn primary" @click="goPay(order.orderNo)">{{ fmt('orders.goPay') }}</view>
         </view>
       </view>
     </view>
@@ -64,6 +64,14 @@
 import { api } from '@/utils/api'
 import { store } from '@/store'
 import { formatDateTime } from '@/utils/format'
+import { setNavTitle, t as translate } from '@/locales'
+
+// 命名占位符兜底替换（如 {name}、{gb}、{days}）
+function fmtNamed(str, p) {
+  return String(str).replace(/\{(\w+)\}/g, (m, k) =>
+    p && p[k] !== undefined && p[k] !== null ? p[k] : m
+  )
+}
 
 export default {
   data() {
@@ -72,13 +80,22 @@ export default {
     }
   },
   onShow() {
+    setNavTitle('pageTitle.orders')
     this.refresh()
   },
   methods: {
     formatDateTime,
+    fmt(key, params) {
+      return fmtNamed(translate(key, params), params)
+    },
     async refresh() {
       try {
         const res = await api.getOrders()
+        if (res.code === 401) {
+          uni.showToast({ title: this.fmt('common.needLogin'), icon: 'none' })
+          uni.navigateTo({ url: '/pages/login/login' })
+          return
+        }
         if (res.data.orders) {
           store.setOrders(res.data.orders)
         }
@@ -91,13 +108,13 @@ export default {
     },
     priceText(order) {
       const n = Number(order.price)
-      return n % 1 === 0 ? n.toFixed(0) : n.toFixed(1)
+      return Number(n).toFixed(2)
     },
     goPay(orderNo) {
       uni.navigateTo({ url: `/pages/payment/payment?orderNo=${orderNo}` })
     },
     goBuy() {
-      uni.switchTab({ url: '/pages/index/index' })
+      uni.reLaunch({ url: '/pages/index/index' })
     }
   }
 }

@@ -87,32 +87,6 @@
       }
     }
   ],
-  "tabBar": {
-    "color": "#8CA3B8",
-    "selectedColor": "#0EA5E9",
-    "backgroundColor": "#FFFFFF",
-    "borderStyle": "white",
-    "list": [
-      {
-        "pagePath": "pages/index/index",
-        "text": "首页",
-        "iconPath": "/static/icons/tab-home.png",
-        "selectedIconPath": "/static/icons/tab-home-active.png"
-      },
-      {
-        "pagePath": "pages/esims/esims",
-        "text": "我的 eSIM",
-        "iconPath": "/static/icons/tab-esim.png",
-        "selectedIconPath": "/static/icons/tab-esim-active.png"
-      },
-      {
-        "pagePath": "pages/profile/profile",
-        "text": "我的",
-        "iconPath": "/static/icons/tab-profile.png",
-        "selectedIconPath": "/static/icons/tab-profile-active.png"
-      }
-    ]
-  },
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "YYeSim",
