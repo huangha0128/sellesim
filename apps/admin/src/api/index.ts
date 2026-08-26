@@ -59,6 +59,7 @@ export interface PackageItem {
 export interface Order {
   id: string;
   orderNo: string;
+  pkgId?: string;
   email?: string;
   payMethod?: string;
   price: number;
@@ -66,6 +67,11 @@ export interface Order {
   userId?: string | null;
   refundedAt?: string | null;
   createdAt?: string;
+  // 套餐快照（不再嵌套 package，实时来源 TigerESIM）
+  countryCode?: string | null;
+  pkgName?: string | null;
+  gb?: number | null;
+  days?: number | null;
   package?: PackageItem;
   user?: { id: string; nickname?: string; alipayUserId?: string } | null;
 }
@@ -77,7 +83,12 @@ export interface Esim {
   status?: string;
   expireAt?: string;
   used?: number;
-  order?: { package?: PackageItem };
+  // 套餐快照（不再嵌套 package）
+  countryCode?: string | null;
+  pkgName?: string | null;
+  gb?: number | null;
+  days?: number | null;
+  order?: { countryCode?: string | null; pkgName?: string | null; gb?: number | null; days?: number | null };
 }
 
 export interface Card {

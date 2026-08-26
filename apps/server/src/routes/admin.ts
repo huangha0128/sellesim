@@ -6,16 +6,35 @@ import { refundOrder } from '../services/refund';
 import { sendRefundEmail } from '../services/email';
 import { alipay } from '../utils/alipay';
 
+/** 从 Tiger 创建套餐的响应中抽取创建结果（兼容 {data:{...}} / 直接对象 / 嵌套 package/item） */
+function extractTigerCreated(res: any): any {
+  if (!res || typeof res !== 'object') return null;
+  let box: any = res;
+  if (box.data && typeof box.data === 'object' && !Array.isArray(box.data)) {
+    box = box.data;
+  }
+  if (!box || typeof box !== 'object') return null;
+  return box.package || box.item || box.system || (box.id !== undefined || box.pid !== undefined ? box : null);
+}
+
 export default (prisma: PrismaClient) => {
   const router = Router();
 
   router.get('/dashboard', async (req: Request, res: Response) => {
-    const [countryCount, packageCount, orderCount, esimCount] = await Promise.all([
+    const [countryCount, orderCount, esimCount] = await Promise.all([
       prisma.country.count(),
-      prisma.package.count(),
       prisma.order.count(),
       prisma.esim.count(),
     ]);
+    let packageCount = 0;
+    if (tigerClient.configured) {
+      try {
+        const { listAllPackagesView } = await import('../tiger/view');
+        packageCount = (await listAllPackagesView()).length;
+      } catch {
+        packageCount = 0;
+      }
+    }
     const paidOrders = await prisma.order.count({ where: { status: 'paid' } });
     const totalRevenue = await prisma.order.aggregate({
       where: { status: 'paid' },
@@ -39,10 +58,7 @@ export default (prisma: PrismaClient) => {
   router.get('/orders', async (req: Request, res: Response) => {
     const orders = await prisma.order.findMany({
       orderBy: { createdAt: 'desc' },
-      include: {
-        package: { include: { country: true } },
-        user: true,
-      },
+      include: { user: true },
     });
     res.json({ code: 0, data: { orders } });
   });
@@ -97,7 +113,7 @@ export default (prisma: PrismaClient) => {
   router.get('/esims', async (req: Request, res: Response) => {
     const esims = await prisma.esim.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { order: { include: { package: { include: { country: true } } } } },
+      include: { order: true },
     });
     res.json({ code: 0, data: { esims } });
   });
@@ -114,10 +130,24 @@ export default (prisma: PrismaClient) => {
             ],
           }
         : undefined,
-      include: { _count: { select: { packages: true } } },
       orderBy: [{ hot: 'desc' }, { code: 'asc' }],
     });
-    res.json({ code: 0, data: { countries } });
+    let pkgCountMap = new Map<string, number>();
+    if (tigerClient.configured) {
+      try {
+        const { listAllPackagesView } = await import('../tiger/view');
+        for (const p of await listAllPackagesView()) {
+          pkgCountMap.set(p.countryCode, (pkgCountMap.get(p.countryCode) || 0) + 1);
+        }
+      } catch {
+        /* 忽略实时套餐拉取失败，packageCount 保持 0 */
+      }
+    }
+    const countriesWithCount = countries.map((c: any) => ({
+      ...c,
+      packageCount: pkgCountMap.get(c.code) || 0,
+    }));
+    res.json({ code: 0, data: { countries: countriesWithCount } });
   });
 
   router.post('/countries', async (req: Request, res: Response) => {
@@ -141,72 +171,112 @@ export default (prisma: PrismaClient) => {
   router.get('/packages/page', async (req: Request, res: Response) => {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string) || 20));
-    const keyword = String(req.query.keyword || '').trim();
+    const keyword = String(req.query.keyword || '').trim().toLowerCase();
     const countryCode = String(req.query.countryCode || '').trim();
     const onlyFeatured = req.query.featured === '1' || req.query.featured === 'true';
-    const where: any = {};
-    if (countryCode) where.countryCode = countryCode;
-    if (onlyFeatured) where.isFeatured = true;
-    if (keyword) {
-      where.OR = [
-        { name: { contains: keyword } },
-        { countryCode: { contains: keyword } },
-        { coverage: { contains: keyword } },
-        { desc: { contains: keyword } },
-      ];
+
+    if (!tigerClient.configured) {
+      return res.json({ code: 1, message: '未配置 TIGER_CLIENT_ID / TIGER_CLIENT_SECRET，套餐数据实时来自 TigerESIM，请先配置密钥' });
     }
-    const [total, packages] = await Promise.all([
-      prisma.package.count({ where }),
-      prisma.package.findMany({
-        where,
-        include: { country: true },
-        orderBy: [{ countryCode: 'asc' }, { gb: 'asc' }, { days: 'asc' }],
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-    ]);
+    let list: any[];
+    try {
+      const { listAllPackagesView } = await import('../tiger/view');
+      list = await listAllPackagesView();
+    } catch (e: any) {
+      return res.status(502).json({ code: 1, message: 'Tiger 套餐拉取失败：' + e.message });
+    }
+    if (countryCode) list = list.filter((p) => p.countryCode === countryCode);
+    if (onlyFeatured) list = list.filter((p) => p.isFeatured);
+    if (keyword) {
+      list = list.filter((p) =>
+        [p.name, p.countryCode, p.coverage, p.desc, String(p.gb) + 'GB', String(p.days)].some((v) =>
+          String(v || '').toLowerCase().includes(keyword),
+        ),
+      );
+    }
+    list.sort((a, b) => String(a.countryCode).localeCompare(b.countryCode) || a.gb - b.gb || a.days - b.days);
+    const total = list.length;
+    const packages = list.slice((page - 1) * pageSize, page * pageSize);
     res.json({ code: 0, data: { packages, total, page, pageSize } });
   });
 
+  // ===== 套餐新增/修改/删除（数据以 TigerESIM 为准，本地不存储套餐）=====
+
   router.post('/packages', async (req: Request, res: Response) => {
     try {
-      const pkg = await prisma.package.create({ data: req.body });
-      res.json({ code: 0, data: { pkg } });
+      if (!tigerClient.configured) {
+        return res.json({ code: 1, message: '未配置 TIGER_CLIENT_ID / TIGER_CLIENT_SECRET，新增套餐需直调 TigerESIM API，请先配置密钥' });
+      }
+      const data = req.body || {};
+      let regionId = Number(data.region_id || 0);
+      if (!regionId && data.countryCode) {
+        const country = await prisma.country.findUnique({ where: { code: String(data.countryCode).toUpperCase() } });
+        regionId = Number(country?.tigerRegionId || 0);
+      }
+      if (!regionId) {
+        return res.json({ code: 1, message: '缺少 region_id，请选择所属国家/区域（TigerESIM 使用 region_id）' });
+      }
+      const amount = Math.round(Number(data.amount ?? data.gb ?? 0) * (data.amount ? 1 : 1024));
+      const validDays = Number(data.valid_days ?? data.days ?? 1);
+      const sales = Number(data.sales ?? data.price ?? 0);
+      const tigerRes: any = await tigerClient.createPackage({
+        name: data.name || `Region ${regionId} ${amount / 1024}GB/${validDays}天`,
+        amount,
+        valid_days: validDays,
+        region_id: regionId,
+        sales,
+        package_type: data.package_type || 'data',
+      });
+      const created = extractTigerCreated(tigerRes);
+      const tigerPkgId = Number(created?.id ?? created?.pid ?? 0);
+      if (!tigerPkgId) {
+        return res.json({ code: 2, message: `Tiger 创建套餐未返回有效 id/pid：${JSON.stringify(tigerRes).slice(0, 500)}` });
+      }
+      res.json({
+        code: 0,
+        data: {
+          created,
+          tigerPkgId,
+          tigerPid: String(created?.pid || ''),
+          message: '已通过 TigerESIM 创建真实套餐',
+        },
+      });
     } catch (e: any) {
       res.status(400).json({ code: 1, message: e.message });
     }
   });
 
   router.put('/packages/:id', async (req: Request, res: Response) => {
-    try {
-      const pkg = await prisma.package.update({
-        where: { id: req.params.id },
-        data: req.body,
-      });
-      res.json({ code: 0, data: { pkg } });
-    } catch (e: any) {
-      res.status(400).json({ code: 1, message: e.message });
-    }
+    res.json({
+      code: 1,
+      message: 'TigerESIM 未提供修改套餐接口，套餐数据以 TigerESIM 后台为准，请到 TigerESIM 后台修改后刷新',
+    });
   });
 
   router.delete('/packages/:id', async (req: Request, res: Response) => {
-    try {
-      await prisma.package.delete({ where: { id: req.params.id } });
-      res.json({ code: 0, data: {} });
-    } catch (e: any) {
-      res.status(400).json({ code: 1, message: e.message });
-    }
+    res.json({
+      code: 1,
+      message: 'TigerESIM 未提供删除套餐接口，套餐数据以 TigerESIM 后台为准，请到 TigerESIM 后台删除',
+    });
   });
 
   // ===== Tiger 接入相关 =====
 
   /** GET /api/admin/tiger/status 查看 Tiger 接入状态 */
   router.get('/tiger/status', async (_req: Request, res: Response) => {
-    const [countryCount, packageCount, poolCount] = await Promise.all([
+    const [countryCount, poolCount] = await Promise.all([
       prisma.country.count(),
-      prisma.package.count(),
       iccidPoolCount(prisma),
     ]);
+    let packageCount = 0;
+    if (tigerClient.configured) {
+      try {
+        const { listAllPackagesView } = await import('../tiger/view');
+        packageCount = (await listAllPackagesView()).length;
+      } catch {
+        packageCount = 0;
+      }
+    }
     res.json({
       code: 0,
       data: {
@@ -300,44 +370,19 @@ export default (prisma: PrismaClient) => {
     }
   });
 
-  /** POST /api/admin/tiger/sync-packages 从 Tiger 同步套餐并回填 tigerPkgId */
+  /** POST /api/admin/tiger/sync-packages 从 Tiger 实时拉取套餐统计（套餐内容不落本地库） */
   router.post('/tiger/sync-packages', async (_req: Request, res: Response) => {
     if (!tigerClient.configured) {
       return res.json({ code: 1, message: '未配置 TIGER_CLIENT_ID / TIGER_CLIENT_SECRET' });
     }
     try {
-      const listRes = await tigerClient.listPackages({ package_type: 'data', is_active: true, limit: 500 });
-      const items: any[] = listRes?.data?.items || listRes?.items || [];
-      const localPackages = await prisma.package.findMany();
-      let matched = 0;
-      const unmatched: any[] = [];
-      const results: any[] = [];
-      for (const pkg of localPackages) {
-        const hit = items.find(
-          (it) => Number(it.amount) === pkg.gb * 1024 && Number(it.valid_days) === pkg.days,
-        );
-        if (hit) {
-          const tigerPkgId = Number(hit.pid || hit.id);
-          if (pkg.tigerPkgId !== tigerPkgId) {
-            await prisma.package.update({ where: { id: pkg.id }, data: { tigerPkgId } });
-          }
-          matched += 1;
-          results.push({
-            id: pkg.id,
-            countryCode: pkg.countryCode,
-            gb: pkg.gb,
-            days: pkg.days,
-            tigerPkgId,
-            tigerName: hit.name,
-          });
-        } else {
-          unmatched.push({ id: pkg.id, countryCode: pkg.countryCode, gb: pkg.gb, days: pkg.days });
-        }
+      const packages = await tigerClient.listAllPackages({ category: 'esim', package_type: 'data', is_active: true });
+      const unique = new Map<string, any>();
+      for (const p of packages) {
+        const rc = String((p.region || p)?.code || (p.region || p)?.name_en || '');
+        unique.set(rc + ':' + (p.id || p.pid), p);
       }
-      res.json({
-        code: 0,
-        data: { matched, total: localPackages.length, tigerTotal: items.length, results, unmatched },
-      });
+      res.json({ code: 0, data: { tigerTotal: unique.size, items: Array.from(unique.values()) } });
     } catch (e: any) {
       res.json({ code: 2, message: `同步失败：${e.message}` });
     }

@@ -9,7 +9,7 @@ export default (prisma: PrismaClient) => {
     const esims = await prisma.esim.findMany({
       where: { userId: req.userId },
       orderBy: { createdAt: 'desc' },
-      include: { order: { include: { package: { include: { country: true } } } } },
+      include: { order: true },
     });
     res.json({ code: 0, data: { esims } });
   });

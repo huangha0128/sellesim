@@ -22,38 +22,8 @@ model Country {
   intro         String
   tigerRegionId Int?      @map("tiger_region_id")
   iconUrl       String?   @map("icon_url")
-  packages      Package[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
-}
-
-model Package {
-  id           String   @id @default(uuid())
-  countryCode  String
-  country      Country  @relation(fields: [countryCode], references: [code])
-  gb           Int
-  days         Int
-  price        Float
-  network      String   @default("4G/5G")
-  speed        String
-  coverage     String
-  type         String
-  tag          String?
-  tagColor     String?
-  tigerPkgId   Int?     @map("tiger_pkg_id")
-  tigerPid     String?  @map("tiger_pid")
-  tigerRaw     String?  @map("tiger_raw")
-  name         String?
-  isFeatured   Boolean  @default(false) @map("is_featured")
-  desc         String
-  features     String
-  installSteps String
-  orders       Order[]
-  esims        Esim[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  @@unique([countryCode, gb, days])
 }
 
 model User {
@@ -72,7 +42,12 @@ model Order {
   id            String    @id @default(uuid())
   orderNo       String    @unique
   pkgId         String
-  package       Package   @relation(fields: [pkgId], references: [id])
+  countryCode   String?   @map("country_code")
+  pkgName       String?   @map("pkg_name")
+  gb            Int?
+  days          Int?
+  tigerPkgId    Int?      @map("tiger_pkg_id")
+  tigerPid      String?   @map("tiger_pid")
   userId        String?   @map("user_id")
   user          User?     @relation(fields: [userId], references: [id])
   email         String
@@ -96,8 +71,6 @@ model Esim {
   id             String    @id @default(uuid())
   orderId        String    @unique
   order          Order     @relation(fields: [orderId], references: [id])
-  pkgId          String
-  package        Package   @relation(fields: [pkgId], references: [id])
   userId         String?   @map("user_id")
   user           User?     @relation(fields: [userId], references: [id])
   activationCode String
@@ -109,6 +82,10 @@ model Esim {
   used           Float     @default(0)
   gb             Int?      @default(0) // cumulative gb snapshot
   days           Int?      @default(0) // cumulative days snapshot
+  pkgName        String?   @map("pkg_name")
+  countryCode    String?   @map("country_code")
+  tigerPkgId     Int?      @map("tiger_pkg_id")
+  tigerPid       String?   @map("tiger_pid")
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 }

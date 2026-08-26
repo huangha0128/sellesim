@@ -41,8 +41,8 @@ export async function renewEsim(
   pkg: any,
   targetEsim: any,
 ): Promise<any> {
-  const curGb = targetEsim?.gb ?? targetEsim?.package?.gb ?? 0;
-  const curDays = targetEsim?.days ?? targetEsim?.package?.days ?? 0;
+  const curGb = targetEsim?.gb ?? 0;
+  const curDays = targetEsim?.days ?? 0;
   const gbAfter = curGb + (pkg?.gb || 0);
   const daysAfter = curDays + (pkg?.days || 0);
   const expireAt = expireAfterRenew(targetEsim?.expireAt, pkg?.days || 7);
@@ -82,7 +82,7 @@ export async function changeEsim(
     // 先通过 listCardPackages 定位旧套餐绑定记录，删除旧绑定（宽容处理失败）
     try {
       const oldPkgIds: number[] = [];
-      const oldTigerPkgId = targetEsim?.package?.tigerPkgId;
+      const oldTigerPkgId = targetEsim?.tigerPkgId ?? order?.tigerPkgId;
       if (oldTigerPkgId) oldPkgIds.push(Number(oldTigerPkgId));
       const all = await tigerClient.listCardPackages(targetEsim.iccid, { limit: 500 });
       const binds: any[] = all?.data?.items || all?.items || all || [];
@@ -105,7 +105,6 @@ export async function changeEsim(
     return prisma.esim.update({
       where: { id: targetEsim.id },
       data: {
-        pkgId: order.pkgId,
         gb: pkg?.gb || 0,
         days: pkg?.days || 0,
         expireAt,
@@ -113,6 +112,10 @@ export async function changeEsim(
         activationCode,
         smdp: info?.smdp || targetEsim.smdp,
         iccid: info?.iccid || targetEsim.iccid,
+        countryCode: pkg?.countryCode || targetEsim.countryCode,
+        pkgName: pkg?.name || targetEsim.pkgName,
+        tigerPkgId: Number(pkg?.tigerPkgId || 0) || targetEsim.tigerPkgId,
+        tigerPid: pkg?.tigerPid || targetEsim.tigerPid,
       },
     });
   }
@@ -121,11 +124,14 @@ export async function changeEsim(
   return prisma.esim.update({
     where: { id: targetEsim.id },
     data: {
-      pkgId: order.pkgId,
       gb: pkg?.gb || 0,
       days: pkg?.days || 0,
       expireAt,
       used: 0,
+      countryCode: pkg?.countryCode || targetEsim.countryCode,
+      pkgName: pkg?.name || targetEsim.pkgName,
+      tigerPkgId: Number(pkg?.tigerPkgId || 0) || targetEsim.tigerPkgId,
+      tigerPid: pkg?.tigerPid || targetEsim.tigerPid,
     },
   });
 }

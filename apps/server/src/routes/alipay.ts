@@ -60,14 +60,13 @@ export default (prisma: PrismaClient) => {
         },
       });
 
-      const pkg = await prisma.package.findUnique({ where: { id: order.pkgId } });
       try {
-        const esimData = await provisionEsim(prisma, order, pkg);
+        const esimData = await provisionEsim(prisma, updated);
         await prisma.esim.create({ data: { ...esimData, userId: order.userId } });
         console.log(`[alipay] 订单 ${outTradeNo} 支付成功，eSIM 已下发`);
 
         // 发送激活码邮件（非阻塞，失败不影响下单结果）
-        sendEsimEmailSafe(prisma, order, pkg, esimData).catch((e) =>
+        sendEsimEmailSafe(order, esimData).catch((e) =>
           console.error(`[email] 订单 ${outTradeNo} 邮件发送失败：`, e.message),
         );
       } catch (e: any) {
@@ -85,15 +84,15 @@ export default (prisma: PrismaClient) => {
 };
 
 /** 发送激活码邮件（安全包装，失败只打日志） */
-async function sendEsimEmailSafe(prisma: PrismaClient, order: any, pkg: any, esimData: any) {
+async function sendEsimEmailSafe(order: any, esimData: any) {
   if (!order.email) return;
-  const country = pkg?.country?.name_cn || pkg?.countryCode || '';
+  const country = order.countryCode || '';
   await sendEsimEmail({
     to: order.email,
     orderNo: order.orderNo,
     countryName: country,
-    gb: pkg?.gb || 0,
-    days: pkg?.days || 0,
+    gb: order.gb || 0,
+    days: order.days || 0,
     activationCode: esimData.activationCode,
     iccid: esimData.iccid,
     expireAt: esimData.expireAt,

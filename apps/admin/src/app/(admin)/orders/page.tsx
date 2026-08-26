@@ -121,15 +121,8 @@ export default function OrdersPage() {
                       <TableCell className="font-mono text-[12.5px]">{o.orderNo}</TableCell>
                       <TableCell>
                         <span className="inline-flex items-center gap-1.5">
-                          {o.package?.country?.flag && (
-                            <img
-                              src={o.package.country.flag}
-                              alt=""
-                              className="h-4 w-6 rounded-sm object-cover"
-                            />
-                          )}
                           <span>
-                            {o.package?.country?.name} {o.package?.gb}GB/{o.package?.days}天
+                            {o.pkgName || o.countryCode || '—'} {o.gb ? `${o.gb}GB/` : ''}{o.days ? `${o.days}天` : ''}
                           </span>
                         </span>
                       </TableCell>

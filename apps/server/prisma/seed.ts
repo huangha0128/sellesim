@@ -51,22 +51,7 @@ const REGIONS = [
   { code: 'OCEANIA', name: '大洋洲多国', en: 'Oceania', flag: '🏝️', pinyin: 'dayangzhou', hot: 71, tier: 3, cat: '全球', intro: '澳新及太平洋群岛' },
 ];
 
-const TIER_MULT: Record<number, number> = { 1: 1, 2: 1.15, 3: 1.4, 4: 1.75 };
-const BASE_PLANS = [
-  { gb: 1, days: 7, base: 12.9, tag: '超值', tagColor: '#14B8A6' },
-  { gb: 3, days: 7, base: 22.9, tag: '热销', tagColor: '#FF7A59' },
-  { gb: 5, days: 15, base: 34.9, tag: '', tagColor: '' },
-  { gb: 10, days: 30, base: 59.9, tag: '热销', tagColor: '#FF7A59' },
-  { gb: 20, days: 30, base: 94.9, tag: '大流量', tagColor: '#0EA5E9' },
-];
-const REGION_PLAN_PRICES: Record<string, number[]> = {
-  GLOBAL: [24.9, 44.9, 69.9, 119.9, 189.9],
-  ASIA: [19.9, 34.9, 54.9, 94.9, 149.9],
-  EUROPE: [19.9, 36.9, 57.9, 99.9, 159.9],
-  AMERICAS: [19.9, 38.9, 59.9, 99.9, 164.9],
-  OCEANIA: [19.9, 36.9, 57.9, 99.9, 159.9],
-};
-
+// 套餐数据不再本地存储：统一从 TigerESIM 实时获取，seed 只播种国家/区域
 async function main() {
   console.log('开始播种数据...');
   const all = [...COUNTRIES, ...REGIONS];
@@ -78,54 +63,6 @@ async function main() {
       create: c,
     });
     console.log(`  国家/区域：${c.name} (${c.code})`);
-
-    const isRegion = c.cat === '全球';
-    const regionPrices = REGION_PLAN_PRICES[c.code];
-
-    for (const p of BASE_PLANS) {
-      const price = isRegion
-        ? regionPrices[BASE_PLANS.indexOf(p)]
-        : Math.round(p.base * TIER_MULT[c.tier] * 10) / 10;
-      await prisma.package.upsert({
-        where: {
-          countryCode_gb_days: { countryCode: c.code, gb: p.gb, days: p.days },
-        },
-        update: {
-          price,
-          tag: p.tag,
-          tagColor: p.tagColor,
-          type: isRegion ? '区域套餐' : '本地套餐',
-        },
-        create: {
-          countryCode: c.code,
-          gb: p.gb,
-          days: p.days,
-          price,
-          network: '4G/5G',
-          speed: '高速',
-          coverage: isRegion ? `${c.name}区域覆盖` : `${c.name}全国覆盖`,
-          type: isRegion ? '区域套餐' : '本地套餐',
-          tag: p.tag,
-          tagColor: p.tagColor,
-          desc: isRegion
-            ? `${c.name}通用数据套餐，跨区漫游免切换，${p.gb}GB 流量 ${p.days} 天有效。`
-            : `${c.name}本地数据套餐，${p.gb}GB 流量 ${p.days} 天有效，即买即用免激活费。`,
-          features: JSON.stringify([
-            '即买即用，扫码秒激活',
-            '全程高速 4G/5G 网络',
-            '可开热点，多人共享',
-            '无需实名，无需换卡',
-          ]),
-          installSteps: JSON.stringify([
-            '购买后复制二维码下方的激活码',
-            '手机设置 → 蜂窝网络 → 添加 eSIM',
-            '扫码或输入激活码完成安装',
-            '到达目的地后开启数据漫游即用',
-          ]),
-        },
-      });
-    }
-    console.log(`    套餐：5 档`);
   }
 
   console.log('播种完成！');

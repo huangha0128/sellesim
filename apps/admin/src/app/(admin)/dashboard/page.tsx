@@ -104,7 +104,7 @@ export default function DashboardPage() {
                     <TableRow key={o.id}>
                       <TableCell className="font-mono text-[12.5px]">{o.orderNo}</TableCell>
                       <TableCell>
-                        {o.package?.country?.flag} {o.package?.country?.name} {o.package?.gb}GB
+                        {o.pkgName || o.countryCode || '—'} {o.gb ? `${o.gb}GB` : ''}
                       </TableCell>
                       <TableCell>¥{o.price}</TableCell>
                       <TableCell>
@@ -138,7 +138,7 @@ export default function DashboardPage() {
                   {esims.map((e) => (
                     <TableRow key={e.id}>
                       <TableCell>
-                        {e.order?.package?.country?.flag} {e.order?.package?.country?.name}
+                        {e.pkgName || e.countryCode || e.order?.countryCode || '—'}
                       </TableCell>
                       <TableCell className="font-mono text-[12.5px]">{e.iccid}</TableCell>
                       <TableCell>

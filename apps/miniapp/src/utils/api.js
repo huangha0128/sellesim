@@ -118,26 +118,23 @@ export const api = {
 
   async getOrders() {
     const res = await request('GET', '/orders');
-    res.data.orders = (res.data.orders || []).map((o) => {
-      const pkg = o.package || {};
-      const c = (pkg.country) || {};
-      return {
-        id: o.id,
-        orderNo: o.orderNo,
-        pkgId: o.pkgId,
-        email: o.email,
-        payMethod: o.payMethod,
-        status: o.status,
-        price: o.price,
-        paidAt: o.paidAt,
-        createdAt: o.createdAt,
-        countryName: c.name || pkg.countryCode || '未知',
-        countryCode: pkg.countryCode,
-        gb: pkg.gb,
-        days: pkg.days,
-        flag: c.flag,
-      };
-    });
+    // 订单自带套餐快照字段（countryCode/pkgName/gb/days），不再嵌套 package
+    res.data.orders = (res.data.orders || []).map((o) => ({
+      id: o.id,
+      orderNo: o.orderNo,
+      pkgId: o.pkgId,
+      email: o.email,
+      payMethod: o.payMethod,
+      status: o.status,
+      price: o.price,
+      paidAt: o.paidAt,
+      createdAt: o.createdAt,
+      countryName: o.pkgName || o.countryCode || '未知',
+      countryCode: o.countryCode,
+      gb: o.gb,
+      days: o.days,
+      flag: o.countryCode || '',
+    }));
     return res;
   },
 
@@ -155,9 +152,9 @@ export const api = {
 
   async getMyEsims() {
     const res = await request('GET', '/esims');
+    // eSIM 自带套餐快照字段（countryCode/pkgName/gb/days），不再嵌套 package
     res.data.esims = (res.data.esims || []).map((e) => {
-      const pkg = (e.order && e.order.package) || {};
-      const c = pkg.country || {};
+      const o = e.order || {};
       return {
         id: e.id,
         activationCode: e.activationCode,
@@ -167,13 +164,13 @@ export const api = {
         used: e.used,
         expireAt: e.expireAt,
         pkg: {
-          id: pkg.id,
-          countryCode: pkg.countryCode,
-          countryName: c.name,
-          flag: c.flag,
-          gb: e.gb ?? pkg.gb,
-          days: e.days ?? pkg.days,
-          price: pkg.price,
+          id: e.orderId || e.id,
+          countryCode: e.countryCode || o.countryCode || '',
+          countryName: e.pkgName || o.pkgName || e.countryCode || o.countryCode || '未知',
+          flag: e.countryCode || '',
+          gb: e.gb ?? o.gb ?? 0,
+          days: e.days ?? o.days ?? 0,
+          price: o.price ?? 0,
         },
       };
     });

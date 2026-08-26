@@ -193,6 +193,28 @@ export class TigerClient {
     return items;
   }
 
+  /** POST /api/package 创建套餐（TigerESIM 仅提供新增能力，无修改/删除接口） */
+  async createPackage(params: {
+    name: string;
+    amount: number; // MB
+    valid_days: number;
+    region_id: number;
+    sales: number;
+    package_type?: string;
+    description?: string;
+  }) {
+    const body: Record<string, unknown> = {
+      name: params.name,
+      amount: Number(params.amount || 0),
+      valid_days: Number(params.valid_days || 1),
+      region_id: Number(params.region_id || 0),
+      sales: Number(params.sales || 0),
+      package_type: params.package_type || 'data',
+    };
+    if (params.description) body.description = params.description;
+    return this.authed('/api/package', { method: 'POST', body: JSON.stringify(body) });
+  }
+
   /** GET /api/card 查询卡片列表 */
   async listCards(params: { category?: string; iccid?: string; index?: number; limit?: number } = {}) {
     const qs = new URLSearchParams();

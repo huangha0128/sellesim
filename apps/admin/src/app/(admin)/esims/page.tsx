@@ -65,10 +65,7 @@ export default function EsimsPage() {
                   <TableRow key={e.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {e.order?.package?.country?.flag && (
-                          <img src={e.order.package.country.flag} alt={e.order.package.country.name} className="h-4 w-6 rounded-sm object-cover" />
-                        )}
-                        <span className="font-medium text-ink">{e.order?.package?.country?.name}</span>
+                        <span className="font-medium text-ink">{e.pkgName || e.countryCode || e.order?.countryCode || '—'}</span>
                       </div>
                     </TableCell>
                     <TableCell className="font-mono text-[12.5px]">{e.iccid}</TableCell>

@@ -1,20 +1,34 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { tigerClient } from '../tiger';
+
+/** 实时统计每个国家/区域的 Tiger 可售套餐数（套餐不落本地库） */
+async function buildPkgCountMap(): Promise<Map<string, number>> {
+  const map = new Map<string, number>();
+  if (!tigerClient.configured) return map;
+  try {
+    const { listAllPackagesView } = await import('../tiger/view');
+    for (const p of await listAllPackagesView()) {
+      map.set(p.countryCode, (map.get(p.countryCode) || 0) + 1);
+    }
+  } catch {
+    /* 拉取失败保持 0 */
+  }
+  return map;
+}
 
 export default (prisma: PrismaClient) => {
   const router = Router();
 
   router.get('/', async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 0;
-    const countries = await prisma.country.findMany({
-      include: { _count: { select: { packages: true } } },
-      orderBy: { code: 'asc' },
-    });
+    const countries = await prisma.country.findMany({ orderBy: { code: 'asc' } });
+    const pkgCountMap = await buildPkgCountMap();
     const enriched = countries
       .map((c: any) => {
-        const hot = (c as any).hot || (c as any)._count.packages;
-        const { _count, ...rest } = c;
-        return { ...rest, hot: Number(hot) || 0, packageCount: _count.packages };
+        const packageCount = pkgCountMap.get(c.code) || 0;
+        const hot = Number(c.hot) || packageCount;
+        return { ...c, hot: Number(hot) || 0, packageCount };
       })
       .sort((a: any, b: any) => b.hot - a.hot || a.code.localeCompare(b.code));
     res.json({ code: 0, data: { countries: limit ? enriched.slice(0, limit) : enriched } });
@@ -22,16 +36,14 @@ export default (prisma: PrismaClient) => {
 
   router.get('/hot', async (req: Request, res: Response) => {
     const limit = parseInt(req.query.limit as string) || 10;
-    const countries = await prisma.country.findMany({
-      where: { cat: { not: '全球' } },
-      include: { _count: { select: { packages: true } } },
-    });
+    const countries = await prisma.country.findMany({ where: { cat: { not: '全球' } } });
+    const pkgCountMap = await buildPkgCountMap();
     const enriched = countries
-      .filter((c: any) => (c as any)._count.packages > 0)
       .map((c: any) => {
-        const { _count, ...rest } = c;
-        return { ...rest, hot: (c as any).hot || _count.packages, packageCount: _count.packages };
+        const packageCount = pkgCountMap.get(c.code) || 0;
+        return { ...c, hot: Number(c.hot || 0) || packageCount, packageCount };
       })
+      .filter((c: any) => c.packageCount > 0)
       .sort((a: any, b: any) => b.packageCount - a.packageCount || b.hot - a.hot)
       .slice(0, limit);
     res.json({ code: 0, data: { countries: enriched } });

@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { NumberField } from '@/components/NumberField';
 import { EmptyState } from '@/components/EmptyState';
@@ -53,47 +52,21 @@ import {
 } from '@/components/ui/alert-dialog';
 import { adminApi, unwrap, getErrorMessage, type PackageItem } from '@/api';
 
-// ---------- 筛选条件(UTF-8,避免乱码) ----------
-const TYPE_OPTIONS = ['本地套餐', '多国通用', '区域套餐'];
-
+// 套餐表单字段与 TigerESIM 创建套餐接口对齐：name / amount(GB) / valid_days / region_id / sales / package_type
 interface PackageForm {
-  countryCode: string;
-  gb: number;
-  days: number;
-  price: number;
   name: string;
-  type: string;
-  network: string;
-  speed: string;
-  coverage: string;
-  tag: string;
-  tagColor: string;
-  desc: string;
-  isFeatured: boolean;
-  features: string;
-  installSteps: string;
-  tigerPkgId: number | null;
-  tigerPid: string;
+  countryCode: string;
+  gb: number; // amount，单位 GB
+  days: number; // valid_days
+  price: number; // sales
 }
 
 const defaultForm: PackageForm = {
+  name: '',
   countryCode: '',
   gb: 1,
   days: 7,
   price: 0,
-  name: '',
-  type: '本地套餐',
-  network: '4G/5G',
-  speed: '高速',
-  coverage: '',
-  tag: '',
-  tagColor: '',
-  desc: '',
-  isFeatured: false,
-  features: '[]',
-  installSteps: '[]',
-  tigerPkgId: null,
-  tigerPid: '',
 };
 
 export default function PackagesPage() {
@@ -112,6 +85,8 @@ export default function PackagesPage() {
   const [form, setForm] = useState<PackageForm>(defaultForm);
   const [saving, setSaving] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<PackageItem | null>(null);
+  // 关联了 TigerESIM 的套餐，编辑/删除时提示前往 Tiger 后台操作
+  const [tigerReminder, setTigerReminder] = useState<{ name: string; action: string } | null>(null);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
@@ -144,74 +119,35 @@ export default function PackagesPage() {
   };
 
   const openAdd = () => {
-    setEditing(null);
     setForm(defaultForm);
     setOpen(true);
   };
 
   const openEdit = (p: PackageItem) => {
-    setEditing(p);
-    setForm({
-      countryCode: p.countryCode || '',
-      gb: p.gb || 1,
-      days: p.days || 7,
-      price: p.price || 0,
-      name: p.name || '',
-      type: p.type || '本地套餐',
-      network: p.network || '4G/5G',
-      speed: p.speed || '高速',
-      coverage: p.coverage || '',
-      tag: p.tag || '',
-      tagColor: p.tagColor || '',
-      desc: p.desc || '',
-      isFeatured: !!p.isFeatured,
-      features: p.features || '[]',
-      installSteps: p.installSteps || '[]',
-      tigerPkgId: p.tigerPkgId ?? null,
-      tigerPid: p.tigerPid || '',
-    });
-    setOpen(true);
+    // 所有套餐均实时来自 TigerESIM，本地不支持修改，统一引导前往 Tiger 后台
+    setTigerReminder({ name: `${p.country?.name || p.countryCode} ${p.gb}GB/${p.days}天`, action: '编辑' });
   };
 
   const save = async () => {
-    if (!form.countryCode) return toast.warning('请输入国家代码');
+    if (!form.countryCode) return toast.warning('请输入国家/区域代码');
     if (form.gb < 1) return toast.warning('流量必须大于 0');
     if (form.days < 1) return toast.warning('有效期必须大于 0');
     if (form.price < 0) return toast.warning('价格不能为负数');
-    try {
-      JSON.parse(form.features);
-      JSON.parse(form.installSteps);
-    } catch {
-      return toast.warning('特性列表和安装步骤必须是有效的 JSON 数组');
-    }
 
     setSaving(true);
+    // 直调 TigerESIM 创建套餐（字段与 createPackage 接口一致）
     const data = {
-      countryCode: form.countryCode,
+      name: form.name || `${form.countryCode} ${form.gb}GB/${form.days}天`,
+      countryCode: form.countryCode.toUpperCase(),
       gb: form.gb,
       days: form.days,
       price: form.price,
-      name: form.name || `${form.countryCode} ${form.gb}GB/${form.days}天`,
-      type: form.type,
-      network: form.network,
-      speed: form.speed,
-      coverage: form.coverage || `${form.countryCode}覆盖`,
-      tag: form.tag,
-      tagColor: form.tagColor,
-      desc: form.desc || `${form.gb}GB 流量，${form.days} 天有效`,
-      isFeatured: form.isFeatured,
-      features: form.features,
-      installSteps: form.installSteps,
-      tigerPkgId: form.tigerPkgId,
-      tigerPid: form.tigerPid,
+      package_type: 'data',
     };
     try {
-      if (editing) {
-        await adminApi.updatePackage(editing.id, data);
-      } else {
-        await adminApi.createPackage(data);
-      }
-      toast.success('保存成功');
+      const res = await adminApi.createPackage(data);
+      const body = unwrap<{ tigerPkgId: number }>(res);
+      toast.success(`已通过 TigerESIM 创建真实套餐（Tiger ID: ${body.data.tigerPkgId}）`);
       setOpen(false);
       load();
     } catch (e) {
@@ -361,7 +297,16 @@ export default function PackagesPage() {
                         <Button size="sm" variant="ghost" onClick={() => openEdit(p)}>
                           编辑
                         </Button>
-                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(p)}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() =>
+                            p.tigerPkgId
+                              ? setTigerReminder({ name: `${p.country?.name || p.countryCode} ${p.gb}GB/${p.days}天`, action: '删除' })
+                              : setDeleteTarget(p)
+                          }
+                        >
                           删除
                         </Button>
                       </TableCell>
@@ -433,101 +378,29 @@ export default function PackagesPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-h-[88vh] max-w-2xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editing ? '编辑套餐' : '添加套餐'}</DialogTitle>
+            <DialogTitle>添加套餐（直调 TigerESIM 创建）</DialogTitle>
           </DialogHeader>
 
-          <Section title="基础信息" />
+          <div className="rounded-lg border border-dashed bg-muted/40 px-4 py-3 text-[12px] text-muted-foreground">
+            套餐数据以 TigerESIM 为准，创建后将实时生效，本地不存储套餐数据。
+          </div>
+
+          <Section title="Tiger 套餐信息" />
           <div className="grid grid-cols-2 gap-4">
-            <Field label="国家代码">
-              <Input value={form.countryCode} disabled={!!editing} onChange={(e) => setForm({ ...form, countryCode: e.target.value })} placeholder="如 JP、US、GLOBAL" />
+            <Field label="套餐名称">
+              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="如 Japan 1GB 30Days" />
             </Field>
-            <Field label="是否精选">
-              <div className="flex h-9 items-center">
-                <Switch checked={form.isFeatured} onCheckedChange={(v) => setForm({ ...form, isFeatured: v })} />
-                <span className="ml-2 text-[12px] text-muted-foreground">精选套餐会优先展示</span>
-              </div>
+            <Field label="所属国家/区域代码">
+              <Input value={form.countryCode} onChange={(e) => setForm({ ...form, countryCode: e.target.value })} placeholder="如 JP、US、GLOBAL" />
             </Field>
-            <Field label="流量 (GB)">
+            <Field label="容量 (GB)">
               <NumberField value={form.gb} onChange={(v) => setForm({ ...form, gb: v })} min={1} max={1000} />
             </Field>
             <Field label="有效期 (天)">
               <NumberField value={form.days} onChange={(v) => setForm({ ...form, days: v })} min={1} max={365} />
             </Field>
-            <Field label="价格 (¥)">
+            <Field label="售价 (¥)">
               <NumberField value={form.price} onChange={(v) => setForm({ ...form, price: v })} min={0} precision={2} step={0.1} />
-            </Field>
-          </div>
-
-          <Section title="套餐详情" />
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="套餐名称">
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="套餐显示名称" />
-            </Field>
-            <Field label="套餐类型">
-              <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v })}>
-                <SelectTrigger>
-                  <SelectValue placeholder="选择类型" />
-                </SelectTrigger>
-                <SelectContent>
-                  {TYPE_OPTIONS.map((t) => (
-                    <SelectItem key={t} value={t}>
-                      {t}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-            <Field label="网络类型">
-              <Input value={form.network} onChange={(e) => setForm({ ...form, network: e.target.value })} placeholder="如 4G/5G" />
-            </Field>
-            <Field label="速度描述">
-              <Input value={form.speed} onChange={(e) => setForm({ ...form, speed: e.target.value })} placeholder="如 高速" />
-            </Field>
-            <Field label="覆盖范围">
-              <Input value={form.coverage} onChange={(e) => setForm({ ...form, coverage: e.target.value })} placeholder="如 日本覆盖" />
-            </Field>
-            <div className="col-span-2">
-              <Field label="套餐描述">
-                <Textarea value={form.desc} rows={2} onChange={(e) => setForm({ ...form, desc: e.target.value })} />
-              </Field>
-            </div>
-          </div>
-
-          <Section title="标签与特性" />
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="标签">
-              <Input value={form.tag} onChange={(e) => setForm({ ...form, tag: e.target.value })} placeholder="如 热门、推荐" />
-            </Field>
-            <Field label="标签颜色">
-              <div className="flex h-9 items-center gap-2">
-                <input
-                  type="color"
-                  value={form.tagColor || '#6f8f8b'}
-                  onChange={(e) => setForm({ ...form, tagColor: e.target.value })}
-                  className="h-8 w-12 cursor-pointer rounded-md border border-input bg-background p-0.5"
-                />
-                <span className="font-mono text-[12px] text-muted-foreground">{form.tagColor || '#6f8f8b'}</span>
-              </div>
-            </Field>
-            <div className="col-span-2">
-              <Field label="特性列表">
-                <Textarea value={form.features} rows={2} onChange={(e) => setForm({ ...form, features: e.target.value })} placeholder='JSON 数组格式，如 ["特性1","特性2"]' />
-              </Field>
-            </div>
-            <div className="col-span-2">
-              <Field label="安装步骤">
-                <Textarea value={form.installSteps} rows={2} onChange={(e) => setForm({ ...form, installSteps: e.target.value })} placeholder='JSON 数组格式，如 ["步骤1","步骤2"]' />
-              </Field>
-            </div>
-          </div>
-
-          <Section title="Tiger 关联" />
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Tiger 套餐 ID">
-              <NumberField value={form.tigerPkgId ?? 0} onChange={(v) => setForm({ ...form, tigerPkgId: v })} min={0} />
-            </Field>
-            <Field label="Tiger PID">
-              <Input value={form.tigerPid} onChange={(e) => setForm({ ...form, tigerPid: e.target.value })} placeholder="Tiger 系统中的产品 ID" />
             </Field>
           </div>
 
@@ -536,7 +409,7 @@ export default function PackagesPage() {
               取消
             </Button>
             <Button onClick={save} disabled={saving}>
-              {saving ? '保存中…' : '保存'}
+              {saving ? '创建中…' : '创建套餐'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -556,6 +429,26 @@ export default function PackagesPage() {
             <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={confirmDelete}>
               确认删除
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Tiger 关联套餐：编辑/删除提醒，需前往 TigerESIM 后台操作 */}
+      <AlertDialog open={!!tigerReminder} onOpenChange={(o) => !o && setTigerReminder(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>无法在本地上{tigerReminder?.action === '编辑' ? '修改' : '删除'}该套餐</AlertDialogTitle>
+            <AlertDialogDescription>
+              「{tigerReminder?.name}」来自 TigerESIM，套餐数据以 TigerESIM 后台为准。
+              <br />
+              <br />
+              由于 TigerESIM 仅提供新增套餐接口，不提供本地{tigerReminder?.action === '编辑' ? '修改/删除' : '删除'}能力，请前往{' '}
+              <span className="font-medium text-ink">TigerESIM 管理后台</span> 完成{tigerReminder?.action === '编辑' ? '修改' : '删除'}操作，
+              再回到本页点击「从 Tiger 导入」同步数据。
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction>知道了</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -108,8 +108,7 @@ export default {
       const res = await api.getOrder(this.orderNo)
       if (res.code === 0 && res.data.order) {
         const o = res.data.order
-        const pkg = o.package || {}
-        const c = pkg.country || {}
+        // 订单自带套餐快照字段，不再嵌套 package
         const order = {
           id: o.id,
           orderNo: o.orderNo,
@@ -120,11 +119,11 @@ export default {
           price: o.price,
           paidAt: o.paidAt,
           createdAt: o.createdAt,
-          countryName: c.name || pkg.countryCode || '未知',
-          countryCode: pkg.countryCode,
-          gb: pkg.gb,
-          days: pkg.days,
-          flag: c.flag,
+          countryName: o.pkgName || o.countryCode || '未知',
+          countryCode: o.countryCode,
+          gb: o.gb,
+          days: o.days,
+          flag: o.countryCode || '',
         }
         store.updateOrder(this.orderNo, order)
         this.order = order
