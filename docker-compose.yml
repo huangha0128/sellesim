@@ -27,6 +27,14 @@ services:
       TIGER_BASE_URL: ${TIGER_BASE_URL:-https://partner.tigeresims.com}
       TIGER_SMDP_ADDRESS: ${TIGER_SMDP_ADDRESS:-}
       TIGER_ICCIDS: ${TIGER_ICCIDS:-}
+      # ---- SMTP 邮件通知（支付成功/退款时向用户邮箱发送邮件）----
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-YYeSim}
     ports:
       - "${SERVER_PORT:-6501}:6660"
     volumes:

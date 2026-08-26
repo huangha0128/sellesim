@@ -55,6 +55,7 @@ export function tigerToView(t: any): any {
   return {
     id: String(t.id ?? t.pid ?? ''),
     countryCode: code,
+    countryName: regionName,
     gb,
     days,
     price,

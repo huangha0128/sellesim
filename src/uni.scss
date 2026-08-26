@@ -1,0 +1,45 @@
+/* YYeSim 设计变量 - 清新旅行风 */
+
+/* 品牌色 */
+$brand: #0EA5E9;
+$brand-deep: #0369A1;
+$brand-darker: #075985;
+$brand-light: #E0F2FE;
+$brand-lighter: #F0F9FF;
+
+/* 强调色 */
+$coral: #FF7A59;
+$coral-light: #FFEFE9;
+$teal: #14B8A6;
+$teal-light: #E6F7F5;
+$sun: #FBBF24;
+$sun-light: #FEF5E0;
+
+/* 文字色 */
+$ink: #0F2A43;
+$ink-2: #5B7A95;
+$ink-3: #93AFC8;
+
+/* 背景 / 卡片 */
+$bg-page: #F4FAFF;
+$bg-card: #FFFFFF;
+$bg-soft: #EAF4FC;
+$line: #E3EEF7;
+
+/* 圆角 / 阴影 */
+$radius-sm: 12rpx;
+$radius: 20rpx;
+$radius-lg: 28rpx;
+$radius-xl: 40rpx;
+$shadow-sm: 0 4rpx 16rpx rgba(15, 84, 140, 0.06);
+$shadow: 0 10rpx 36rpx rgba(15, 84, 140, 0.1);
+$shadow-brand: 0 12rpx 32rpx rgba(14, 165, 233, 0.35);
+
+/* 间距 */
+$gap: 24rpx;
+$page-pad: 32rpx;
+
+/* 渐变 */
+$gradient-brand: linear-gradient(135deg, #38BDF8 0%, #0EA5E9 55%, #0284C7 100%);
+$gradient-sky: linear-gradient(160deg, #E0F2FE 0%, #F4FAFF 60%, #FFFFFF 100%);
+$gradient-coral: linear-gradient(135deg, #FF9A76 0%, #FF7A59 100%);
