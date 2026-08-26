@@ -384,8 +384,10 @@ export default {
 }
 
 .tip-icon {
-  font-size: 28rpx;
-  margin-right: 12rpx;
+  width: 28rpx;
+  height: 28rpx;
+  margin: 4rpx 12rpx 0 0;
+  flex-shrink: 0;
 }
 
 .tip-txt {

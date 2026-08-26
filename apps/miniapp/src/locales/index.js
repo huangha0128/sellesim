@@ -48,12 +48,29 @@ export function t(key, named) {
   return interpolate(out, named)
 }
 
+// 读取原始消息数据。$t 只适用于字符串 message，遇到数组/对象会回退成 key 字符串，
+// 所以直接访问 messages。注意：i18n.global 在此运行时暴露的是 composer，locale/messages 均为 Ref，需用 .value。
+export function tRaw(key) {
+  try {
+    const msgs = i18n.global.messages.value
+    const pick = (dict) =>
+      key.split('.').reduce((o, k) => (o == null ? o : o[k]), dict)
+    const locale = i18n.global.locale.value
+    const val = pick(msgs[locale])
+    return val != null ? val : pick(msgs['zh-CN'])
+  } catch (e) {
+    return undefined
+  }
+}
+
 export function getLocale() {
   return i18n.global.locale.value
 }
 
 export function setLocale(locale) {
-  if (!i18n.global.availableLocales.includes(locale)) return
+  const available = i18n.global.availableLocales
+  const locales = Array.isArray(available) ? available : available.value
+  if (!locales.includes(locale)) return
   i18n.global.locale.value = locale
   try {
     uni.setStorageSync(LOCALE_KEY, locale)

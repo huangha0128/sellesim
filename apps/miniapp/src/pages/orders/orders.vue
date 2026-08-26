@@ -20,7 +20,7 @@
           <view class="oc-main">
             <view class="oc-title-row">
               <text class="oc-name">{{ fmt('checkout.skuName', { name: order.countryName }) }}</text>
-              <text class="oc-status" :class="order.status">{{ order.status === 'paid' ? fmt('orders.paid') : fmt('orders.pending') }}</text>
+              <text class="oc-status" :class="order.status">{{ statusText(order) }}</text>
             </view>
             <text class="oc-meta">{{ fmt('orders.meta', { gb: order.gb, days: order.days }) }}</text>
           </view>
@@ -85,6 +85,11 @@ export default {
   },
   methods: {
     formatDateTime,
+    statusText(order) {
+      if (order.status === 'paid') return this.fmt('orders.paid')
+      if (order.status === 'refunded') return this.fmt('orders.refunded')
+      return this.fmt('orders.pending')
+    },
     fmt(key, params) {
       return fmtNamed(translate(key, params), params)
     },
@@ -235,6 +240,11 @@ export default {
   &.pending {
     color: #D97706;
     background: $sun-light;
+  }
+
+  &.refunded {
+    color: $coral;
+    background: $coral-light;
   }
 }
 

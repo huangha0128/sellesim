@@ -189,6 +189,7 @@ export default {
     goBuy: '去购买',
     paid: '已支付',
     pending: '待支付',
+    refunded: '已退款',
     meta: '{gb}GB · {days}天有效',
     orderNoLabel: '订单号',
     createdAtLabel: '下单时间',

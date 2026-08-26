@@ -58,7 +58,7 @@
 </template>
 
 <script>
-import { setNavTitle } from '@/locales'
+import { setNavTitle, tRaw } from '@/locales'
 
 export default {
   data() {
@@ -80,19 +80,19 @@ export default {
     this.buildSteps()
   },
   created() {
+    // uni-app 编译后 methods/watch 无法引用外层 import 自由变量，
+    // 需挂到实例上，统一用 this.tRaw 访问
+    this.tRaw = tRaw
     this.buildFaqs()
     this.buildSteps()
   },
   methods: {
     buildFaqs() {
-      this.faqs = this.$t('guide.faqs')
+      this.faqs = this.tRaw('guide.faqs') || []
     },
     buildSteps() {
-      if (this.platform === 'ios') {
-        this.steps = this.$t('guide.stepsIos')
-      } else {
-        this.steps = this.$t('guide.stepsAndroid')
-      }
+      const key = this.platform === 'ios' ? 'guide.stepsIos' : 'guide.stepsAndroid'
+      this.steps = this.tRaw(key) || []
     },
     toggleFaq(i) {
       this.openFaq = this.openFaq === i ? -1 : i

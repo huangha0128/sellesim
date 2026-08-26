@@ -189,6 +189,7 @@ export default {
     goBuy: 'Go Buy',
     paid: 'Paid',
     pending: 'Pending',
+    refunded: 'Refunded',
     meta: '{gb}GB · valid for {days} days',
     orderNoLabel: 'Order No.',
     createdAtLabel: 'Order Time',
