@@ -229,6 +229,21 @@ export class TigerClient {
     });
   }
 
+  /**
+   * 通过 GET /api/card 查询卡片，返回该卡激活信息（含官方新版 installation 二维码）。
+   * 官方已把激活码/二维码迁移到卡片查询接口（installation.qrcode），
+   * 绑定套餐后若绑定响应未返回激活码，应使用本接口兜底获取。
+   * 注意：官方接口 limit 最小值为 5，传更小值会返回 422。
+   */
+  async getCardActivation(iccid: string) {
+    const res = await this.listCards({ iccid, limit: 5 });
+    const data = res?.data || res || {};
+    const items: any[] = data.items || [];
+    const card = items.find((it) => String(it.iccid || it.iccid_number) === String(iccid));
+    if (!card) return null;
+    return extractEsimInfo(card, this.config.smdpAddress);
+  }
+
   /** DELETE /api/card/package/{pk} 删除指定卡套餐 */
   async deleteCardPackage(pk: number) {
     return this.authed(`/api/card/package/${pk}`, { method: 'DELETE' });
@@ -243,7 +258,7 @@ export class TigerClient {
   }
 }
 
-/** 从 Tiger 绑定套餐的返回 data 中提取 eSIM 激活信息 */
+/** 从 Tiger 绑定/卡片查询返回中提取 eSIM 激活信息（支持官方新版 installation 嵌套结构） */
 export function extractEsimInfo(data: any, smdpAddress = ''): { iccid: string; smdp: string; activationCode: string } | null {
   if (!data || typeof data !== 'object') return null;
   const pick = (...keys: string[]) => {
@@ -254,8 +269,18 @@ export function extractEsimInfo(data: any, smdpAddress = ''): { iccid: string; s
   };
 
   const iccid = pick('iccid', 'iccid_number', 'iccidNumber', 'card_iccid');
-  const smdp = pick('smdp_address', 'smdpAddress', 'smdp', 'sm_dp_plus') || smdpAddress || 'smdp.tigeresims.com';
+  let smdp = pick('smdp_address', 'smdpAddress', 'smdp', 'sm_dp_plus') || smdpAddress || 'smdp.tigeresims.com';
   let code = pick('activation_code', 'activationCode', 'lpa', 'lpa_code', 'lpaCode', 'qr_code', 'qrCode', 'match_code', 'confirmation_code');
+
+  // 官方新版结构（卡片查询接口）：installation: { qrcode, address, key, apple }
+  const inst = data.installation;
+  if (inst && typeof inst === 'object') {
+    if (inst.address) smdp = String(inst.address);
+    if (!code) {
+      code = String(inst.qrcode || inst.qr_code || inst.activation_code || inst.key || '') || undefined;
+    }
+  }
+
   if (!code) return null;
   if (!code.startsWith('LPA:')) {
     code = `LPA:1$${smdp}$${code}`;

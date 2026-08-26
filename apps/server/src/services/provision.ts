@@ -39,10 +39,15 @@ export async function provisionEsim(prisma: PrismaClient, order: any, pkg: any):
       tigerPkgId = Number(matched.pid || matched.id);
     }
     const bindRes = await tigerClient.bindPackage(iccid, tigerPkgId);
-    const info = extractEsimInfo(bindRes?.data, process.env.TIGER_SMDP_ADDRESS);
+    let info = extractEsimInfo(bindRes?.data, process.env.TIGER_SMDP_ADDRESS);
     if (!info || !info.activationCode) {
-      console.error('[tiger] 绑定成功但未能解析激活信息：', JSON.stringify(bindRes?.data));
-      throw new Error('Tiger 绑定套餐成功，但返回数据缺少激活码，请检查响应结构');
+      // 官方新版：绑定响应可能不含激活码，回退从卡片查询接口（GET /api/card）获取 installation 二维码
+      console.warn('[tiger] 绑定响应未含激活码，回退查询 GET /api/card 获取激活信息...');
+      info = await tigerClient.getCardActivation(iccid);
+    }
+    if (!info || !info.activationCode) {
+      console.error('[tiger] 绑定成功但无法获取激活信息：', JSON.stringify(bindRes?.data));
+      throw new Error('Tiger 绑定套餐成功，但无法获取激活码（绑定响应与卡片查询均无返回），请检查响应结构');
     }
     return {
       orderId: order.id,
