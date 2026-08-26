@@ -147,9 +147,13 @@ export default function PackagesPage() {
     try {
       const res = await adminApi.createPackage(data);
       const body = unwrap<{ tigerPkgId: number }>(res);
-      toast.success(`已通过 TigerESIM 创建真实套餐（Tiger ID: ${body.data.tigerPkgId}）`);
-      setOpen(false);
-      load();
+      if (body.code === 0) {
+        toast.success(`已通过 TigerESIM 创建真实套餐（Tiger ID: ${body.data.tigerPkgId}）`);
+        setOpen(false);
+        load();
+      } else {
+        toast.error(body.message || '新增套餐失败');
+      }
     } catch (e) {
       toast.error(getErrorMessage(e, '保存失败'));
     } finally {

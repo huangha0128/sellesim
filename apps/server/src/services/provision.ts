@@ -3,7 +3,6 @@ import { tigerClient, extractEsimInfo, getAvailableIccid } from '../tiger';
 
 export interface ProvisionResult {
   orderId: string;
-  pkgId: string;
   activationCode: string;
   iccid: string;
   smdp: string;
@@ -34,7 +33,6 @@ export async function provisionEsim(prisma: PrismaClient, order: any): Promise<P
     tigerPkgId: Number(order?.tigerPkgId || 0) || undefined,
     tigerPid: order?.tigerPid || '',
   };
-  const pkgId = String(order?.pkgId || '');
 
   if (tigerClient.configured) {
     const iccid = await getAvailableIccid(prisma);
@@ -66,7 +64,6 @@ export async function provisionEsim(prisma: PrismaClient, order: any): Promise<P
     }
     return {
       orderId: order.id,
-      pkgId,
       activationCode: info.activationCode,
       iccid: info.iccid || iccid,
       smdp: info.smdp,
@@ -86,7 +83,6 @@ export async function provisionEsim(prisma: PrismaClient, order: any): Promise<P
   const iccid = '89' + String(Date.now()).slice(-9) + String(Math.floor(Math.random() * 1e8)).padStart(8, '0');
   return {
     orderId: order.id,
-    pkgId,
     activationCode: `LPA:1$${smdp}$${rand()}-${rand()}-${rand()}`,
     iccid,
     smdp,

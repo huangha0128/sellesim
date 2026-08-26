@@ -197,3 +197,146 @@ export async function sendRefundEmail(opts: SendRefundEmailOptions): Promise<voi
 
   console.log(`[email] 退款通知已发送至 ${opts.to}（订单 ${opts.orderNo}）`);
 }
+
+interface SendRenewEmailOptions {
+  to: string;
+  orderNo: string;
+  countryName: string;
+  addedGb: number; // 本次续费新增流量
+  addedDays: number; // 本次续费新增天数
+  totalGb: number; // 续费后累计流量
+  totalDays: number; // 续费后累计天数
+  expireAt: Date; // 新的到期时间
+}
+
+/** 续费成功通知邮件：同卡叠加流量，无需重新扫码 */
+export async function sendRenewEmail(opts: SendRenewEmailOptions): Promise<void> {
+  const transporter = createTransporter();
+  const fromName = process.env.SMTP_FROM_NAME || 'YYeSim';
+  const fromAddr = process.env.SMTP_FROM || process.env.SMTP_USER || '';
+  const expireStr = opts.expireAt.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+
+  const html = `
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:24px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+        <tr><td style="background:linear-gradient(135deg,#1a6fb5 0%,#0d4a7a 100%);padding:32px 40px;">
+          <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">✅ 续费成功</h1>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">订单号：${opts.orderNo}</p>
+        </td></tr>
+        <tr><td style="padding:28px 40px 0;">
+          <div style="background:#f0f7ff;border-radius:8px;padding:20px 24px;">
+            <p style="margin:0 0 8px;font-size:13px;color:#666;">本次已追加</p>
+            <p style="margin:0;font-size:20px;font-weight:700;color:#1a1a1a;">${opts.countryName} · +${opts.addedGb}GB · +${opts.addedDays}天</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#888;">当前累计：${opts.totalGb}GB / ${opts.totalDays}天</p>
+            <p style="margin:4px 0 0;font-size:13px;color:#888;">有效期至 ${expireStr}</p>
+          </div>
+        </td></tr>
+        <tr><td style="padding:24px 40px 0;">
+          <p style="margin:0;font-size:13px;color:#666;line-height:1.8;">您的 eSIM 无需重新扫码激活，流量将在原卡上自动叠加，可在「我的 eSIM」中查看最新用量。</p>
+        </td></tr>
+        <tr><td style="padding:32px 40px 24px;text-align:center;">
+          <p style="margin:0;font-size:12px;color:#bbb;">如有疑问请联系客服 · YYeSim</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `续费成功
+订单号：${opts.orderNo}
+本次已追加：${opts.countryName} · +${opts.addedGb}GB · +${opts.addedDays}天
+当前累计：${opts.totalGb}GB / ${opts.totalDays}天
+有效期至：${expireStr}
+您的 eSIM 无需重新扫码激活，流量将在原卡上自动叠加。
+如有疑问请联系客服 · YYeSim`;
+
+  await transporter.sendMail({
+    from: `"${fromName}" <${fromAddr}>`,
+    to: opts.to,
+    subject: `【YYeSim】续费成功 - ${opts.countryName} +${opts.addedGb}GB`,
+    html,
+    text,
+  });
+
+  console.log(`[email] 续费通知已发送至 ${opts.to}（订单 ${opts.orderNo}）`);
+}
+
+interface SendChangeEmailOptions {
+  to: string;
+  orderNo: string;
+  countryName: string;
+  gb: number; // 新套餐流量
+  days: number; // 新套餐天数
+  expireAt: Date; // 新的到期时间
+  activationCode?: string; // 变更可能返回新激活码
+  iccid?: string;
+}
+
+/** 套餐变更成功通知邮件：告知新套餐信息，若有新激活码一并给出 */
+export async function sendChangeEmail(opts: SendChangeEmailOptions): Promise<void> {
+  const transporter = createTransporter();
+  const fromName = process.env.SMTP_FROM_NAME || 'YYeSim';
+  const fromAddr = process.env.SMTP_FROM || process.env.SMTP_USER || '';
+  const expireStr = opts.expireAt.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+
+  const activationSection = opts.activationCode
+    ? `
+        <tr><td style="padding:24px 40px 0;">
+          <p style="margin:0 0 8px;font-size:14px;color:#666;font-weight:600;">新激活码（LPA）</p>
+          <div style="background:#f8f8f8;border:1px solid #e8e8e8;border-radius:8px;padding:16px 20px;word-break:break-all;font-size:14px;color:#333;line-height:1.6;">${opts.activationCode}</div>
+        </td></tr>
+        ${opts.iccid ? `<tr><td style="padding:16px 40px 0;"><p style="margin:0;font-size:13px;color:#999;">ICCID：${opts.iccid}</p></td></tr>` : ''}`
+    : '';
+
+  const html = `
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:24px 0;">
+    <tr><td align="center">
+      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
+        <tr><td style="background:linear-gradient(135deg,#1a6fb5 0%,#0d4a7a 100%);padding:32px 40px;">
+          <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">🔄 套餐已变更</h1>
+          <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">订单号：${opts.orderNo}</p>
+        </td></tr>
+        <tr><td style="padding:28px 40px 0;">
+          <div style="background:#f0f7ff;border-radius:8px;padding:20px 24px;">
+            <p style="margin:0 0 8px;font-size:13px;color:#666;">当前套餐</p>
+            <p style="margin:0;font-size:20px;font-weight:700;color:#1a1a1a;">${opts.countryName} · ${opts.gb}GB · ${opts.days}天</p>
+            <p style="margin:8px 0 0;font-size:13px;color:#888;">有效期至 ${expireStr}</p>
+          </div>
+        </td></tr>
+        ${activationSection}
+        <tr><td style="padding:32px 40px 24px;text-align:center;">
+          <p style="margin:0;font-size:12px;color:#bbb;">如有疑问请联系客服 · YYeSim</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+  const text = `套餐已变更
+订单号：${opts.orderNo}
+当前套餐：${opts.countryName} · ${opts.gb}GB · ${opts.days}天
+有效期至：${expireStr}
+${opts.activationCode ? `新激活码（LPA）：\n${opts.activationCode}` : '如有新激活码，请前往「我的 eSIM」查看。'}
+如有疑问请联系客服 · YYeSim`;
+
+  await transporter.sendMail({
+    from: `"${fromName}" <${fromAddr}>`,
+    to: opts.to,
+    subject: `【YYeSim】套餐已变更 - ${opts.countryName} ${opts.gb}GB/${opts.days}天`,
+    html,
+    text,
+  });
+
+  console.log(`[email] 变更通知已发送至 ${opts.to}（订单 ${opts.orderNo}）`);
+}

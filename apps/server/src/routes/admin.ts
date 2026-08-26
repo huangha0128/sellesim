@@ -245,7 +245,16 @@ export default (prisma: PrismaClient) => {
         },
       });
     } catch (e: any) {
-      res.status(400).json({ code: 1, message: e.message });
+      const msg = String(e?.message || '');
+      if (/403|FORBIDDEN|not allowed|STATUS_403/.test(msg)) {
+        return res.status(200).json({
+          code: 403,
+          message:
+            '当前 TigerESIM 账号没有通过 API 创建套餐的权限（403：Your account is not allowed）。' +
+            '请登录 TigerESIM 后台手动创建套餐；创建成功后套餐会实时出现在本列表/小程序中，无需在后台重复添加。',
+        });
+      }
+      return res.status(400).json({ code: 1, message: `新增套餐失败：${msg}` });
     }
   });
 
