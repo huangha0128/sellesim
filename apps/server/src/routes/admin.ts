@@ -181,7 +181,8 @@ export default (prisma: PrismaClient) => {
     let list: any[];
     try {
       const { listAllPackagesView } = await import('../tiger/view');
-      list = await listAllPackagesView();
+      // refresh=1 时强制绕过 60s 缓存，从 Tiger 重新拉取
+      list = await listAllPackagesView(req.query.refresh === '1');
     } catch (e: any) {
       return res.status(502).json({ code: 1, message: 'Tiger 套餐拉取失败：' + e.message });
     }
@@ -232,6 +233,8 @@ export default (prisma: PrismaClient) => {
       if (!tigerPkgId) {
         return res.json({ code: 2, message: `Tiger 创建套餐未返回有效 id/pid：${JSON.stringify(tigerRes).slice(0, 500)}` });
       }
+      // 创建成功即失效套餐缓存，确保后续列表/下单拉到新套餐
+      (await import('../tiger/view')).invalidatePackageCache();
       res.json({
         code: 0,
         data: {
@@ -354,6 +357,7 @@ export default (prisma: PrismaClient) => {
   router.post('/tiger/sync-all', async (_req: Request, res: Response) => {
     try {
       const result = await syncAllFromTiger(prisma);
+      (await import('../tiger/view')).invalidatePackageCache();
       res.json({ code: 0, data: result });
     } catch (e: any) {
       res.json({ code: 2, message: `同步失败：${e.message}` });
@@ -382,6 +386,7 @@ export default (prisma: PrismaClient) => {
         const rc = String((p.region || p)?.code || (p.region || p)?.name_en || '');
         unique.set(rc + ':' + (p.id || p.pid), p);
       }
+      (await import('../tiger/view')).invalidatePackageCache();
       res.json({ code: 0, data: { tigerTotal: unique.size, items: Array.from(unique.values()) } });
     } catch (e: any) {
       res.json({ code: 2, message: `同步失败：${e.message}` });

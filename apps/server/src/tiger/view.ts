@@ -75,15 +75,42 @@ export function tigerToView(t: any): any {
 }
 
 /** 拉取全部真实套餐（去重）并归一化 */
-export async function listAllPackagesView(): Promise<any[]> {
+// ---------- 缓存：避免每次请求都把 Tiger 全部套餐逐页重拉（慢/超时的根因） ----------
+const CACHE_TTL_MS = 60_000; // 商品目录 60s 内为时效可接受，仍视为“实时”
+let cacheView: any[] | null = null;
+let cacheAt = 0;
+let inflight: Promise<any[]> | null = null;
+
+/** 手动失效套餐缓存（如刚在 Tiger 创建套餐后，或手动重新同步时） */
+export function invalidatePackageCache(): void {
+  cacheView = null;
+  cacheAt = 0;
+}
+
+export async function listAllPackagesView(force = false): Promise<any[]> {
   if (!tigerClient.configured) return [];
-  const packages = await tigerClient.listAllPackages({ category: 'esim', package_type: 'data', is_active: true });
-  const unique = new Map<string, any>();
-  for (const p of packages) {
-    const rc = normalizeRegionCode(p.region || p);
-    unique.set(rc + ':' + (p.id || p.pid), p);
+  if (!force && cacheView && Date.now() - cacheAt < CACHE_TTL_MS) {
+    return cacheView;
   }
-  return Array.from(unique.values()).map(tigerToView);
+  // 并发合并：多个请求同时到达时共用同一次 Tiger 拉取
+  if (inflight) return inflight;
+  inflight = (async () => {
+    try {
+      const packages = await tigerClient.listAllPackages({ category: 'esim', package_type: 'data', is_active: true });
+      const unique = new Map<string, any>();
+      for (const p of packages) {
+        const rc = normalizeRegionCode(p.region || p);
+        unique.set(rc + ':' + (p.id || p.pid), p);
+      }
+      const view = Array.from(unique.values()).map(tigerToView);
+      cacheView = view;
+      cacheAt = Date.now();
+      return view;
+    } finally {
+      inflight = null;
+    }
+  })();
+  return inflight;
 }
 
 /** 按区域（即国家 code）取套餐视图 */

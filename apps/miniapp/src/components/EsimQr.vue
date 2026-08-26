@@ -10,7 +10,6 @@
 </template>
 
 <script>
-import { getCurrentInstance } from 'vue'
 import qrcode from '@/utils/qrcode'
 
 export default {
@@ -21,13 +20,10 @@ export default {
   },
   data() {
     return {
-      canvasId: 'qr-' + Math.random().toString(36).slice(2, 9),
-      component: null
+      canvasId: 'qr-' + Math.random().toString(36).slice(2, 9)
     }
   },
   mounted() {
-    // 组件实例需在生命周期内获取，方法调用时 getCurrentInstance 不可用
-    this.component = getCurrentInstance()?.proxy
     this.$nextTick(() => this.render())
   },
   watch: {
@@ -42,49 +38,133 @@ export default {
         return
       }
       console.log('[EsimQr] 开始绘制，text长度=' + this.text.length, 'canvasId=' + this.canvasId)
-      const qr = qrcode(0, 'M')
-      qr.addData(this.text)
-      qr.make()
+      let qr
+      try {
+        qr = qrcode(0, 'M')
+        qr.addData(this.text)
+        qr.make()
+      } catch (e) {
+        console.error('[EsimQr] 生成二维码矩阵失败', e)
+        return
+      }
       const moduleCount = qr.getModuleCount()
       const cell = Math.floor(this.size / (moduleCount + 8))
-      const offset = cell * 4
-      let settled = false
-      const timeout = setTimeout(() => {
-        if (!settled) console.warn('[EsimQr] 获取画布上下文超时（可能挂起）')
-      }, 2000)
-      uni.createCanvasContextAsync({ id: this.canvasId, component: this.component })
-        .then((ctx) => {
-          settled = true
-          clearTimeout(timeout)
-          console.log('[EsimQr] 画布上下文获取成功')
-          const canvas = ctx.getContext('2d')
-          // 关键：显式设置画布物理像素尺寸并缩放，否则 2d canvas 位图尺寸为默认值/0，
-          // 绘制内容不可见（表现为只有 CSS 背景的白色方块）
+      // 居中：按实际内容尺寸计算偏移，而非固定 4 格留白
+      const offset = Math.floor((this.size - moduleCount * cell) / 2)
+
+      const draw = (node) => {
+        try {
+          const ctx = node.getContext('2d')
+          // 支付宝 2d canvas 需显式设置物理像素尺寸并按 DPR 缩放，否则位图为默认值/0，绘制内容不可见
           const dpr = uni.getSystemInfoSync().pixelRatio || 1
-          if (canvas.canvas) {
-            canvas.canvas.width = this.size * dpr
-            canvas.canvas.height = this.size * dpr
-            canvas.scale(dpr, dpr)
-          } else {
-            console.warn('[EsimQr] context.canvas 不可用，画布尺寸未设置')
-          }
-          canvas.fillStyle = '#FFFFFF'
-          canvas.fillRect(0, 0, this.size, this.size)
-          canvas.fillStyle = '#0F2A43'
+          node.width = this.size * dpr
+          node.height = this.size * dpr
+          ctx.scale(dpr, dpr)
+          ctx.fillStyle = '#FFFFFF'
+          ctx.fillRect(0, 0, this.size, this.size)
+          ctx.fillStyle = '#0F2A43'
           for (let r = 0; r < moduleCount; r++) {
             for (let c = 0; c < moduleCount; c++) {
               if (qr.isDark(r, c)) {
-                canvas.fillRect(offset + c * cell, offset + r * cell, cell, cell)
+                ctx.fillRect(offset + c * cell, offset + r * cell, cell, cell)
               }
             }
           }
           console.log('[EsimQr] 绘制完成')
-        })
-        .catch((e) => {
-          settled = true
-          clearTimeout(timeout)
+        } catch (e) {
           console.error('[EsimQr] 绘制二维码失败', e)
-        })
+        }
+      }
+
+      const extractNode = (res, tag) => {
+        // res 可能为 node、{node}、[node]、[{node}] 等不同形态，逐一兼容
+        if (!res) {
+          console.warn('[EsimQr] ' + tag + ' 查询结果为空')
+          return null
+        }
+        let target = Array.isArray(res) ? res[0] : res
+        if (!target) {
+          console.warn('[EsimQr] ' + tag + ' 查询结果首项为空')
+          return null
+        }
+        const node = target.node || target
+        if (!node || typeof node.getContext !== 'function') {
+          console.warn('[EsimQr] ' + tag + ' 未获得可用节点', JSON.stringify(target))
+          return null
+        }
+        return node
+      }
+
+      const queryInComponent = (fallback) => {
+        // 支付宝自定义组件内部须用 .in(组件实例) 作用域查询
+        const scope = this.$scope
+        if (!scope) {
+          console.warn('[EsimQr] 未获取到组件实例 $scope，尝试页面作用域')
+          fallback()
+          return
+        }
+        try {
+          uni
+            .createSelectorQuery()
+            .in(scope)
+            .select('#' + this.canvasId)
+            .node((res) => {
+              const node = extractNode(res, '组件作用域.node')
+              if (node) {
+                draw(node)
+              } else {
+                fallback()
+              }
+            })
+            .exec()
+        } catch (e) {
+          console.error('[EsimQr] 组件作用域 node 查询异常，尝试 fields', e)
+          fallback()
+        }
+      }
+
+      const queryInComponentFields = (fallback) => {
+        try {
+          uni
+            .createSelectorQuery()
+            .in(this.$scope)
+            .select('#' + this.canvasId)
+            .fields({ node: true, size: true }, () => {})
+            .exec((res) => {
+              const node = extractNode(res, '组件作用域.fields')
+              if (node) {
+                draw(node)
+              } else {
+                fallback()
+              }
+            })
+        } catch (e) {
+          console.error('[EsimQr] 组件作用域 fields 查询异常，尝试页面作用域', e)
+          fallback()
+        }
+      }
+
+      const queryInPage = () => {
+        try {
+          uni
+            .createSelectorQuery()
+            .select('#' + this.canvasId)
+            .fields({ node: true, size: true }, () => {})
+            .exec((res) => {
+              const node = extractNode(res, '页面作用域.fields')
+              if (node) {
+                draw(node)
+              } else {
+                console.error('[EsimQr] 所有查询策略均未找到 canvas 节点')
+              }
+            })
+        } catch (e) {
+          console.error('[EsimQr] 页面作用域查询异常', e)
+        }
+      }
+
+      // 依次尝试：组件作用域 node -> 组件作用域 fields -> 页面作用域 fields
+      queryInComponent(() => queryInComponentFields(queryInPage))
     }
   }
 }
