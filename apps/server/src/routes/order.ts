@@ -78,26 +78,26 @@ export default (prisma: PrismaClient) => {
     }
 
     const subject = `${order.countryCode || 'eSIM'} eSIM（${order.gb || 0}GB / ${order.days || 0}天）`;
-    const totalAmount = Number(order.price).toFixed(2);
+    // TODO(测试): 测试期间付款金额写死为 0.01 元，测试完成后需改回订单实价
+    const totalAmount = '0.01';
 
     const host = process.env.ALIPAY_NOTIFY_HOST || `http://localhost:${process.env.PORT || 6660}`;
     const notifyUrl = `${host}/api/alipay/notify`;
-    const returnUrl = `${host.replace(/:\d+$/, '')}/api/orders/${order.orderNo}/return`;
 
     try {
-      const paymentUrl = alipay.buildPaymentUrl(
+      // JSAPI 支付：后端调 alipay.trade.create 创建预下单，获取 trade_no 返回给小程序，
+      // 前端再调用 my.tradePay({ tradeNO }) 调起收银台。
+      const tradeNo = await alipay.createTradeNo(
         order.orderNo,
         subject,
         totalAmount,
         notifyUrl,
-        returnUrl,
-        order.id,
       );
 
       res.json({
         code: 0,
         data: {
-          paymentUrl,
+          tradeNo,
           orderNo: order.orderNo,
           totalAmount,
         },
@@ -179,6 +179,7 @@ export default (prisma: PrismaClient) => {
     const orders = await prisma.order.findMany({
       where: { userId: req.userId },
       orderBy: { createdAt: 'desc' },
+      include: { esim: { select: { status: true } } },
     });
     res.json({ code: 0, data: { orders } });
   });

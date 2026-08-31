@@ -35,6 +35,11 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
       SMTP_FROM_NAME: ${SMTP_FROM_NAME:-YYeSim}
+      # ---- 支付宝小程序 JSAPI 支付配置（必需，否则支付不可用）----
+      ALIPAY_APP_ID: ${ALIPAY_APP_ID:-}
+      ALIPAY_PRIVATE_KEY: ${ALIPAY_PRIVATE_KEY:-}
+      ALIPAY_PUBLIC_KEY: ${ALIPAY_PUBLIC_KEY:-}
+      ALIPAY_NOTIFY_HOST: ${ALIPAY_NOTIFY_HOST:-}
     ports:
       - "${SERVER_PORT:-6501}:6660"
     volumes:

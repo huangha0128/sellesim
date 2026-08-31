@@ -85,35 +85,6 @@ function request(params: Record<string, string>): Promise<any> {
   });
 }
 
-function buildPaymentUrl(
-  outTradeNo: string,
-  subject: string,
-  totalAmount: string,
-  notifyUrl: string,
-  returnUrl: string,
-  passbackParams?: string,
-): string {
-  const bizContent: Record<string, any> = {
-    subject,
-    out_trade_no: outTradeNo,
-    total_amount: totalAmount,
-    product_code: 'QUICK_WAP_WAY',
-  };
-  if (passbackParams) {
-    bizContent.passback_params = encodeURIComponent(passbackParams);
-  }
-
-  const params = buildParams('alipay.trade.wap.pay', bizContent, {
-    notify_url: notifyUrl,
-    return_url: returnUrl,
-  });
-
-  const signStr = sign(params);
-  params.sign = signStr;
-
-  return `https://openapi.alipay.com/gateway.do?${querystring.stringify(params)}`;
-}
-
 async function createTradeNo(
   outTradeNo: string,
   subject: string,
@@ -172,7 +143,6 @@ export const alipay = {
   sign,
   verifySign,
   request,
-  buildPaymentUrl,
   createTradeNo,
   buildParams,
   refund,
