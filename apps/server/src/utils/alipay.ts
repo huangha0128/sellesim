@@ -95,7 +95,8 @@ async function createTradeNo(
     subject,
     out_trade_no: outTradeNo,
     total_amount: totalAmount,
-    product_code: 'QUICK_MSECURITY_PAY',
+    // 小程序 JSAPI 支付必须用 JSAPI_PAY 产品码，QUICK_MSECURITY_PAY 为当面付场景会报"当前场景不支持该产品"
+    product_code: 'JSAPI_PAY',
   };
 
   const params = buildParams('alipay.trade.create', bizContent, {
