@@ -107,7 +107,7 @@ async function createTradeNo(
   const response = result.alipay_trade_create_response;
 
   if (!response || (response.code && response.code !== '10000')) {
-    throw new Error(`支付宝创建交易失败: ${response?.sub_msg || response?.msg || '未知错误'}`);
+    throw new Error(`支付宝创建交易失败: ${response?.sub_msg || response?.msg || '未知错误'} (${response?.sub_code || response?.code || ''})`);
   }
 
   return response.trade_no;
