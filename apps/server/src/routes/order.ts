@@ -106,7 +106,8 @@ export default (prisma: PrismaClient) => {
       });
     } catch (e: any) {
       console.error('[alipay] 创建支付失败：', e.message);
-      res.json({ code: 1, message: `创建支付失败：${e.message}` });
+      const receivedBuyerOpenId = (req.body?.buyerOpenId as string | undefined) || '';
+      res.json({ code: 1, message: `创建支付失败：${e.message} || buyerOpenId='${receivedBuyerOpenId}'` });
     }
   });
 
