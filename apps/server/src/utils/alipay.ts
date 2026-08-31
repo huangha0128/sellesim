@@ -90,6 +90,7 @@ async function createTradeNo(
   subject: string,
   totalAmount: string,
   notifyUrl: string,
+  buyerOpenId?: string,
 ): Promise<string> {
   const bizContent: Record<string, any> = {
     subject,
@@ -98,6 +99,10 @@ async function createTradeNo(
     // 小程序 JSAPI 支付必须用 JSAPI_PAY 产品码，QUICK_MSECURITY_PAY 为当面付场景会报"当前场景不支持该产品"
     product_code: 'JSAPI_PAY',
   };
+  // JSAPI 场景要求买家标识（buyer_open_id），缺失会报 ACQ.INVALID_PARAMETER（买家信息不能为空）
+  if (buyerOpenId) {
+    bizContent.buyer_open_id = buyerOpenId;
+  }
 
   const params = buildParams('alipay.trade.create', bizContent, {
     notify_url: notifyUrl,

@@ -63,7 +63,7 @@ export default {
               const loginRes = await api.login(res.authCode)
 
               if (loginRes.code === 0) {
-                store.login(loginRes.data.token, loginRes.data.user)
+                store.login(loginRes.data.token, loginRes.data.openId, loginRes.data.user)
                 uni.showToast({
                   title: this.$t('login.success'),
                   icon: 'success'

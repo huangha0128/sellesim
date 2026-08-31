@@ -134,12 +134,13 @@ export const api = {
       gb: o.gb,
       days: o.days,
       flag: o.countryCode || '',
+      esimStatus: (o.esim && o.esim.status) || '',
     }));
     return res;
   },
 
-  async createPayment(orderNo) {
-    return request('POST', `/orders/${orderNo}/create-payment`);
+  async createPayment(orderNo, buyerOpenId) {
+    return request('POST', `/orders/${orderNo}/create-payment`, { buyerOpenId });
   },
 
   async payOrder(orderNo) {

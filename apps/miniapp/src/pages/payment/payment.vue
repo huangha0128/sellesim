@@ -140,18 +140,13 @@ export default {
   },
   methods: {
     getUseRealPayment() {
-      try {
-        return false;
-        // TODO 后续注释掉
-        // return uni.getStorageSync('use_real_payment') !== 'false'
-      } catch (e) {
-        return true
-      }
+      // 已接入真实支付宝支付，始终走真实支付流程
+      return true
     },
     async realPay() {
       this.paying = true
       try {
-        const res = await api.createPayment(this.orderNo)
+        const res = await api.createPayment(this.orderNo, store.openId)
         if (res.code === 0) {
           if (res.data.paid) {
             store.updateOrder(this.orderNo, { status: 'paid' })
@@ -159,12 +154,38 @@ export default {
             this.paid = true
             return
           }
-          const paymentUrl = res.data.paymentUrl
-          if (paymentUrl) {
-            window.location.href = paymentUrl
-          } else {
-            throw new Error('未获取到支付链接')
+          const tradeNo = res.data.tradeNo
+          if (!tradeNo) {
+            this.paying = false
+            uni.showToast({ title: '未获取到支付参数', icon: 'none' })
+            return
           }
+          // #ifdef MP-ALIPAY
+          // 支付宝小程序内支付：调起收银台
+          my.tradePay({
+            tradeNO: tradeNo,
+            success: (payRes) => {
+              if (payRes.resultCode === '9000') {
+                // 支付成功，以异步通知为准刷新订单
+                this.refreshOrder()
+              } else if (payRes.resultCode === '6001' || payRes.resultCode === '4000') {
+                this.paying = false
+                uni.showToast({ title: '已取消支付', icon: 'none' })
+              } else {
+                this.paying = false
+                uni.showToast({ title: '支付失败', icon: 'none' })
+              }
+            },
+            fail: () => {
+              this.paying = false
+              uni.showToast({ title: '支付失败，请重试', icon: 'none' })
+            },
+          })
+          // #endif
+          // #ifndef MP-ALIPAY
+          this.paying = false
+          uni.showToast({ title: '请在支付宝小程序内支付', icon: 'none' })
+          // #endif
         } else {
           this.paying = false
           uni.showToast({ title: res.message || '创建支付失败', icon: 'none' })
@@ -174,24 +195,28 @@ export default {
         uni.showToast({ title: '创建支付失败，请重试', icon: 'none' })
       }
     },
-    async simulatePay() {
-      this.paying = true
+    async refreshOrder() {
+      // 支付完成后拉取最新订单，确认是否已支付
       try {
-        const res = await api.payOrder(this.orderNo)
-        if (res.code === 0) {
-          store.updateOrder(this.orderNo, { status: 'paid', paidAt: new Date() })
-          this.order = store.orders.find((o) => o.orderNo === this.orderNo) || this.order
-          setTimeout(() => {
+        const res = await api.getOrder(this.orderNo)
+        if (res.code === 0 && res.data.order) {
+          const o = res.data.order
+          if (o.status === 'paid') {
+            store.updateOrder(this.orderNo, { status: 'paid', paidAt: o.paidAt })
+            this.order = { ...this.order, status: 'paid', paidAt: o.paidAt }
             this.paying = false
             this.paid = true
-          }, 500)
+          } else {
+            this.paying = false
+            uni.showToast({ title: '支付确认中，请稍后在eSIM页面查看', icon: 'none' })
+          }
         } else {
           this.paying = false
-          uni.showToast({ title: res.message || '支付失败', icon: 'none' })
+          uni.showToast({ title: '支付确认中，请稍后再试', icon: 'none' })
         }
       } catch (e) {
         this.paying = false
-        uni.showToast({ title: '支付失败，请重试', icon: 'none' })
+        uni.showToast({ title: '支付确认中，请稍后再试', icon: 'none' })
       }
     },
     async pay() {
@@ -200,11 +225,7 @@ export default {
         uni.showToast({ title: '订单信息异常', icon: 'none' })
         return
       }
-      if (this.useRealPayment) {
-        await this.realPay()
-      } else {
-        await this.simulatePay()
-      }
+      await this.realPay()
     },
     goEsims() {
       uni.switchTab({

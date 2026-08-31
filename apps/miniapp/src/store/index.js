@@ -36,6 +36,7 @@ function saveStr(key, value) {
 
 export const store = reactive({
   token: loadStr(TOKEN_KEY, ''),
+  openId: loadStr('yy_openid', ''),
   user: load(USER_KEY, { id: '', nickname: '', avatar: '', email: '' }),
   orders: load(ORDERS_KEY, []),
   esims: load(ESIMS_KEY, []),
@@ -54,13 +55,17 @@ export const store = reactive({
     save(USER_KEY, this.user)
   },
 
-  login(token, user) {
+  login(token, openId, user) {
     this.setToken(token)
+    this.openId = openId || ''
+    saveStr('yy_openid', this.openId)
     this.setUser(user)
   },
 
   logout() {
     this.token = ''
+    this.openId = ''
+    saveStr('yy_openid', '')
     this.user = { id: '', nickname: '', avatar: '', email: '' }
     saveStr(TOKEN_KEY, '')
     save(USER_KEY, this.user)
