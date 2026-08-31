@@ -112,7 +112,12 @@ async function createTradeNo(
   const response = result.alipay_trade_create_response;
 
   if (!response || (response.code && response.code !== '10000')) {
-    throw new Error(`支付宝创建交易失败: ${response?.sub_msg || response?.msg || '未知错误'} (${response?.sub_code || response?.code || ''})`);
+    const subMsg = response?.sub_msg || response?.msg || '未知错误';
+    const subCode = response?.sub_code || response?.code || '';
+    // base64 编码 sub_msg，避免终端 GBK 乱码导致无法定位，便于读取真实原因
+    const subMsgB64 = Buffer.from(subMsg).toString('base64');
+    console.error(`[alipay] create 失败 code=${subCode} sub_msg=${subMsg} (b64=${subMsgB64})`);
+    throw new Error(`支付宝创建交易失败: ${subMsg} (${subCode}) [${subMsgB64}]`);
   }
 
   return response.trade_no;
