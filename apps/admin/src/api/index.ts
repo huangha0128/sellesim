@@ -66,6 +66,11 @@ export interface Order {
   status: string;
   userId?: string | null;
   refundedAt?: string | null;
+  refundStatus?: string | null;
+  refundReason?: string | null;
+  refundRequestedAt?: string | null;
+  refundRejectReason?: string | null;
+  refundRejectedAt?: string | null;
   createdAt?: string;
   // 套餐快照（不再嵌套 package，实时来源 TigerESIM）
   countryCode?: string | null;
@@ -126,8 +131,10 @@ export const adminApi = {
 
   getDashboard: () => http.get('/admin/dashboard'),
   getOrders: () => http.get('/admin/orders'),
-  refundOrder: (orderNo: string, reason?: string) =>
+  approveRefund: (orderNo: string, reason?: string) =>
     http.post(`/admin/orders/${orderNo}/refund`, { reason }),
+  rejectRefund: (orderNo: string, reason: string) =>
+    http.post(`/admin/orders/${orderNo}/refund/reject`, { reason }),
 
   getEsims: () => http.get('/admin/esims'),
   getCards: () => http.get('/admin/cards'),

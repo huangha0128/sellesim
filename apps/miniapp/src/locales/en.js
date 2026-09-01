@@ -21,6 +21,7 @@ export default {
     checkout: 'Confirm Order',
     payment: 'Checkout',
     orders: 'My Orders',
+    orderDetail: 'Order Details',
     esims: 'My eSIMs',
     profile: 'Me',
     guide: 'eSIM Setup Guide'
@@ -47,8 +48,12 @@ export default {
     loginBenefits: 'Login to enjoy more services',
     welcomeBack: 'Welcome back',
     statEsims: 'My eSIMs',
-    statOrders: 'Orders Completed',
+    statOrders: 'All Orders',
     statRegions: 'Regions Covered',
+    statusPending: 'To Pay',
+    statusActivate: 'To Activate',
+    statusDone: 'Completed',
+    statusRefunded: 'Refunded',
     menuEsims: 'My eSIMs',
     menuOrders: 'My Orders',
     menuGuide: 'eSIM Setup Guide',
@@ -190,13 +195,44 @@ export default {
     paid: 'Paid',
     pending: 'Pending',
     refunded: 'Refunded',
+    tabAll: 'All',
+    tabPending: 'To Pay',
+    tabActivate: 'To Activate',
+    tabDone: 'Completed',
+    tabRefunded: 'Refunded',
+    noMatch: 'No orders in this category yet',
+    noMatchSub: 'Try another category',
     meta: '{gb}GB · valid for {days} days',
     orderNoLabel: 'Order No.',
     createdAtLabel: 'Order Time',
     emailLabel: 'Receiving Email',
     payMethodLabel: 'Payment Method',
     paidAtLabel: 'Paid At',
-    goPay: 'Pay Now'
+    goPay: 'Pay Now',
+    detailNotFound: 'Order not found',
+    retry: 'Retry',
+    networkError: 'Network error, please try again',
+    back: 'Back',
+    esimInfo: 'eSIM Activation Info',
+    iccid: 'ICCID',
+    activationCode: 'Activation Code',
+    expireAt: 'Expires on',
+    orderInfo: 'Order Info',
+    typeLabel: 'Order Type',
+    typeNew: 'New',
+    typeRenew: 'Renew',
+    typeChange: 'Change',
+    refundApply: 'Request Refund',
+    refundApplying: 'Refund Pending',
+    refundApplyingSub: 'Your refund request has been submitted, please wait',
+    refundRejected: 'Refund Rejected',
+    refundRejectedSub: 'Your refund request has been rejected',
+    refundReasonLabel: 'Refund Reason',
+    refundReasonPlaceholder: 'Enter refund reason (optional)',
+    refundSubmit: 'Submit Request',
+    refundAppliedToast: 'Refund request submitted, please wait patiently',
+    rejectReasonLabel: 'Rejection Reason',
+    cancel: 'Cancel'
   },
   esims: {
     title: 'My eSIMs',
@@ -234,49 +270,112 @@ export default {
     faqTitle: 'FAQ',
     stepsIos: [
       {
-        title: 'Purchase a plan and get the activation code',
-        desc: 'Select a destination and plan on the home page. After payment, the activation code will be sent to the "My eSIMs" page.',
-        tips: ['Please confirm your phone supports eSIM before purchase']
+        image: '/static/guide/en/ios-1.png',
+        title: 'Connect to Wi-Fi',
+        desc: 'Go to Settings and connect to a Wi-Fi network.'
       },
       {
-        title: 'Open system settings',
-        desc: 'Go to Settings → Cellular (or Cellular Data) → Add Cellular Plan.'
+        image: '/static/guide/en/ios-2.png',
+        title: 'Add an eSIM',
+        desc: 'Settings → Cellular → Tap "Add eSIM".'
       },
       {
-        title: 'Scan the QR code or enter the activation code',
-        desc: 'Tap "Use QR Code" to scan the QR code in "My eSIMs"; or choose "Enter Details Manually" and paste the activation code starting with LPA:1$.'
+        image: '/static/guide/en/ios-3.png',
+        title: 'Tap Use QR Code',
+        desc: 'Tap "Use QR Code".'
       },
       {
-        title: 'Set a label and enable',
-        desc: 'Name the eSIM (e.g. "Japan Data"), turn on Cellular Data for this number by default, and enable "Allow Cellular Data Switching" if available.'
+        image: '/static/guide/en/ios-4.png',
+        title: 'Tap Scan QR Code',
+        desc: 'Tap "Scan QR Code".'
       },
       {
-        title: 'Enable roaming after arriving',
-        desc: 'After arrival, in Cellular Data → Network Selection, turn off "Automatic" and manually select a local carrier for high-speed internet.',
-        tips: ['Dual-SIM users should keep the default voice line on their domestic SIM to avoid unexpected charges']
+        image: '/static/guide/en/ios-5.png',
+        title: 'Scan the Tiger eSIM QR code',
+        desc: 'Scan the QR code provided by Tiger eSIM, then wait for a moment.'
+      },
+      {
+        image: '/static/guide/en/ios-6.png',
+        title: 'Start activation',
+        desc: 'Activate the eSIM, tap "Continue" to start.'
+      },
+      {
+        image: '/static/guide/en/ios-7.png',
+        title: 'Select usage label',
+        desc: 'Select the usage label for this eSIM and tap "Continue".'
+      },
+      {
+        image: '/static/guide/en/ios-8.png',
+        title: 'Enable this line & roaming',
+        desc: 'Important Reminder: After installation completes, go to Settings > Cellular > [your new eSIM], then turn on "Data Roaming". Internet access will only work with Data Roaming enabled.'
+      },
+      {
+        image: '/static/guide/en/ios-9.png',
+        title: 'Manual entry if you cannot scan',
+        desc: 'If you cannot scan the QR code, tap "Enter Details Manually" below the QR viewfinder to open the Activation Code input page. Copy the SM-DP+ Address and Activation Code under "Tiger eSIM Manual Install".'
+      },
+      {
+        image: '/static/guide/en/ios-10.png',
+        title: 'Paste and activate',
+        desc: 'Paste them into the input. No Confirmation code is required. Tap "Next" and repeat the above steps to activate.'
       }
     ],
     stepsAndroid: [
       {
-        title: 'Purchase a plan and get the activation code',
-        desc: 'Select a destination and plan on the home page. After payment, the activation code will be sent to the "My eSIMs" page.'
+        image: '/static/guide/en/and-1.png',
+        title: 'Connect to Wi-Fi',
+        desc: 'Open Settings, tap "Connections" or "Network & internet", then connect to Wi-Fi.'
       },
       {
-        title: 'Open system settings',
-        desc: 'Go to Settings → Mobile Network / SIM Cards & Mobile Networks → SIM Card Manager (or eSIM management), and tap "Add eSIM / Add downloaded eSIM".'
+        image: '/static/guide/en/and-2.png',
+        title: 'Open SIM manager',
+        desc: 'Tap "SIM manager" or "SIM cards & mobile networks".'
       },
       {
-        title: 'Scan the QR code or enter the activation code',
-        desc: 'Choose "Scan carrier QR code". The QR code on the "My eSIMs" page is the carrier QR code; some devices require manual entry in Settings → Connections → SIM card manager.'
+        image: '/static/guide/en/and-3.png',
+        title: 'Add an eSIM',
+        desc: 'Tap "Add eSIM" or "Add mobile plan".'
       },
       {
-        title: 'Complete installation and set as data card',
-        desc: 'After installation, set this eSIM as the "Default mobile data" card. Dual-SIM users should keep voice and SMS on the domestic SIM.'
+        image: '/static/guide/en/and-4.png',
+        title: 'Scan QR code',
+        desc: 'Select "Scan QR code" or "Scan carrier QR code".'
       },
       {
-        title: 'Enable roaming after arriving',
-        desc: 'After arrival, turn on "Data roaming" and wait for the signal to connect to the local network automatically.',
-        tips: ['If you cannot get online, restart your phone or search for networks manually']
+        image: '/static/guide/en/and-5.png',
+        title: 'Scan the Tiger eSIM QR code',
+        desc: 'Point your camera at the Tiger eSIM QR code to scan it.'
+      },
+      {
+        image: '/static/guide/en/and-6.png',
+        title: 'Confirm adding',
+        desc: 'When prompted "Add this eSIM?", tap "Add".'
+      },
+      {
+        image: '/static/guide/en/and-7.png',
+        title: 'Wait for installation',
+        desc: 'Wait a few minutes for download and installation to finish.'
+      },
+      {
+        image: '/static/guide/en/and-8.png',
+        title: 'Enable the eSIM & set mobile data',
+        desc: 'Once installed, locate the newly-added eSIM and toggle it On. Set mobile data to use this eSIM profile.'
+      },
+      {
+        image: '/static/guide/en/and-9.png',
+        title: 'Enable Data Roaming',
+        desc: 'Important Reminder: After installation, go to Settings > Mobile networks > [Choose eSIM] and enable "Data Roaming" for internet connectivity. Menu paths vary across brands.',
+        tips: ['Huawei: Wireless & networks', 'Xiaomi: Dual SIM & mobile networks']
+      },
+      {
+        image: '/static/guide/en/and-10.png',
+        title: 'Manual entry if you cannot scan',
+        desc: 'If you cannot scan the QR code, tap the "Enter Activation Code" button below the scan viewfinder, copy the SM-DP+ Address and Activation Code provided by Tiger eSIM (Manual install instructions below).'
+      },
+      {
+        image: '/static/guide/en/and-11.png',
+        title: 'Paste and activate',
+        desc: 'Paste them into the input. Tap "Done" and repeat the above steps to activate.'
       }
     ],
     faqs: [

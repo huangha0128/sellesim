@@ -58,9 +58,13 @@ model Order {
   targetEsimId  String?   @map("target_esim_id") // target esim for renew/change
   paidAt        DateTime?
   alipayTradeNo String?   @map("alipay_trade_no")
+  refundStatus  String?   @map("refund_status")
+  refundReason  String?   @map("refund_reason")
+  refundRequestedAt DateTime? @map("refund_requested_at")
+  refundRejectReason String? @map("refund_reject_reason")
+  refundRejectedAt DateTime? @map("refund_rejected_at")
   refundAmount  Float?    @map("refund_amount")
   refundTradeNo String?   @map("refund_trade_no")
-  refundReason  String?   @map("refund_reason")
   refundedAt    DateTime? @map("refunded_at")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt

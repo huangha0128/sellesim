@@ -135,8 +135,18 @@ export const api = {
       days: o.days,
       flag: o.countryCode || '',
       esimStatus: (o.esim && o.esim.status) || '',
+      refundedAt: o.refundedAt,
+      refundStatus: o.refundStatus,
+      refundReason: o.refundReason,
+      refundRequestedAt: o.refundRequestedAt,
+      refundRejectReason: o.refundRejectReason,
+      refundRejectedAt: o.refundRejectedAt,
     }));
     return res;
+  },
+
+  async refundRequest(orderNo, reason) {
+    return request('POST', `/orders/${orderNo}/refund-request`, { reason });
   },
 
   async createPayment(orderNo, buyerOpenId, buyerId) {

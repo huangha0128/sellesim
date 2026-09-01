@@ -21,6 +21,7 @@ export default {
     checkout: '確認訂單',
     payment: '收銀台',
     orders: '我的訂單',
+    orderDetail: '訂單詳情',
     esims: '我的 eSIM',
     profile: '我的',
     guide: 'eSIM 安裝指南'
@@ -47,8 +48,12 @@ export default {
     loginBenefits: '登入後享受更多服務',
     welcomeBack: '歡迎回來',
     statEsims: '我的 eSIM',
-    statOrders: '已完成訂單',
+    statOrders: '全部訂單',
     statRegions: '覆蓋地區',
+    statusPending: '待付款',
+    statusActivate: '待啟用',
+    statusDone: '已完成',
+    statusRefunded: '已退款',
     menuEsims: '我的 eSIM',
     menuOrders: '我的訂單',
     menuGuide: 'eSIM 安裝指南',
@@ -190,13 +195,44 @@ export default {
     paid: '已支付',
     pending: '待支付',
     refunded: '已退款',
+    tabAll: '全部',
+    tabPending: '待付款',
+    tabActivate: '待啟用',
+    tabDone: '已完成',
+    tabRefunded: '已退款',
+    noMatch: '該分類暫無訂單',
+    noMatchSub: '換個分類看看吧',
     meta: '{gb}GB · {days}天有效',
     orderNoLabel: '訂單號',
     createdAtLabel: '下單時間',
     emailLabel: '接收信箱',
     payMethodLabel: '支付方式',
     paidAtLabel: '支付時間',
-    goPay: '去支付'
+    goPay: '去支付',
+    detailNotFound: '訂單不存在',
+    retry: '重試',
+    networkError: '網路異常，請稍後重試',
+    back: '返回',
+    esimInfo: 'eSIM 啟用資訊',
+    iccid: 'ICCID',
+    activationCode: '啟用碼',
+    expireAt: '有效期至',
+    orderInfo: '訂單資訊',
+    typeLabel: '訂單類型',
+    typeNew: '新購',
+    typeRenew: '續費',
+    typeChange: '變更',
+    refundApply: '申請退款',
+    refundApplying: '退款審核中',
+    refundApplyingSub: '退款申請已送出，請耐心等待處理',
+    refundRejected: '退款被拒絕',
+    refundRejectedSub: '您的退款申請已被拒絕',
+    refundReasonLabel: '退款原因',
+    refundReasonPlaceholder: '請填寫退款原因（選填）',
+    refundSubmit: '送出申請',
+    refundAppliedToast: '退款申請已送出，請耐心等待',
+    rejectReasonLabel: '拒絕理由',
+    cancel: '取消'
   },
   esims: {
     title: '我的 eSIM',
@@ -234,49 +270,112 @@ export default {
     faqTitle: '常見問題',
     stepsIos: [
       {
-        title: '購買套餐並獲取啟用碼',
-        desc: '在首頁選擇目的地與套餐，完成支付後，啟用碼會自動發放到「我的 eSIM」頁面。',
-        tips: ['購買前請確認手機支援 eSIM 功能']
+        image: '/static/guide/zh/ios-1.png',
+        title: '連接 Wi-Fi 網路',
+        desc: '前往「設定」頁面，連接好 Wi-Fi 網路。'
       },
       {
-        title: '打開系統設定',
-        desc: '進入「設定 → 行動網路（或 行動數據）→ 加入行動方案」。'
+        image: '/static/guide/zh/ios-2.png',
+        title: '進入加入 eSIM',
+        desc: '設定 → 行動網路 → 點擊「加入 eSIM」。'
       },
       {
-        title: '掃描二維碼或輸入啟用碼',
-        desc: '點擊「使用二維碼」掃描「我的 eSIM」中的二維碼；或選擇「手動輸入」，貼上 LPA:1$ 開頭的啟用碼。'
+        image: '/static/guide/zh/ios-3.png',
+        title: '點擊使用二維碼',
+        desc: '點擊「使用二維碼」。'
       },
       {
-        title: '設定標籤並啟用',
-        desc: '為 eSIM 命名（如「日本流量」），預設開啟該號碼的行動數據，建議開啟「允許切換行動數據」。'
+        image: '/static/guide/zh/ios-4.png',
+        title: '點擊掃描二維碼',
+        desc: '點擊「掃描二維碼」。'
       },
       {
-        title: '到達目的地後開啟漫遊',
-        desc: '到目的地後，在「行動數據 → 網路選擇」中關閉「自動」，手動選擇當地電信商，即可高速上網。',
-        tips: ['雙卡用戶建議將預設語音號碼設為國內 SIM 卡，避免意外扣費']
+        image: '/static/guide/zh/ios-5.png',
+        title: '掃描 Tiger eSIM 二維碼',
+        desc: '掃描 Tiger eSIM 提供的二維碼，然後稍等片刻。'
+      },
+      {
+        image: '/static/guide/zh/ios-6.png',
+        title: '開始啟用',
+        desc: '啟用 eSIM，點擊「繼續」開始啟用。'
+      },
+      {
+        image: '/static/guide/zh/ios-7.png',
+        title: '選擇使用此 eSIM 的位置',
+        desc: '選擇使用此 eSIM 的位置，點擊「繼續」。'
+      },
+      {
+        image: '/static/guide/zh/ios-8.png',
+        title: '啟用此號碼並開啟漫遊',
+        desc: '重要操作提醒：安裝完成後，前往「設定 → 行動網路」選擇「啟用此號碼」，開啟「數據漫遊」功能，方可正常上網。'
+      },
+      {
+        image: '/static/guide/zh/ios-9.jpeg',
+        title: '無法掃碼時手動輸入',
+        desc: '如果無法掃描二維碼，可點擊掃碼取景框下方的「其他選項」，進入輸入啟用碼頁面，複製 Tiger eSIM「手動安裝」下方的 SM-DP+ 地址和啟用碼。'
+      },
+      {
+        image: '/static/guide/zh/ios-10.png',
+        title: '貼上輸入框完成啟用',
+        desc: '貼上到輸入框，確認碼無需輸入，點擊「下一步」，重複以上步驟即可進行啟用。'
       }
     ],
     stepsAndroid: [
       {
-        title: '購買套餐並獲取啟用碼',
-        desc: '在首頁選擇目的地與套餐，完成支付後，啟用碼會自動發放到「我的 eSIM」頁面。'
+        image: '/static/guide/zh/and-1.jpeg',
+        title: '連接 Wi-Fi 網路',
+        desc: '前往「設定 → 連線 → 網路與網際網路」，開啟 Wi-Fi 並連接。'
       },
       {
-        title: '打開系統設定',
-        desc: '進入「設定 → 行動網路 / 雙卡與行動網路 → SIM 卡管理（或 eSIM 管理）」，點擊「加入 eSIM / 加入已下載的 eSIM」。'
+        image: '/static/guide/zh/and-2.jpeg',
+        title: '進入 SIM 管理器',
+        desc: '設定 → 連線 → 點擊「SIM 管理器」或「SIM 卡與行動網路」。'
       },
       {
-        title: '掃描二維碼或輸入啟用碼',
-        desc: '選擇「掃描電信商提供的二維碼」，「我的 eSIM」頁面的二維碼即為電信商二維碼；部分機型需在「設定 → 連線 → SIM 卡管理員」中手動加入。'
+        image: '/static/guide/zh/and-3.jpeg',
+        title: '加入 eSIM',
+        desc: '點擊「加入 eSIM」或「加入行動方案」。'
       },
       {
-        title: '完成安裝並設為數據卡',
-        desc: '安裝完成後，將該 eSIM 設為「預設行動數據」卡，雙卡用戶建議將語音、簡訊保持在國內 SIM 卡。'
+        image: '/static/guide/zh/and-4.jpeg',
+        title: '掃碼加入',
+        desc: '選擇「掃一掃」或「掃描電信商二維碼」。'
       },
       {
-        title: '到達目的地後開啟漫遊',
-        desc: '到目的地後開啟「數據漫遊」，等待訊號自動連接當地網路即可使用。',
-        tips: ['若無法上網，可重啟手機或手動搜尋網路']
+        image: '/static/guide/zh/and-5.jpeg',
+        title: '掃描 Tiger eSIM 二維碼',
+        desc: '將 Tiger eSIM 提供的二維碼置於取景框內進行掃描。'
+      },
+      {
+        image: '/static/guide/zh/and-6.jpeg',
+        title: '確認加入',
+        desc: '出現「要加入 eSIM 嗎」提示時，點擊「加入」按鈕。'
+      },
+      {
+        image: '/static/guide/zh/and-7.jpeg',
+        title: '等待下載安裝',
+        desc: '需等待幾分鐘，進行下載安裝。'
+      },
+      {
+        image: '/static/guide/zh/and-8.jpeg',
+        title: '啟用 eSIM 並設為行動數據',
+        desc: '下載完畢後，找到已安裝的 eSIM 卡，點擊「啟用」或打開開關以啟用 eSIM 方案，行動數據選擇 eSIM 卡。'
+      },
+      {
+        image: '/static/guide/zh/and-9.jpeg',
+        title: '開啟數據漫遊',
+        desc: '重要操作提醒：安裝完成後，請務必前往「設定 → 行動網路」選擇安裝的 eSIM 卡 → 開啟「數據漫遊」功能，方可正常上網。不同手機品牌路徑略有差異。',
+        tips: ['華為在「無線和網路」中', '小米需進入「雙卡與行動網路」']
+      },
+      {
+        image: '/static/guide/zh/and-10.png',
+        title: '無法掃碼時手動輸入',
+        desc: '如果無法掃描二維碼，可點擊掃碼取景框下方的「輸入啟用碼」，複製 Tiger eSIM 提供的手動安裝下方的 SM-DP+ 地址和啟用碼。'
+      },
+      {
+        image: '/static/guide/zh/and-11.jpeg',
+        title: '貼上輸入框完成啟用',
+        desc: '貼上到輸入框，點擊「完成」，重複以上步驟即可進行啟用。'
       }
     ],
     faqs: [

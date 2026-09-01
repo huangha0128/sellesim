@@ -7,54 +7,76 @@
       <view class="empty-btn" hover-class="empty-btn--hover" @click="goBuy">{{ fmt('orders.goBuy') }}</view>
     </view>
 
-    <view v-else class="order-list">
-      <view
-        v-for="order in store.orders"
-        :key="order.id"
-        class="order-card"
-      >
-        <view class="oc-head">
-          <view class="oc-flag">
-            <image class="oc-flag-img" :src="getFlagImage(order)" mode="aspectFit" />
-          </view>
-          <view class="oc-main">
-            <view class="oc-title-row">
-              <text class="oc-name">{{ fmt('checkout.skuName', { name: order.countryName }) }}</text>
-              <text class="oc-status" :class="order.status">{{ statusText(order) }}</text>
+    <template v-else>
+      <scroll-view class="tabs" scroll-x>
+        <view
+          v-for="tab in tabs"
+          :key="tab.key"
+          class="tab"
+          :class="{ active: activeTab === tab.key }"
+          @click="switchTab(tab.key)"
+        >
+          {{ tab.label }}
+          <text class="tab-num" v-if="countOf(tab.key) > 0">{{ countOf(tab.key) }}</text>
+        </view>
+      </scroll-view>
+
+      <view v-if="!filteredOrders.length" class="subtle-empty">
+        <text class="subtle-empty-title">{{ fmt('orders.noMatch') }}</text>
+        <text class="subtle-empty-sub">{{ fmt('orders.noMatchSub') }}</text>
+      </view>
+
+      <view v-else class="order-list">
+        <view
+          v-for="order in filteredOrders"
+          :key="order.id"
+          class="order-card"
+          hover-class="order-card--hover"
+          @click="goDetail(order)"
+        >
+          <view class="oc-head">
+            <view class="oc-flag">
+              <image class="oc-flag-img" :src="getFlagImage(order)" mode="aspectFit" />
             </view>
-            <text class="oc-meta">{{ fmt('orders.meta', { gb: order.gb, days: order.days }) }}</text>
+            <view class="oc-main">
+              <view class="oc-title-row">
+                <text class="oc-name">{{ fmt('checkout.skuName', { name: order.countryName }) }}</text>
+                <text class="oc-status" :class="categoryOf(order)">{{ statusText(order) }}</text>
+              </view>
+              <text class="oc-meta">{{ fmt('orders.meta', { gb: order.gb, days: order.days }) }}</text>
+            </view>
+            <text class="oc-price">¥{{ priceText(order) }}</text>
           </view>
-          <text class="oc-price">¥{{ priceText(order) }}</text>
-        </view>
 
-        <view class="oc-info">
-          <view class="oc-info-row">
-            <text class="oci-label">{{ fmt('orders.orderNoLabel') }}</text>
-            <text class="oci-value">{{ order.orderNo }}</text>
+          <view class="oc-info">
+            <view class="oc-info-row">
+              <text class="oci-label">{{ fmt('orders.orderNoLabel') }}</text>
+              <text class="oci-value">{{ order.orderNo }}</text>
+            </view>
+            <view class="oc-info-row">
+              <text class="oci-label">{{ fmt('orders.createdAtLabel') }}</text>
+              <text class="oci-value">{{ formatDateTime(order.createdAt) }}</text>
+            </view>
+            <view class="oc-info-row">
+              <text class="oci-label">{{ fmt('orders.emailLabel') }}</text>
+              <text class="oci-value">{{ order.email }}</text>
+            </view>
+            <view class="oc-info-row">
+              <text class="oci-label">{{ fmt('orders.payMethodLabel') }}</text>
+              <text class="oci-value">{{ order.payMethod === 'alipay' ? fmt('checkout.alipayName') : order.payMethod }}</text>
+            </view>
+            <view v-if="order.paidAt" class="oc-info-row">
+              <text class="oci-label">{{ fmt('orders.paidAtLabel') }}</text>
+              <text class="oci-value">{{ formatDateTime(order.paidAt) }}</text>
+            </view>
           </view>
-          <view class="oc-info-row">
-            <text class="oci-label">{{ fmt('orders.createdAtLabel') }}</text>
-            <text class="oci-value">{{ formatDateTime(order.createdAt) }}</text>
-          </view>
-          <view class="oc-info-row">
-            <text class="oci-label">{{ fmt('orders.emailLabel') }}</text>
-            <text class="oci-value">{{ order.email }}</text>
-          </view>
-          <view class="oc-info-row">
-            <text class="oci-label">{{ fmt('orders.payMethodLabel') }}</text>
-            <text class="oci-value">{{ order.payMethod === 'alipay' ? fmt('checkout.alipayName') : order.payMethod }}</text>
-          </view>
-          <view v-if="order.paidAt" class="oc-info-row">
-            <text class="oci-label">{{ fmt('orders.paidAtLabel') }}</text>
-            <text class="oci-value">{{ formatDateTime(order.paidAt) }}</text>
-          </view>
-        </view>
 
-        <view v-if="order.status === 'pending'" class="oc-actions">
-          <view class="act-btn primary" @click="goPay(order.orderNo)">{{ fmt('orders.goPay') }}</view>
+          <view v-if="order.status === 'pending'" class="oc-actions">
+            <view class="act-btn primary" @click.stop="goPay(order.orderNo)">{{ fmt('orders.goPay') }}</view>
+          </view>
         </view>
       </view>
-    </view>
+    </template>
 
     <view class="footer-safe"></view>
   </view>
@@ -73,10 +95,38 @@ function fmtNamed(str, p) {
   )
 }
 
+// 订单 → 分类：pending 待付款 / activate 待激活 / done 已完成 / refunded 已退款
+function categoryOf(order) {
+  if (order.status === 'pending') return 'pending'
+  if (order.status === 'refunded') return 'refunded'
+  return order.esimStatus === 'activated' ? 'done' : 'activate'
+}
+
 export default {
   data() {
     return {
-      store
+      store,
+      activeTab: 'all'
+    }
+  },
+  computed: {
+    tabs() {
+      return [
+        { key: 'all', label: this.fmt('orders.tabAll') },
+        { key: 'pending', label: this.fmt('orders.tabPending') },
+        { key: 'activate', label: this.fmt('orders.tabActivate') },
+        { key: 'done', label: this.fmt('orders.tabDone') },
+        { key: 'refunded', label: this.fmt('orders.tabRefunded') }
+      ]
+    },
+    filteredOrders() {
+      if (this.activeTab === 'all') return this.store.orders
+      return this.store.orders.filter((o) => categoryOf(o) === this.activeTab)
+    }
+  },
+  onLoad(options) {
+    if (options && options.status && ['all', 'pending', 'activate', 'done', 'refunded'].includes(options.status)) {
+      this.activeTab = options.status
     }
   },
   onShow() {
@@ -85,10 +135,20 @@ export default {
   },
   methods: {
     formatDateTime,
+    categoryOf(order) {
+      return categoryOf(order)
+    },
+    countOf(key) {
+      if (key === 'all') return this.store.orders.length
+      return this.store.orders.filter((o) => categoryOf(o) === key).length
+    },
+    switchTab(key) {
+      this.activeTab = key
+    },
     statusText(order) {
-      if (order.status === 'paid') return this.fmt('orders.paid')
-      if (order.status === 'refunded') return this.fmt('orders.refunded')
-      return this.fmt('orders.pending')
+      if (order.refundStatus === 'requested') return this.fmt('orders.refundApplying')
+      if (order.refundStatus === 'rejected') return this.fmt('orders.refundRejected')
+      return this.tabs.find((t) => t.key === categoryOf(order)).label
     },
     fmt(key, params) {
       return fmtNamed(translate(key, params), params)
@@ -118,6 +178,16 @@ export default {
     goPay(orderNo) {
       uni.navigateTo({ url: `/pages/payment/payment?orderNo=${orderNo}` })
     },
+    goDetail(order) {
+      console.log('[orders] goDetail orderNo=', order && order.orderNo)
+      const app = getApp()
+      if (app && app.globalData) app.globalData.ticketOrder = order
+      uni.navigateTo({
+        url: `/pages/orders/order-detail?orderNo=${order.orderNo}`,
+        success: () => console.log('[orders] navigateTo success'),
+        fail: (err) => console.error('[orders] navigateTo fail', err)
+      })
+    },
     goBuy() {
       uni.reLaunch({ url: '/pages/index/index' })
     }
@@ -130,6 +200,72 @@ export default {
   min-height: 100vh;
   background: $bg-page;
   padding: 0 $page-pad;
+}
+
+.tabs {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: $bg-page;
+  padding: 24rpx 0 20rpx;
+  white-space: nowrap;
+  width: calc(100% + (2 * #{$page-pad}));
+  margin-left: (-$page-pad);
+  padding-left: $page-pad;
+  padding-right: $page-pad;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  font-size: 26rpx;
+  color: $ink-2;
+  background: $bg-card;
+  border: 2rpx solid transparent;
+  padding: 14rpx 30rpx;
+  border-radius: 999rpx;
+  margin-right: 16rpx;
+  box-shadow: $shadow-sm;
+  transition: all 0.2s ease;
+
+  &.active {
+    background: $gradient-brand;
+    color: #ffffff;
+    font-weight: 700;
+    box-shadow: $shadow-brand;
+  }
+}
+
+.tab-num {
+  margin-left: 8rpx;
+  font-size: 20rpx;
+  background: rgba(255, 255, 255, 0.3);
+  padding: 2rpx 12rpx;
+  border-radius: 999rpx;
+  font-weight: 700;
+
+  .active & {
+    color: #ffffff;
+  }
+}
+
+.subtle-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 140rpx;
+}
+
+.subtle-empty-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: $ink-2;
+}
+
+.subtle-empty-sub {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: $ink-3;
 }
 
 .empty {
@@ -183,6 +319,10 @@ export default {
   padding: 28rpx;
   margin-bottom: 24rpx;
   box-shadow: $shadow-sm;
+
+  &--hover {
+    transform: scale(0.985);
+  }
 }
 
 .oc-head {
@@ -220,6 +360,11 @@ export default {
 }
 
 .oc-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 29rpx;
   font-weight: 700;
   color: $ink;
@@ -227,17 +372,19 @@ export default {
 }
 
 .oc-status {
+  flex-shrink: 0;
   font-size: 19rpx;
   font-weight: 700;
   padding: 4rpx 14rpx;
   border-radius: 999rpx;
 
-  &.paid {
+  &.done {
     color: #0D9488;
     background: $teal-light;
   }
 
-  &.pending {
+  &.pending,
+  &.activate {
     color: #D97706;
     background: $sun-light;
   }
@@ -256,6 +403,7 @@ export default {
 }
 
 .oc-price {
+  flex-shrink: 0;
   font-size: 32rpx;
   font-weight: 800;
   color: $coral;

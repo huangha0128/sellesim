@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { tigerClient, iccidPoolCount, getIccidPool } from '../tiger';
 import { syncAllFromTiger, syncRegionsFromTiger, syncPackagesFromTiger } from '../tiger/sync';
-import { refundOrder } from '../services/refund';
+import { refundOrder, rejectRefundRequest } from '../services/refund';
 import { sendRefundEmail } from '../services/email';
 import { alipay } from '../utils/alipay';
 
@@ -64,10 +64,11 @@ export default (prisma: PrismaClient) => {
   });
 
   /**
-   * POST /api/admin/orders/:orderNo/refund 订单退款
-   * - 仅已支付订单可退款
+   * POST /api/admin/orders/:orderNo/refund 同意退款申请并执行退款
+   * - 仅当存在用户已提交的退款申请（refundStatus=requested）时生效
    * - 调用支付宝退款（alipay.trade.refund，out_request_no 保证幂等）
-   * - 退款成功后订单置为 refunded，删除 eSIM 记录（ICCID 归还卡片池）
+   * - 退款成功后订单置为 refunded（refundStatus=approved），删除 eSIM 记录（ICCID 归还卡片池）
+   * - 向用户邮箱发送退款成功通知
    */
   router.post('/orders/:orderNo/refund', async (req: Request, res: Response) => {
     const { reason } = req.body || {};
@@ -75,6 +76,8 @@ export default (prisma: PrismaClient) => {
       const result = await refundOrder(
         {
           findOrder: (orderNo) => prisma.order.findUnique({ where: { orderNo } }),
+          findUserOrder: (userId, orderNo) =>
+            prisma.order.findFirst({ where: { orderNo, userId } }),
           updateOrder: (orderNo, data) => prisma.order.update({ where: { orderNo }, data }),
           findEsimByOrderId: (orderId) => prisma.esim.findUnique({ where: { orderId } }),
           deleteEsimByOrderId: async (orderId) => {
@@ -106,6 +109,36 @@ export default (prisma: PrismaClient) => {
       res.json({ code: 0, data: result });
     } catch (e: any) {
       console.error(`[refund] 订单 ${req.params.orderNo} 退款失败：`, e.message);
+      res.json({ code: 1, message: e.message });
+    }
+  });
+
+  /**
+   * POST /api/admin/orders/:orderNo/refund/reject 拒绝退款申请
+   * - 仅待审批（refundStatus=requested）的申请可拒绝
+   * - 必填拒绝理由存入 refundRejectReason，用户端展示拒绝状态与理由
+   */
+  router.post('/orders/:orderNo/refund/reject', async (req: Request, res: Response) => {
+    const { reason } = req.body || {};
+    try {
+      const result = await rejectRefundRequest(
+        {
+          findOrder: (orderNo) => prisma.order.findUnique({ where: { orderNo } }),
+          findUserOrder: (userId, orderNo) =>
+            prisma.order.findFirst({ where: { orderNo, userId } }),
+          updateOrder: (orderNo, data) => prisma.order.update({ where: { orderNo }, data }),
+          findEsimByOrderId: (orderId) => prisma.esim.findUnique({ where: { orderId } }),
+          deleteEsimByOrderId: async (orderId) => {
+            await prisma.esim.delete({ where: { orderId } });
+          },
+          alipayRefund: async () => ({ code: '10000' }),
+        },
+        req.params.orderNo,
+        typeof reason === 'string' ? reason : '',
+      );
+      res.json({ code: 0, data: result });
+    } catch (e: any) {
+      console.error(`[refund] 订单 ${req.params.orderNo} 拒绝退款失败：`, e.message);
       res.json({ code: 1, message: e.message });
     }
   });

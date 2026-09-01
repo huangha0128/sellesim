@@ -6,6 +6,7 @@ import { getPackageView } from '../tiger/view';
 import { provisionEsim } from '../services/provision';
 import { renewEsim, changeEsim } from '../services/topup';
 import { sendEsimEmail, sendRenewEmail, sendChangeEmail } from '../services/email';
+import { applyRefundRequest } from '../services/refund';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 
 export default (prisma: PrismaClient) => {
@@ -173,6 +174,40 @@ export default (prisma: PrismaClient) => {
       return res.json({ code: 1, message: '订单不存在' });
     }
     res.json({ code: 0, data: { order } });
+  });
+
+  /**
+   * POST /api/orders/:orderNo/refund-request 用户申请退款
+   * - 仅待激活（status=paid 且 eSIM 未激活）订单可申请
+   * - 提交后进入后台审批流程（refundStatus=requested）
+   */
+  router.post('/:orderNo/refund-request', authMiddleware, async (req: AuthRequest, res: Response) => {
+    if (!req.userId) {
+      return res.json({ code: 401, message: '未登录' });
+    }
+    const { reason } = req.body || {};
+    try {
+      const result = await applyRefundRequest(
+        {
+          findOrder: (orderNo) => prisma.order.findUnique({ where: { orderNo } }),
+          findUserOrder: (userId, orderNo) =>
+            prisma.order.findFirst({ where: { orderNo, userId } }),
+          updateOrder: (orderNo, data) => prisma.order.update({ where: { orderNo }, data }),
+          findEsimByOrderId: (orderId) => prisma.esim.findUnique({ where: { orderId } }),
+          deleteEsimByOrderId: async (orderId) => {
+            await prisma.esim.delete({ where: { orderId } });
+          },
+          alipayRefund: async () => ({ code: '10000' }),
+        },
+        req.userId,
+        req.params.orderNo,
+        typeof reason === 'string' ? reason : undefined,
+      );
+      res.json({ code: 0, data: result });
+    } catch (e: any) {
+      console.error(`[refund] 订单 ${req.params.orderNo} 申请退款失败：`, e.message);
+      res.json({ code: 1, message: e.message });
+    }
   });
 
   router.get('/:orderNo/return', async (req: Request, res: Response) => {
