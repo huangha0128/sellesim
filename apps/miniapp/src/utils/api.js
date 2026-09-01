@@ -139,8 +139,8 @@ export const api = {
     return res;
   },
 
-  async createPayment(orderNo, buyerOpenId) {
-    return request('POST', `/orders/${orderNo}/create-payment`, { buyerOpenId });
+  async createPayment(orderNo, buyerOpenId, buyerId) {
+    return request('POST', `/orders/${orderNo}/create-payment`, { buyerOpenId, buyerId });
   },
 
   async payOrder(orderNo) {

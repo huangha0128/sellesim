@@ -146,7 +146,7 @@ export default {
     async realPay() {
       this.paying = true
       try {
-        const res = await api.createPayment(this.orderNo, store.openId)
+        const res = await api.createPayment(this.orderNo, store.openId, store.userIdStr)
         if (res.code === 0) {
           if (res.data.paid) {
             store.updateOrder(this.orderNo, { status: 'paid' })
