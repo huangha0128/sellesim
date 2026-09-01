@@ -31,7 +31,10 @@ export default (prisma: PrismaClient) => {
 
       const alipayUserId = tokenResponse.alipay_user_id || tokenResponse.user_id || tokenResponse.open_id;
       const alipayOpenId = tokenResponse.open_id || '';
+      const alipayUserIdNum = tokenResponse.user_id || '';
       const accessToken = tokenResponse.access_token;
+
+      console.log('[auth] login buyer 字段 -> open_id=', alipayOpenId, '| user_id=', tokenResponse.user_id, '| alipay_user_id=', tokenResponse.alipay_user_id);
 
       let user = await prisma.user.findUnique({ where: { alipayUserId } });
 
@@ -71,6 +74,7 @@ export default (prisma: PrismaClient) => {
         data: {
           token,
           openId: alipayOpenId,
+          userId: alipayUserIdNum,
           user: {
             id: user.id,
             nickname: user.nickname,
