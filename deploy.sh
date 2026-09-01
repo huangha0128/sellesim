@@ -60,8 +60,12 @@ sleep 3
 docker logs --since 2m sellsim-server 2>&1 | grep -E '\[bootstrap\]' | tail -n 5 \
   || echo "    (未捕获到 bootstrap 日志，请用 docker logs sellsim-server 查看)"
 
-echo "==> [6/6] 清理无用镜像"
+echo "==> [6/6] 清理无用镜像与构建缓存"
+# 仅清悬空镜像：docker image prune -f
+# server 采用 --no-cache 构建，会产生大量 legacy 构建器中间层/缓存（可达 26G+），
+# 这些不会因 image prune 被删除，必须再用 builder prune 清空，否则每次部署都会快速占满磁盘
 docker image prune -f || true
+docker builder prune -af || true
 
 echo "==> 部署完成"
 docker ps --filter name=sellsim-server
