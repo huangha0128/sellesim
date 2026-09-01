@@ -94,6 +94,7 @@ export default (prisma: PrismaClient) => {
         totalAmount,
         notifyUrl,
         req.body?.buyerOpenId as string | undefined,
+        req.body?.buyerId as string | undefined,
       );
 
       res.json({

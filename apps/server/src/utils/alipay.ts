@@ -91,6 +91,7 @@ async function createTradeNo(
   totalAmount: string,
   notifyUrl: string,
   buyerOpenId?: string,
+  buyerId?: string,
 ): Promise<string> {
   const bizContent: Record<string, any> = {
     subject,
@@ -102,6 +103,8 @@ async function createTradeNo(
   // JSAPI 场景要求买家标识（buyer_open_id），缺失会报 ACQ.INVALID_PARAMETER（买家信息不能为空）
   if (buyerOpenId) {
     bizContent.buyer_open_id = buyerOpenId;
+  } else if (buyerId) {
+    bizContent.buyer_id = buyerId;
   }
 
   const params = buildParams('alipay.trade.create', bizContent, {
