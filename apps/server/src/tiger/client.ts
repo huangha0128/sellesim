@@ -174,21 +174,28 @@ export class TigerClient {
     return this.authed(`/api/package${qs.toString() ? `?${qs}` : ''}`);
   }
 
-  /** ????????? eSIM ???? */
+  /**
+   * 拉取全部套餐（分页并合并去重）。
+   * 优化：先请求第 1 页拿到 total，再用 Promise.all 并行拉取剩余页，
+   * 把原来最多 20 次串行请求降为「1 次 + 并行一次」，极大缩短全量拉取耗时。
+   */
   async listAllPackages(params: { category?: string; package_type?: string; is_active?: boolean } = {}): Promise<any[]> {
-    const items: any[] = [];
     const pageSize = 500;
-    let index = 1;
-    let total = Infinity;
-    while ((index - 1) * pageSize < total && index <= 20) {
-      const res = await this.listPackages({ ...params, index, limit: pageSize });
-      const data = res?.data || res || {};
-      const list: any[] = data.items || [];
-      if (!list.length) break;
-      items.push(...list);
-      total = Number(data.total ?? items.length);
-      if (items.length >= total) break;
-      index += 1;
+    const maxPages = 20;
+    // 第 1 页：先拿到 total，决定后续并发拉几页
+    const first = await this.listPackages({ ...params, index: 1, limit: pageSize });
+    const firstData = first?.data || first || {};
+    const items: any[] = [...(firstData.items || [])];
+    const total = Number(firstData.total ?? items.length);
+    const totalPages = Math.min(Math.max(1, Math.ceil(total / pageSize)), maxPages);
+    if (totalPages > 1) {
+      const restPages = Array.from({ length: totalPages - 1 }, (_, i) => i + 2);
+      const results = await Promise.all(restPages.map((i) => this.listPackages({ ...params, index: i, limit: pageSize })));
+      for (const r of results) {
+        const data = r?.data || r || {};
+        const list: any[] = data.items || [];
+        if (list.length) items.push(...list);
+      }
     }
     return items;
   }

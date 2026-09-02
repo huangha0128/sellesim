@@ -9,6 +9,17 @@
 name: sellsim
 
 services:
+  # ---------- 套餐缓存（Redis：多实例共享套餐目录，前端秒读缓存）----------
+  redis:
+    image: redis:7-alpine
+    container_name: sellsim-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "no", "--maxmemory-policy", "allkeys-lru"]
+    ports:
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379" # 仅本机可达，不对外暴露
+    volumes:
+      - sellsim-redis-data:/data
+
   # ---------- 后端 API（Express + Prisma + SQLite）----------
   server:
     build:
@@ -16,9 +27,14 @@ services:
       dockerfile: apps/server/Dockerfile
     container_name: sellsim-server
     restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_started
     environment:
       TZ: Asia/Shanghai
       PORT: "6660"
+      # 套餐缓存 Redis 连接串（集群多实例共享缓存）
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       # JWT 签名密钥（生产环境务必在 .env 中修改）
       JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-key-change-in-production}
       # ---- Tiger eSIM 真实下发（可选，留空则本地模拟下发）----
@@ -100,5 +116,6 @@ services:
 
 volumes:
   sellsim-data:
+  sellsim-redis-data:
   caddy-data:
   caddy-config:
