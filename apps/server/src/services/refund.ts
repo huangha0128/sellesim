@@ -91,6 +91,9 @@ export async function refundOrder(deps: RefundDeps, orderNo: string, reason?: st
 
   // 必须按实际支付金额退款（支付宝要求退款金额不能超过已付金额），优先级：paidAmount > price
   const actualPaid = order.paidAmount ?? order.price;
+  console.log(
+    `[refund] 订单 ${orderNo} 实际支付金额=${order.paidAmount} 退款请求金额=${Number(actualPaid).toFixed(2)}`,
+  );
 
   const res = await deps.alipayRefund({
     outTradeNo: order.alipayTradeNo || order.orderNo,
