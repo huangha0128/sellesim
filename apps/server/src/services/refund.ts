@@ -89,21 +89,24 @@ export async function refundOrder(deps: RefundDeps, orderNo: string, reason?: st
     throw new Error('该订单暂无退款申请，请先由用户发起申请');
   }
 
+  // 必须按实际支付金额退款（支付宝要求退款金额不能超过已付金额），优先级：paidAmount > price
+  const actualPaid = order.paidAmount ?? order.price;
+
   const res = await deps.alipayRefund({
     outTradeNo: order.alipayTradeNo || order.orderNo,
-    refundAmount: Number(order.price).toFixed(2),
+    refundAmount: Number(actualPaid).toFixed(2),
     outRequestNo: order.orderNo,
     ...(reason ? { refundReason: reason } : {}),
   });
 
-  if (res.code && res.code !== '10000') {
+  if (res.code !== '10000') {
     throw new Error(`支付宝退款失败：${res.subMsg || res.msg || '未知错误'}`);
   }
 
   const updated = await deps.updateOrder(order.orderNo, {
     status: 'refunded',
     refundStatus: 'approved',
-    refundAmount: order.price,
+    refundAmount: actualPaid,
     refundTradeNo: res.tradeNo || '',
     refundedAt: new Date(),
     ...(reason ? { refundReason: reason } : {}),

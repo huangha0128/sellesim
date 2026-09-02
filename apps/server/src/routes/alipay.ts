@@ -87,6 +87,7 @@ export default (prisma: PrismaClient) => {
           status: 'paid',
           paidAt: new Date(),
           alipayTradeNo: params.trade_no || '',
+          paidAmount: Number(params.buyer_pay_amount ?? params.total_amount ?? 0),
         },
       });
 

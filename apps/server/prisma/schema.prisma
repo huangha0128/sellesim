@@ -54,6 +54,7 @@ model Order {
   payMethod     String    @default("alipay")
   status        String    @default("pending")
   price         Float
+  paidAmount    Float?    @map("paid_amount") // actual paid via alipay notify buyer_pay_amount; refund uses this
   orderType     String    @default("new") @map("order_type") // new/renew/change
   targetEsimId  String?   @map("target_esim_id") // target esim for renew/change
   paidAt        DateTime?

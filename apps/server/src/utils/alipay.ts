@@ -142,14 +142,23 @@ async function refund(
   }
 
   const params = buildParams('alipay.trade.refund', bizContent);
-  const result = await request(params);
-  const response = result.alipay_trade_refund_response;
+  const result: any = await request(params);
+  const response = result?.alipay_trade_refund_response;
+  const error = result?.error_response;
+
+  // 只有显式返回 code === '10000' 才算成功；缺失响应或返回 error_response 一律视为失败，
+  // 避免"支付宝退款未成功"却被上层当作成功继续标记订单退款/发邮件
+  if (!response || error || (response.code && response.code !== '10000')) {
+    const reason =
+      response?.sub_msg || response?.msg || error?.sub_msg || error?.msg || '支付宝退款失败';
+    return { code: 'FAIL', msg: reason, subMsg: reason };
+  }
 
   return {
-    code: response?.code || '10000',
-    msg: response?.sub_msg || response?.msg || '',
-    subMsg: response?.sub_msg,
-    tradeNo: response?.trade_no || outTradeNo,
+    code: '10000',
+    msg: response.sub_msg || response.msg || '',
+    subMsg: response.sub_msg,
+    tradeNo: response.trade_no || outTradeNo,
   };
 }
 
