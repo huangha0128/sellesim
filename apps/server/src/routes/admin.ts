@@ -84,8 +84,9 @@ export default (prisma: PrismaClient) => {
             await prisma.esim.delete({ where: { orderId } });
           },
           alipayRefund: async (params) => {
-            // 演示/测试环境（订单由模拟支付产生、无真实支付宝交易号）直接记为退款成功
-            const order = await prisma.order.findUnique({ where: { orderNo: params.outTradeNo } });
+            // 只要订单有 alipayTradeNo，说明是真实支付宝支付过的，必须调用支付宝真实退款接口
+            // outTradeNo 已经由 refundOrder 确保为商户单号 order.orderNo，直接使用即可
+            const order = await prisma.order.findUnique({ where: { orderNo: req.params.orderNo } });
             if (!order?.alipayTradeNo) {
               return { code: '10000', tradeNo: `RF${Date.now()}` };
             }

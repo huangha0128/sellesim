@@ -129,7 +129,8 @@ describe('refundOrder 后台同意退款并执行', () => {
 
     const refundArgs = (deps.alipayRefund as any).mock.calls[0][0];
     expect(refundArgs).toMatchObject({
-      outTradeNo: '2026081722001111',
+      // 退款 must 使用商户单号 order.orderNo 作为 out_trade_no（与创建交易一致），不能传支付宝互单号
+      outTradeNo: 'DPH1234567890',
       refundAmount: '29.90',
       outRequestNo: 'DPH1234567890',
     });

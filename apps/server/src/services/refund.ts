@@ -96,7 +96,9 @@ export async function refundOrder(deps: RefundDeps, orderNo: string, reason?: st
   );
 
   const res = await deps.alipayRefund({
-    outTradeNo: order.alipayTradeNo || order.orderNo,
+    // 创建交易时写入的商户单号 out_trade_no 就是 order.orderNo，退款必须用这个作为 out_trade_no，
+    // 不能传支付宝互单号（trade_no）
+    outTradeNo: order.orderNo,
     refundAmount: Number(actualPaid).toFixed(2),
     outRequestNo: order.orderNo,
     ...(reason ? { refundReason: reason } : {}),
