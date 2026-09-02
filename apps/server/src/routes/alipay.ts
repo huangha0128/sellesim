@@ -1,9 +1,32 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { alipay } from '../utils/alipay';
 import { provisionEsim } from '../services/provision';
 import { renewEsim, changeEsim } from '../services/topup';
 import { sendEsimEmail, sendRenewEmail, sendChangeEmail } from '../services/email';
+
+/**
+ * 支付宝异步通知专用的表单解析器。
+ * 支付宝会以 `application/x-www-form-urlencoded;charset=GBK` 发送通知，
+ * 而 Express 内置的 urlencoded 解析器不支持 GBK 字符集会抛 415，导致通知进不了处理器。
+ * 这里直接读取原始 body 并按 urlencoded 解析（通知内字段均为 ASCII，UTF-8 解码即可）。
+ */
+function parseAlipayNotifyBody(req: Request, _res: Response, next: NextFunction) {
+  const chunks: Buffer[] = [];
+  req.on('data', (c: Buffer) => chunks.push(c));
+  req.on('end', () => {
+    const raw = Buffer.concat(chunks).toString('utf-8');
+    const params: Record<string, string> = {};
+    try {
+      for (const [k, v] of new URLSearchParams(raw)) params[k] = v;
+    } catch (e) {
+      return next(e as Error);
+    }
+    (req as Request & { body: Record<string, string> }).body = params;
+    next();
+  });
+  req.on('error', next);
+}
 
 export default (prisma: PrismaClient) => {
   const router = Router();
@@ -13,10 +36,14 @@ export default (prisma: PrismaClient) => {
    * 支付成功后支付宝会 POST 表单数据到此地址
    * 必须返回 "success"（全部小写）表示接收成功，否则支付宝会重复通知
    */
-  router.post('/notify', async (req: Request, res: Response) => {
+  router.post('/notify', parseAlipayNotifyBody, async (req: Request, res: Response) => {
     const params = req.body as Record<string, string>;
     const sign = params.sign || '';
     const signType = params.sign_type || '';
+    // 关键日志：一旦支付宝真正调用到此接口，这一行必然出现，可用于判断通知是否到达
+    console.log(
+      `[alipay] 收到支付宝通知 out_trade_no=${params.out_trade_no || '(空)'} trade_status=${params.trade_status || '(空)'} app_id=${params.app_id || '(空)'}`,
+    );
 
     const notifyParams: Record<string, string> = {};
     for (const key of Object.keys(params)) {
@@ -27,7 +54,9 @@ export default (prisma: PrismaClient) => {
 
     const isValid = alipay.verifySign(notifyParams, sign);
     if (!isValid) {
-      console.error('[alipay] 通知签名验证失败');
+      console.error(
+        `[alipay] 通知签名验证失败 out_trade_no=${params.out_trade_no || '(空)'} sign_type=${signType || '(空)'} app_id=${params.app_id || '(空)'}`,
+      );
       return res.status(200).send('failure');
     }
 

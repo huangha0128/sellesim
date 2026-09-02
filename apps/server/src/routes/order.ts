@@ -8,6 +8,7 @@ import { renewEsim, changeEsim } from '../services/topup';
 import { sendEsimEmail, sendRenewEmail, sendChangeEmail } from '../services/email';
 import { applyRefundRequest } from '../services/refund';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { config } from '../config';
 
 export default (prisma: PrismaClient) => {
   const router = Router();
@@ -83,7 +84,7 @@ export default (prisma: PrismaClient) => {
     // TODO(测试): 测试期间付款金额写死为 0.01 元，测试完成后需改回订单实价
     const totalAmount = '0.01';
 
-    const host = process.env.ALIPAY_NOTIFY_HOST || `http://localhost:${process.env.PORT || 6660}`;
+    const host = config.alipay.notifyHost;
     const notifyUrl = `${host}/api/alipay/notify`;
 
     try {

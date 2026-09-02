@@ -147,6 +147,7 @@ export default {
       this.paying = true
       try {
         const res = await api.createPayment(this.orderNo, store.openId, store.userIdStr)
+        console.log("res: ",res)
         if (res.code === 0) {
           if (res.data.paid) {
             store.updateOrder(this.orderNo, { status: 'paid' })
@@ -162,9 +163,11 @@ export default {
           }
           // #ifdef MP-ALIPAY
           // 支付宝小程序内支付：调起收银台
+          this.paying=false;
           my.tradePay({
             tradeNO: tradeNo,
             success: (payRes) => {
+              console.log("success: ",payRes)
               if (payRes.resultCode === '9000') {
                 // 支付成功，以异步通知为准刷新订单
                 this.refreshOrder()
@@ -173,14 +176,20 @@ export default {
                 uni.showToast({ title: '已取消支付', icon: 'none' })
               } else {
                 this.paying = false
-                uni.showToast({ title: '支付失败', icon: 'none' })
+                uni.showToast({ title: `支付失败(${payRes.resultCode || '?'}:${payRes.memo || ''})`, icon: 'none', duration: 4000 })
+                // uni.showToast({ title: '支付失败', icon: 'none' })
               }
             },
-            fail: () => {
+            fail: (e) => {
+              console.log("fail: ",e)
               this.paying = false
-              uni.showToast({ title: '支付失败，请重试', icon: 'none' })
+              // uni.showToast({ title: '支付失败，请重试', icon: 'none' })
+              const msg = (err && (err.resultCode || err.errorMessage || err.message)) || '请重试'
+              uni.showToast({ title: `收银台拉起失败(${msg})`, icon: 'none', duration: 4000 })
             },
           })
+
+          console.log("realPay exe success")
           // #endif
           // #ifndef MP-ALIPAY
           this.paying = false
