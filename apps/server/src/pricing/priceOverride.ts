@@ -32,6 +32,26 @@ export function clearOverrideCache(): void {
 }
 
 /**
+ * Pure mapping of local pricing overrides onto tiger package views.
+ * No DB access - testable in isolation.
+ * - price: replaced by the local price when the row has a non-null price
+ * - originalPrice: always set to the tiger price before any override
+ * - onSale: false hides the package from public endpoints
+ */
+export function applyOverridesToItems(list: any[], map: OverrideMap): any[] {
+  if (!Array.isArray(list) || list.length === 0) return list;
+  return list.map((p) => {
+    // Overrides only apply to tiger-linked packages; local-only packages are untouched.
+    const id = p.tigerPkgId != null ? Number(p.tigerPkgId) : NaN;
+    const ov = map.get(id);
+    const originalPrice = p.price;
+    const price = ov && ov.price != null ? ov.price : p.price;
+    const onSale = ov ? ov.onSale : true;
+    return { ...p, originalPrice, price, onSale };
+  });
+}
+
+/**
  * Merge local pricing overrides into tiger package views.
  * - price: replaced by the local price when the row has a non-null price
  * - originalPrice: always set to the tiger price before any override
@@ -40,12 +60,5 @@ export function clearOverrideCache(): void {
 export async function applyOverrides(list: any[]): Promise<any[]> {
   if (!Array.isArray(list) || list.length === 0) return list;
   const map = await loadOverrideMap();
-  return list.map((p) => {
-    const id = Number(p.tigerPkgId ?? p.id ?? 0);
-    const ov = map.get(id);
-    const originalPrice = p.price;
-    const price = ov && ov.price != null ? ov.price : p.price;
-    const onSale = ov ? ov.onSale : true;
-    return { ...p, originalPrice, price, onSale };
-  });
+  return applyOverridesToItems(list, map);
 }

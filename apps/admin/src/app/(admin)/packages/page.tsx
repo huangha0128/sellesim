@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Search, RefreshCw } from 'lucide-react';
+import { Plus, Search, RefreshCw, Tags, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -88,7 +88,130 @@ export default function PackagesPage() {
   // 关联了 TigerESIM 的套餐，编辑/删除时提示前往 Tiger 后台操作
   const [tigerReminder, setTigerReminder] = useState<{ name: string; action: string } | null>(null);
 
+  // 自主定价状态：价格草稿 / 行内保存中 / 多选
+  const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+  const [priceSaving, setPriceSaving] = useState<number | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  // 批量定价弹窗
+  const [batchOpen, setBatchOpen] = useState(false);
+  const [batchPriceMode, setBatchPriceMode] = useState<'keep' | 'set' | 'reset'>('keep');
+  const [batchPrice, setBatchPrice] = useState('');
+  const [batchSaleMode, setBatchSaleMode] = useState<'keep' | 'on' | 'off'>('keep');
+  const [batchSaving, setBatchSaving] = useState(false);
+
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const isOverridden = (p: PackageItem) =>
+    p.originalPrice !== undefined && Math.abs((p.price || 0) - (p.originalPrice || 0)) > 1e-9;
+
+  const isOffSale = (p: PackageItem) => p.onSale === false;
+
+  // 单行保存自定价（失焦触发）
+  const saveRowPrice = async (p: PackageItem) => {
+    if (!p.tigerPkgId) return;
+    const raw = priceDrafts[String(p.tigerPkgId)] ?? String(p.price ?? '');
+    const val = Number(raw);
+    if (raw.trim() === '' || !Number.isFinite(val)) {
+      toast.warning('请输入有效价格');
+      setPriceDrafts((d) => ({ ...d, [String(p.tigerPkgId)]: String(p.price ?? '') }));
+      return;
+    }
+    if (val < 0) {
+      toast.warning('价格不能为负数');
+      setPriceDrafts((d) => ({ ...d, [String(p.tigerPkgId)]: String(p.price ?? '') }));
+      return;
+    }
+    if (Math.abs(val - (p.price || 0)) < 1e-9) return; // 未变更
+    setPriceSaving(p.tigerPkgId ?? null);
+    try {
+      const res = await adminApi.updatePackagePrice(p.tigerPkgId!, { price: val });
+      const body = unwrap<unknown>(res);
+      if (body.code === 0) {
+        toast.success(`已更新「${p.country?.name || p.countryCode} ${p.gb}GB/${p.days}天」售价 ¥${val}`);
+        load();
+      } else {
+        toast.error(body.message || '保存失败');
+      }
+    } catch (e) {
+      toast.error(getErrorMessage(e, '保存失败'));
+    } finally {
+      setPriceSaving(null);
+    }
+  };
+
+  // 单行切换上下架
+  const toggleRowSale = async (p: PackageItem, onSale: boolean) => {
+    if (!p.tigerPkgId) return;
+    setPriceSaving(p.tigerPkgId);
+    try {
+      const res = await adminApi.updatePackagePrice(p.tigerPkgId, { onSale });
+      const body = unwrap<unknown>(res);
+      if (body.code === 0) {
+        toast.success(onSale ? `已上架「${p.country?.name || p.countryCode} ${p.gb}GB/${p.days}天」` : `已停售「${p.country?.name || p.countryCode} ${p.gb}GB/${p.days}天」`);
+        load();
+      } else {
+        toast.error(body.message || '操作失败');
+      }
+    } catch (e) {
+      toast.error(getErrorMessage(e, '操作失败'));
+    } finally {
+      setPriceSaving(null);
+    }
+  };
+
+  // 删除覆盖，恢复 Tiger 默认（原价 + 上架）
+  const restoreRowPrice = async (p: PackageItem) => {
+    if (!p.tigerPkgId) return;
+    setPriceSaving(p.tigerPkgId);
+    try {
+      const res = await adminApi.clearPackagePrice(p.tigerPkgId);
+      const body = unwrap<unknown>(res);
+      if (body.code === 0) {
+        toast.success(`「${p.country?.name || p.countryCode} ${p.gb}GB/${p.days}天」已恢复 Tiger 默认价格`);
+        load();
+      } else {
+        toast.error(body.message || '操作失败');
+      }
+    } catch (e) {
+      toast.error(getErrorMessage(e, '操作失败'));
+    } finally {
+      setPriceSaving(null);
+    }
+  };
+
+  // 批量定价提交
+  const submitBatch = async () => {
+    const ids = Array.from(selected).filter((id) => id > 0);
+    if (ids.length === 0) return toast.warning('请先勾选套餐');
+    let setPrice: number | null = null;
+    if (batchPriceMode === 'set') {
+      setPrice = Number(batchPrice);
+      if (!Number.isFinite(setPrice) || setPrice < 0) return toast.warning('请输入有效的统一售价');
+    }
+    if (batchPriceMode === 'reset') setPrice = null; // price=null 恢复 Tiger 原价
+    const items = ids.map((tigerPkgId) => ({
+      tigerPkgId,
+      price: batchPriceMode === 'keep' ? undefined : setPrice,
+      onSale: batchSaleMode === 'on' ? true : batchSaleMode === 'off' ? false : undefined,
+    }));
+    setBatchSaving(true);
+    try {
+      const res = await adminApi.batchUpdatePackagePrices(items);
+      const body = unwrap<{ updated: number }>(res);
+      if (body.code === 0) {
+        toast.success(`已更新 ${body.data.updated} 个套餐的自定价/上下架`);
+        setBatchOpen(false);
+        setSelected(new Set());
+        load();
+      } else {
+        toast.error(body.message || '批量更新失败');
+      }
+    } catch (e) {
+      toast.error(getErrorMessage(e, '批量更新失败'));
+    } finally {
+      setBatchSaving(false);
+    }
+  };
 
   const load = async () => {
     setLoading(true);
@@ -101,6 +224,7 @@ export default function PackagesPage() {
       const data = unwrap<{ packages: PackageItem[]; total: number }>(res).data;
       setPackages(data.packages || []);
       setTotal(data.total || 0);
+      setPriceDrafts({});
     } catch (e) {
       toast.error(getErrorMessage(e, '套餐列表加载失败'));
     } finally {
@@ -226,6 +350,15 @@ export default function PackagesPage() {
             <Search className="h-4 w-4" /> 搜索
           </Button>
           <div className="ml-auto flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={selected.size === 0}
+              onClick={() => setBatchOpen(true)}
+            >
+              <Tags className="h-4 w-4" />
+              批量定价{selected.size > 0 ? `（${selected.size}）` : ''}
+            </Button>
             <Button size="sm" variant="outline" onClick={openAdd}>
               <Plus className="h-4 w-4" /> 添加套餐
             </Button>
@@ -251,71 +384,156 @@ export default function PackagesPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10">
+                      <input
+                        type="checkbox"
+                        className="h-4 w-4 cursor-pointer accent-emerald-700"
+                        checked={packages.length > 0 && packages.every((p) => p.tigerPkgId && selected.has(p.tigerPkgId))}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            const next = new Set(selected);
+                            packages.forEach((p) => p.tigerPkgId && next.add(p.tigerPkgId));
+                            setSelected(next);
+                          } else {
+                            const next = new Set(selected);
+                            packages.forEach((p) => p.tigerPkgId && next.delete(p.tigerPkgId));
+                            setSelected(next);
+                          }
+                        }}
+                      />
+                    </TableHead>
                     <TableHead>国家</TableHead>
                     <TableHead>流量</TableHead>
                     <TableHead>有效期</TableHead>
-                    <TableHead>价格</TableHead>
+                    <TableHead>自定价 (¥)</TableHead>
+                    <TableHead>状态</TableHead>
                     <TableHead>类型</TableHead>
                     <TableHead>标签</TableHead>
-                    <TableHead>网络</TableHead>
                     <TableHead>Tiger ID</TableHead>
                     <TableHead className="text-right">操作</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {packages.map((p) => (
-                    <TableRow key={p.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          {p.country?.flag && (
-                            <img src={p.country.flag} alt={p.country?.name} className="h-4 w-6 rounded-sm object-cover" />
+                  {packages.map((p) => {
+                    const tigerId = Number(p.tigerPkgId || 0);
+                    const overridden = isOverridden(p);
+                    const offSale = isOffSale(p);
+                    const key = String(tigerId || p.id);
+                    const draft = priceDrafts[key] ?? String(p.price ?? '');
+                    return (
+                      <TableRow key={key} className={offSale ? 'opacity-60' : ''}>
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 cursor-pointer accent-emerald-700"
+                            checked={!!tigerId && selected.has(tigerId)}
+                            disabled={!tigerId}
+                            onChange={(e) => {
+                              if (!tigerId) return;
+                              const next = new Set(selected);
+                              if (e.target.checked) next.add(tigerId);
+                              else next.delete(tigerId);
+                              setSelected(next);
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {p.country?.flag && (
+                              <img src={p.country.flag} alt={p.country?.name} className="h-4 w-6 rounded-sm object-cover" />
+                            )}
+                            <span className="font-medium text-ink">{p.country?.name || p.countryCode}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{p.gb}GB</TableCell>
+                        <TableCell>{p.days}天</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            <div className="flex flex-col items-start">
+                              {overridden && (
+                                <span className="text-[11px] text-muted-foreground line-through">
+                                  ¥{p.originalPrice}
+                                </span>
+                              )}
+                              <div className="flex items-center gap-1">
+                                <span className="text-[12.5px] font-medium text-emerald-700">¥</span>
+                                <Input
+                                  className="h-7 w-20 px-1.5 text-[12.5px]"
+                                  value={draft}
+                                  disabled={priceSaving === tigerId}
+                                  onChange={(e) =>
+                                    setPriceDrafts((d) => ({ ...d, [key]: e.target.value }))
+                                  }
+                                  onBlur={() => saveRowPrice(p)}
+                                  onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                                />
+                              </div>
+                            </div>
+                            {overridden && tigerId > 0 && (
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-7 w-7 px-0 text-muted-foreground hover:text-ink"
+                                title="恢复 Tiger 原价"
+                                onClick={() => restoreRowPrice(p)}
+                              >
+                                <RotateCcw className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <Switch
+                              checked={!offSale}
+                              disabled={!tigerId || priceSaving === tigerId}
+                              onCheckedChange={(v) => toggleRowSale(p, v)}
+                            />
+                            <span className={`text-[11px] ${offSale ? 'text-destructive' : 'text-muted-foreground'}`}>
+                              {offSale ? '已停售' : '在售'}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{p.type}</TableCell>
+                        <TableCell>
+                          {p.tag ? (
+                            <span
+                              className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium text-white"
+                              style={{ background: p.tagColor || '#6f8f8b' }}
+                            >
+                              {p.tag}
+                            </span>
+                          ) : (
+                            <span className="text-muted-foreground/50">—</span>
                           )}
-                          <span className="font-medium text-ink">{p.country?.name || p.countryCode}</span>
-                        </div>
-                      </TableCell>
-                      <TableCell>{p.gb}GB</TableCell>
-                      <TableCell>{p.days}天</TableCell>
-                      <TableCell className="font-medium text-emerald-700">¥{p.price}</TableCell>
-                      <TableCell className="text-muted-foreground">{p.type}</TableCell>
-                      <TableCell>
-                        {p.tag ? (
-                          <span
-                            className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium text-white"
-                            style={{ background: p.tagColor || '#6f8f8b' }}
+                        </TableCell>
+                        <TableCell>
+                          {p.tigerPkgId ? (
+                            <span className="font-mono text-[12.5px]">{p.tigerPkgId}</span>
+                          ) : (
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">未关联</span>
+                          )}
+                        </TableCell>
+                        <TableCell align="right">
+                          <Button size="sm" variant="ghost" onClick={() => openEdit(p)}>
+                            编辑
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() =>
+                              p.tigerPkgId
+                                ? setTigerReminder({ name: `${p.country?.name || p.countryCode} ${p.gb}GB/${p.days}天`, action: '删除' })
+                                : setDeleteTarget(p)
+                            }
                           >
-                            {p.tag}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground/50">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>{p.network}</TableCell>
-                      <TableCell>
-                        {p.tigerPkgId ? (
-                          <span className="font-mono text-[12.5px]">{p.tigerPkgId}</span>
-                        ) : (
-                          <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">未关联</span>
-                        )}
-                      </TableCell>
-                      <TableCell align="right">
-                        <Button size="sm" variant="ghost" onClick={() => openEdit(p)}>
-                          编辑
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() =>
-                            p.tigerPkgId
-                              ? setTigerReminder({ name: `${p.country?.name || p.countryCode} ${p.gb}GB/${p.days}天`, action: '删除' })
-                              : setDeleteTarget(p)
-                          }
-                        >
-                          删除
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                            删除
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
 
@@ -377,6 +595,69 @@ export default function PackagesPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* 批量定价弹窗：本地覆盖 Tiger 原价，即时生效 */}
+      <Dialog open={batchOpen} onOpenChange={setBatchOpen}>
+        <DialogContent className="max-h-[88vh] max-w-xl overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>批量定价（{selected.size} 个套餐）</DialogTitle>
+          </DialogHeader>
+
+          <div className="rounded-lg border border-dashed bg-muted/40 px-4 py-3 text-[12px] text-muted-foreground">
+            自定价仅保存在本地，不会修改 TigerESIM 原始数据；保存后对所有端（小程序 / H5）即时生效。停售的套餐在前端彻底隐藏。
+          </div>
+
+          <Section title="售价设置" />
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="价格策略">
+              <Select
+                value={batchPriceMode}
+                onValueChange={(v) => setBatchPriceMode(v as 'keep' | 'set' | 'reset')}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="keep">保持不变</SelectItem>
+                  <SelectItem value="set">统一设置为指定价格</SelectItem>
+                  <SelectItem value="reset">恢复为 Tiger 原价</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            {batchPriceMode === 'set' && (
+              <Field label="统一售价 (¥)">
+                <NumberField value={batchPrice === '' ? 0 : Number(batchPrice)} onChange={(v) => setBatchPrice(String(v))} min={0} precision={2} step={0.1} />
+              </Field>
+            )}
+          </div>
+
+          <Section title="上架状态" />
+          <Field label="上下架">
+            <Select
+              value={batchSaleMode}
+              onValueChange={(v) => setBatchSaleMode(v as 'keep' | 'on' | 'off')}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="keep">保持不变</SelectItem>
+                <SelectItem value="on">全部上架</SelectItem>
+                <SelectItem value="off">全部停售</SelectItem>
+              </SelectContent>
+            </Select>
+          </Field>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBatchOpen(false)}>
+              取消
+            </Button>
+            <Button onClick={submitBatch} disabled={batchSaving}>
+              {batchSaving ? '保存中…' : '确认批量设置'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* 添加 / 编辑弹窗 */}
       <Dialog open={open} onOpenChange={setOpen}>
