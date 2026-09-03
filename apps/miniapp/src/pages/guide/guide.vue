@@ -32,6 +32,7 @@
             <text class="step-title">{{ s.title }}</text>
           </view>
           <text class="step-desc">{{ s.desc }}</text>
+          <image v-if="s.image" class="step-img" :src="s.image" mode="widthFix" />
           <view v-if="s.tips && s.tips.length" class="step-tips">
             <view v-for="(t, ti) in s.tips" :key="ti" class="step-tip">
               <text class="tip-dot">·</text>
@@ -242,6 +243,13 @@ export default {
   font-size: 25rpx;
   color: $ink-2;
   line-height: 1.7;
+}
+
+.step-img {
+  display: block;
+  width: 100%;
+  margin-top: 20rpx;
+  border-radius: $radius;
 }
 
 .step-tips {

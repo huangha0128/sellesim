@@ -72,6 +72,7 @@
           </view>
 
           <view v-if="order.status === 'pending'" class="oc-actions">
+            <view class="act-btn danger" @click.stop="confirmDelete(order)">{{ fmt('orders.delete') }}</view>
             <view class="act-btn primary" @click.stop="goPay(order.orderNo)">{{ fmt('orders.goPay') }}</view>
           </view>
         </view>
@@ -174,6 +175,31 @@ export default {
     priceText(order) {
       const n = Number(order.price)
       return Number(n).toFixed(2)
+    },
+    confirmDelete(order) {
+      uni.showModal({
+        title: this.fmt('orders.deleteTitle'),
+        content: this.fmt('orders.deleteConfirm', { name: order.countryName || order.pkgName || '' }),
+        confirmText: this.fmt('orders.delete'),
+        confirmColor: '#E05A4E',
+        cancelText: this.fmt('orders.cancel'),
+        success: async (r) => {
+          if (!r.confirm) return
+          try {
+            const res = await api.deleteOrder(order.orderNo)
+            if (res.code === 0) {
+              uni.showToast({ title: this.fmt('orders.deleteSuccess'), icon: 'none' })
+              await this.refresh()
+            } else if (res.code === 401) {
+              uni.navigateTo({ url: '/pages/login/login' })
+            } else {
+              uni.showToast({ title: res.message || this.fmt('orders.networkError'), icon: 'none' })
+            }
+          } catch (e) {
+            uni.showToast({ title: this.fmt('orders.networkError'), icon: 'none' })
+          }
+        }
+      })
     },
     goPay(orderNo) {
       uni.navigateTo({ url: `/pages/payment/payment?orderNo=${orderNo}` })
@@ -450,12 +476,23 @@ export default {
   background: $bg-soft;
   border-radius: 999rpx;
   padding: 16rpx 40rpx;
+  margin-left: 16rpx;
+
+  &:first-child {
+    margin-left: 0;
+  }
 
   &.primary {
     background: $gradient-brand;
     color: #ffffff;
     font-weight: 700;
     box-shadow: $shadow-brand;
+  }
+
+  &.danger {
+    color: $coral;
+    background: $coral-light;
+    font-weight: 600;
   }
 }
 

@@ -97,7 +97,7 @@
           <view class="pkg-main">
             <view class="pkg-head">
               <text class="pkg-country">{{ p.countryName }}</text>
-              <text v-if="p.tag" class="pkg-tag" :style="{ color: p.tagColor, background: p.tagColor + '1A' }">{{ p.tag }}</text>
+              <text v-if="p.tag" class="pkg-tag" :style="{ color: p.tagColor, background: p.tagColor + '1A' }">{{ fmt(p.tag) }}</text>
             </view>
             <view class="pkg-meta">
               <text class="pkg-meta-item">{{ fmt('index.gbTraffic', { gb: p.gb }) }}</text>

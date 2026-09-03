@@ -1,5 +1,6 @@
 import Redis from 'ioredis';
 import { tigerClient } from './client';
+import { applyOverrides } from '../pricing/priceOverride';
 
 /**
  * 实时套餐视图层：把 TigerESIM（/api/package）原包数据归一化为前端所需结构。
@@ -43,36 +44,56 @@ export function tigerToView(t: any): any {
   const gb = Math.max(1, Math.round(amountMb / 1024));
   const days = Math.max(1, Number(t.valid_days) || 1);
   const price = Number(t.sales ?? t.nets ?? 0);
-  const regionName = region.name_cn || region.name_en || code;
-  const name = t.name || regionName + ' ' + gb + 'GB/' + days + '天';
-  const desc = Array.isArray(t.description)
+  // 中文名称（默认）
+  const regionNameCn = region.name_cn || region.name_en || code;
+  // 英文名称
+  const regionNameEn = region.name_en || region.name_cn || code;
+  // 套餐名称：中文和英文版本
+  const nameCn = t.name || `${regionNameCn} ${gb}GB ${days}天`;
+  const nameEn = t.name || `${regionNameEn} ${gb}GB ${days} Days`;
+  // 描述：中文和英文版本
+  const descCn = Array.isArray(t.description)
     ? t.description.join('、')
     : t.description
       ? String(t.description)
-      : gb + 'GB 流量，' + days + ' 天有效';
-  const coverage = isMulti ? regionName + '多国通用' : regionName + '覆盖';
-  const type = isMulti ? '多国通用' : '本地套餐';
-  const tag = isFeatured(gb, days) ? '热门' : '';
+      : `${gb}GB 流量，${days} 天有效`;
+  const descEn = Array.isArray(t.description)
+    ? t.description.join(', ')
+    : t.description
+      ? String(t.description)
+      : `${gb}GB Data, ${days} Days Valid`;
+  // coverage/type/tag 使用 i18n key，由前端翻译
+  const coverageKey = isMulti ? 'package.coverageMulti' : 'package.coverageLocal';
+  const typeKey = isMulti ? 'package.typeMulti' : 'package.typeLocal';
+  const tagKey = isFeatured(gb, days) ? 'package.tagHot' : '';
   return {
     id: String(t.id ?? t.pid ?? ''),
     countryCode: code,
-    countryName: regionName,
+    countryName: regionNameCn,
+    countryNameEn: regionNameEn,
     gb,
     days,
     price,
-    name,
-    type,
+    name: nameCn,
+    nameEn: nameEn,
+    type: typeKey,
     network: '4G/5G',
     speed: '高速',
-    coverage,
-    desc,
-    tag,
-    tagColor: tag ? '#FF7A59' : '',
+    speedEn: 'High Speed',
+    coverage: coverageKey,
+    coverageParams: { region: regionNameCn },
+    coverageParamsEn: { region: regionNameEn },
+    desc: descCn,
+    descEn: descEn,
+    tag: tagKey,
+    tagColor: tagKey ? '#FF7A59' : '',
     isFeatured: isFeatured(gb, days),
     tigerPkgId: Number(t.id ?? t.pid ?? 0),
     tigerPid: String(t.pid || ''),
-    features: '["即买即用，扫码秒激活","全程高速 4G/5G 网络","可开热点，多人共享","无需实名，无需换卡"]',
-    installSteps: '["购买后复制二维码下方的激活码","手机设置 → 蜂窝网络 → 添加 eSIM","扫码或输入激活码完成安装","到达目的地后开启数据漫游即用"]',
+    // features 使用 i18n key 数组，由前端翻译
+    features: ['package.feature1', 'package.feature2', 'package.feature3', 'package.feature4'],
+    // installSteps 使用 i18n key 数组，由前端翻译
+    installSteps: ['package.step1', 'package.step2', 'package.step3', 'package.step4'],
   };
 }
 
@@ -194,7 +215,7 @@ export async function refreshPackageCache(): Promise<void> {
   if (!tigerClient.configured) return;
   try {
     const data = await singleFlightFetch();
-    await writeCached(data);
+    await writeCached(await applyOverrides(data));
   } catch (e: any) {
     console.error('[package-cache] 后台刷新失败：' + (e?.message || e));
   }
@@ -204,13 +225,19 @@ export async function refreshPackageCache(): Promise<void> {
  * 惰性刷新并等待完成（仅当确实需要时调用）：
  * 若本地内存/Redis 已有数据则立即返回现有数据并触发后台刷新（stale-while-revalidate）；
  * 若完全没有缓存，则等待一次 Tiger 拉取（首冷启动必经）。
+ * opts.includeOffSale 用于管理后台：默认过滤停售套餐（onSale=false），后台传 true 查看全部。
  */
-export async function listAllPackagesView(force = false): Promise<any[]> {
+export async function listAllPackagesView(
+  force = false,
+  opts: { includeOffSale?: boolean } = {},
+): Promise<any[]> {
+  const filter = (list: any[]) =>
+    opts.includeOffSale ? list : list.filter((p) => p.onSale !== false);
   if (!tigerClient.configured) return [];
   if (force) {
-    const data = await singleFlightFetch();
+    const data = await applyOverrides(await singleFlightFetch());
     await writeCached(data);
-    return data;
+    return filter(data);
   }
   const cached = await readCached();
   if (cached) {
@@ -218,12 +245,12 @@ export async function listAllPackagesView(force = false): Promise<any[]> {
     if (!cached.fresh) {
       refreshPackageCache(); // fire-and-forget
     }
-    return cached.data;
+    return filter(cached.data);
   }
   // 完全没有缓存：等待一次真实拉取
-  const data = await singleFlightFetch();
+  const data = await applyOverrides(await singleFlightFetch());
   await writeCached(data);
-  return data;
+  return filter(data);
 }
 
 /** 按区域（即国家 code）取套餐视图 */

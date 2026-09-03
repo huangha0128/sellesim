@@ -119,7 +119,7 @@ export default {
           price: o.price,
           paidAt: o.paidAt,
           createdAt: o.createdAt,
-          countryName: o.pkgName || o.countryCode || '未知',
+          countryName: o.countryName || o.pkgName || o.countryCode || this.$t('common.unknown'),
           countryCode: o.countryCode,
           gb: o.gb,
           days: o.days,

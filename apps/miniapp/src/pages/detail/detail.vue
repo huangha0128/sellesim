@@ -68,7 +68,7 @@
         <view class="info-item">
           <text class="info-icon">📍</text>
           <text class="info-label">{{ fmt('detail.coverage') }}</text>
-          <text class="info-value">{{ pkg.coverage }}</text>
+          <text class="info-value">{{ fmtPkgCoverage(pkg) }}</text>
         </view>
         <view class="info-item">
           <text class="info-icon">🪪</text>
@@ -84,7 +84,7 @@
         <view class="feature-list">
           <view v-for="f in pkg.features" :key="f" class="feature-item">
             <view class="feature-check-circle">✓</view>
-            <text class="feature-txt">{{ f }}</text>
+            <text class="feature-txt">{{ fmt(f) }}</text>
           </view>
         </view>
       </view>
@@ -94,7 +94,7 @@
         <text class="info-title">{{ fmt('detail.installTitle') }}</text>
         <view v-for="(s, i) in pkg.installSteps" :key="i" class="step-row">
           <view class="step-num">{{ i + 1 }}</view>
-          <text class="step-txt">{{ s }}</text>
+          <text class="step-txt">{{ fmt(s) }}</text>
         </view>
         <view class="step-link" @click="goGuide">{{ fmt('detail.viewFullGuide') }}</view>
       </view>
@@ -152,18 +152,24 @@ export default {
         this.allPackages.filter(p => p.gb === this.selectedGb && p.days).map(p => p.days)
       )).sort((a, b) => a - b)
     },
-    // 当前所选天数下，存在哪些流量档位（与所选天数联动）
+    // 当前所选天数下，存在哪些流量档位（与所选天数联动，按 gb 去重，避免多个同总量套餐重复展示）
     dataCells() {
       if (!this.allPackages.length || !this.selectedDays) return []
-      return this.allPackages
-        .filter(p => p.days === this.selectedDays && p.gb)
-        .map(p => ({ gb: p.gb, price: p.price }))
-        .sort((a, b) => a.gb - b.gb)
+      const byGb = new Map()
+      for (const p of this.allPackages) {
+        if (p.days !== this.selectedDays || !p.gb) continue
+        const cur = byGb.get(p.gb)
+        // 同总量只保留价格最低的档位
+        if (!cur || p.price < cur.price) byGb.set(p.gb, { gb: p.gb, price: p.price })
+      }
+      return Array.from(byGb.values()).sort((a, b) => a.gb - b.gb)
     },
-    // 由「天数×流量」唯一确定一个真实套餐，价格直接取库内真实价
+    // 由「天数×流量」唯一确定一个真实套餐，价格直接取库内真实价（同档多套餐时取价格最低者）
     selectedPkg() {
       if (!this.allPackages.length) return null
-      return this.allPackages.find(p => p.days === this.selectedDays && p.gb === this.selectedGb) || null
+      const matches = this.allPackages.filter(p => p.days === this.selectedDays && p.gb === this.selectedGb)
+      if (!matches.length) return null
+      return matches.reduce((min, p) => (p.price < min.price ? p : min), matches[0])
     },
     priceNum() {
       const price = this.selectedPkg ? this.selectedPkg.price : 0
@@ -181,6 +187,11 @@ export default {
     // 翻译并确保 {name}/{d}/{gb} 等占位符被替换
     fmt(key, params) {
       return fmtNamed(translate(key, params), params)
+    },
+    // 翻译套餐覆盖范围（支持 {region} 占位符）
+    fmtPkgCoverage(pkg) {
+      if (!pkg || !pkg.coverage) return ''
+      return this.fmt(pkg.coverage, { region: pkg.countryName })
     },
     // 默认选中某个真实套餐（取价格最低档），保证初次进入就落在库内已有档位
     pickDefault() {

@@ -44,6 +44,7 @@ model Order {
   pkgId         String
   countryCode   String?   @map("country_code")
   pkgName       String?   @map("pkg_name")
+  pkgNameEn     String?   @map("pkg_name_en")
   gb            Int?
   days          Int?
   tigerPkgId    Int?      @map("tiger_pkg_id")
@@ -88,6 +89,7 @@ model Esim {
   gb             Int?      @default(0) // cumulative gb snapshot
   days           Int?      @default(0) // cumulative days snapshot
   pkgName        String?   @map("pkg_name")
+  pkgNameEn      String?   @map("pkg_name_en")
   countryCode    String?   @map("country_code")
   tigerPkgId     Int?      @map("tiger_pkg_id")
   tigerPid       String?   @map("tiger_pid")
@@ -101,4 +103,16 @@ model Card {
   remark    String   @default("")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// Local pricing override for TigerESIM packages.
+// One row per tiger package id. price=null means use Tiger original price.
+// onSale=false hides the package from public endpoints (miniapp / h5).
+model PackagePrice {
+  id         String   @id @default(uuid())
+  tigerPkgId Int      @unique @map("tiger_pkg_id")
+  price      Float?   @map("price")
+  onSale     Boolean  @default(true) @map("on_sale")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }

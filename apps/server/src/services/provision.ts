@@ -12,6 +12,7 @@ export interface ProvisionResult {
   days?: number;
   countryCode?: string;
   pkgName?: string;
+  pkgNameEn?: string;
   tigerPkgId?: number;
   tigerPid?: string;
 }
@@ -30,6 +31,7 @@ export async function provisionEsim(prisma: PrismaClient, order: any): Promise<P
     days,
     countryCode: order?.countryCode || '',
     pkgName: order?.pkgName || '',
+    pkgNameEn: order?.pkgNameEn || '',
     tigerPkgId: Number(order?.tigerPkgId || 0) || undefined,
     tigerPid: order?.tigerPid || '',
   };

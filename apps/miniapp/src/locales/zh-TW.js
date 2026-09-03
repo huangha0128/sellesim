@@ -103,6 +103,26 @@ export default {
     empty: '該目的地暫未上架套餐',
     tip: '購買後啟用碼將自動發放到「我的 eSIM」，掃碼即可安裝'
   },
+  package: {
+    // 覆蓋類型
+    coverageMulti: '{region}多國通用',
+    coverageLocal: '{region}覆蓋',
+    // 套餐類型
+    typeMulti: '多國通用',
+    typeLocal: '本地套餐',
+    // 標籤
+    tagHot: '熱門',
+    // 特性
+    feature1: '即買即用，掃碼秒啟用',
+    feature2: '全程高速 4G/5G 網路',
+    feature3: '可開熱點，多人共享',
+    feature4: '無需實名，無需換卡',
+    // 安裝步驟
+    step1: '購買後複製二維碼下方的啟用碼',
+    step2: '手機設定 → 行動網路 → 加入 eSIM',
+    step3: '掃碼或輸入啟用碼完成安裝',
+    step4: '到達目的地後開啟數據漫遊即用'
+  },
   detail: {
     tabSelect: '套餐選擇',
     tabDetail: '套餐詳情',
@@ -232,6 +252,10 @@ export default {
     refundSubmit: '送出申請',
     refundAppliedToast: '退款申請已送出，請耐心等待',
     rejectReasonLabel: '拒絕理由',
+    delete: '刪除訂單',
+    deleteTitle: '刪除訂單',
+    deleteConfirm: '確定要刪除「{name}」這筆待付款訂單嗎？',
+    deleteSuccess: '訂單已刪除',
     cancel: '取消'
   },
   esims: {

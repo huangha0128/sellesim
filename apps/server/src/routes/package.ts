@@ -34,7 +34,7 @@ export default (prisma: PrismaClient) => {
       const all = await listAllPackagesView();
       const byRegion = new Map<string, number>();
       for (const p of all) {
-        if (!p.isFeatured) continue;
+        // 取全部套餐中的最低价，保证首页「起价」与详情页可选价格一致（详情页 all=1 展示所有套餐）
         const cur = byRegion.get(p.countryCode);
         if (cur === undefined || p.price < cur) byRegion.set(p.countryCode, p.price);
       }

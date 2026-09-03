@@ -28,15 +28,15 @@
         <view class="pkg-main">
           <view class="pkg-head">
             <text class="pkg-country">{{ series.countryName }}</text>
-            <text v-if="series.tag" class="pkg-tag" :style="{ color: series.tagColor, background: series.tagColor + '1A' }">{{ series.tag }}</text>
-            <view class="pkg-type">{{ series.type }}</view>
+            <text v-if="series.tag" class="pkg-tag" :style="{ color: series.tagColor, background: series.tagColor + '1A' }">{{ fmt(series.tag) }}</text>
+            <view class="pkg-type">{{ fmt(series.type) }}</view>
           </view>
           <view class="pkg-meta">
             <text class="pkg-meta-item">{{ fmt('packages.daysSelectable', { min: series.dayOptions[0], max: series.dayOptions[series.dayOptions.length - 1] }) }}</text>
             <text class="pkg-dot">·</text>
             <text class="pkg-meta-item">{{ fmt('packages.multiData') }}</text>
           </view>
-          <view class="pkg-coverage">{{ series.coverage }}</view>
+          <view class="pkg-coverage">{{ fmt(series.coverage, { region: series.countryName }) }}</view>
         </view>
         <view class="pkg-right">
           <view class="pkg-price">

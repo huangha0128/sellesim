@@ -20,14 +20,37 @@
         <text class="stat-label">{{ $t('profile.statEsims') }}</text>
       </view>
       <view class="stat-divider"></view>
-      <view class="stat-item" @click="goEsims">
-        <text class="stat-num">{{ store.orders.filter((o) => o.status === 'paid').length }}</text>
+      <view class="stat-item" @click="goOrders()">
+        <text class="stat-num">{{ store.orders.length }}</text>
         <text class="stat-label">{{ $t('profile.statOrders') }}</text>
       </view>
       <view class="stat-divider"></view>
       <view class="stat-item" @click="goCountries">
         <text class="stat-num">200+</text>
         <text class="stat-label">{{ $t('profile.statRegions') }}</text>
+      </view>
+    </view>
+
+    <view class="status-bar">
+      <view class="sb-item" hover-class="sb-item--hover" @click="goOrdersByStatus('pending')">
+        <view class="sb-icon ic-amber"><image src="/static/icons/prof-order.png" mode="aspectFit" style="width: 40rpx; height: 40rpx;" /></view>
+        <text class="sb-label">{{ $t('profile.statusPending') }}</text>
+        <text class="sb-num" v-if="orderCountBy('pending') > 0">{{ orderCountBy('pending') }}</text>
+      </view>
+      <view class="sb-item" hover-class="sb-item--hover" @click="goOrdersByStatus('activate')">
+        <view class="sb-icon ic-sky"><image src="/static/icons/prof-esim.png" mode="aspectFit" style="width: 40rpx; height: 40rpx;" /></view>
+        <text class="sb-label">{{ $t('profile.statusActivate') }}</text>
+        <text class="sb-num" v-if="orderCountBy('activate') > 0">{{ orderCountBy('activate') }}</text>
+      </view>
+      <view class="sb-item" hover-class="sb-item--hover" @click="goOrdersByStatus('done')">
+        <view class="sb-icon ic-teal"><image src="/static/icons/feat-signal.png" mode="aspectFit" style="width: 40rpx; height: 40rpx;" /></view>
+        <text class="sb-label">{{ $t('profile.statusDone') }}</text>
+        <text class="sb-num" v-if="orderCountBy('done') > 0">{{ orderCountBy('done') }}</text>
+      </view>
+      <view class="sb-item" hover-class="sb-item--hover" @click="goOrdersByStatus('refunded')">
+        <view class="sb-icon ic-coral"><image src="/static/icons/prof-help.png" mode="aspectFit" style="width: 40rpx; height: 40rpx;" /></view>
+        <text class="sb-label">{{ $t('profile.statusRefunded') }}</text>
+        <text class="sb-num" v-if="orderCountBy('refunded') > 0">{{ orderCountBy('refunded') }}</text>
       </view>
     </view>
 
@@ -81,8 +104,16 @@
 <script>
 import FloatingTabBar from '@/components/FloatingTabBar.vue'
 import { store } from '@/store'
+import { api } from '@/utils/api'
 import { maskEmail } from '@/utils/format'
 import { getLocale, setLocale, LOCALES } from '@/locales'
+
+// 订单 → 分类：pending 待付款 / activate 待激活 / done 已完成 / refunded 已退款
+function orderCategory(order) {
+  if (order.status === 'pending') return 'pending'
+  if (order.status === 'refunded') return 'refunded'
+  return order.esimStatus === 'activated' ? 'done' : 'activate'
+}
 
 export default {
   components: { FloatingTabBar },
@@ -97,9 +128,19 @@ export default {
   },
   onShow() {
     this.locale = getLocale()
+    this.refreshOrders()
   },
   methods: {
     maskEmail,
+    async refreshOrders() {
+      if (!store.isLoggedIn) return
+      try {
+        const res = await api.getOrders()
+        if (res.code === 0 && res.data.orders) {
+          store.setOrders(res.data.orders)
+        }
+      } catch (e) {}
+    },
     goLogin() {
       if (!store.isLoggedIn) {
         uni.navigateTo({ url: '/pages/login/login' })
@@ -110,6 +151,12 @@ export default {
     },
     goOrders() {
       uni.navigateTo({ url: '/pages/orders/orders' })
+    },
+    goOrdersByStatus(status) {
+      uni.navigateTo({ url: `/pages/orders/orders?status=${status}` })
+    },
+    orderCountBy(key) {
+      return store.orders.filter((o) => orderCategory(o) === key).length
     },
     goGuide() {
       uni.navigateTo({ url: '/pages/guide/guide' })
@@ -256,6 +303,78 @@ export default {
   width: 1rpx;
   height: 52rpx;
   background: $line;
+}
+
+.status-bar {
+  background: $bg-card;
+  border-radius: $radius-lg;
+  margin-top: 24rpx;
+  padding: 28rpx 12rpx;
+  box-shadow: $shadow-sm;
+  display: flex;
+  align-items: stretch;
+}
+
+.sb-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  transition: transform 0.15s ease;
+
+  &--hover {
+    transform: scale(0.94);
+  }
+}
+
+.sb-icon {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 22rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &.ic-amber {
+    background: $sun-light;
+  }
+
+  &.ic-sky {
+    background: $brand-light;
+  }
+
+  &.ic-teal {
+    background: $teal-light;
+  }
+
+  &.ic-coral {
+    background: $coral-light;
+  }
+}
+
+.sb-label {
+  margin-top: 14rpx;
+  font-size: 22rpx;
+  color: $ink-2;
+}
+
+.sb-num {
+  position: absolute;
+  top: -6rpx;
+  right: 12rpx;
+  min-width: 32rpx;
+  height: 32rpx;
+  padding: 0 8rpx;
+  border-radius: 999rpx;
+  background: $coral;
+  color: #ffffff;
+  font-size: 20rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
 }
 
 .menu-card {

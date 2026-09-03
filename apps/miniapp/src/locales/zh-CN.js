@@ -103,6 +103,26 @@ export default {
     empty: '该目的地暂未上架套餐',
     tip: '购买后激活码将自动发放到「我的 eSIM」，扫码即可安装'
   },
+  package: {
+    // 覆盖类型
+    coverageMulti: '{region}多国通用',
+    coverageLocal: '{region}覆盖',
+    // 套餐类型
+    typeMulti: '多国通用',
+    typeLocal: '本地套餐',
+    // 标签
+    tagHot: '热门',
+    // 特性
+    feature1: '即买即用，扫码秒激活',
+    feature2: '全程高速 4G/5G 网络',
+    feature3: '可开热点，多人共享',
+    feature4: '无需实名，无需换卡',
+    // 安装步骤
+    step1: '购买后复制二维码下方的激活码',
+    step2: '手机设置 → 蜂窝网络 → 添加 eSIM',
+    step3: '扫码或输入激活码完成安装',
+    step4: '到达目的地后开启数据漫游即用'
+  },
   detail: {
     tabSelect: '套餐选择',
     tabDetail: '套餐详情',
@@ -232,6 +252,10 @@ export default {
     refundSubmit: '提交申请',
     refundAppliedToast: '退款申请已提交，请耐心等待',
     rejectReasonLabel: '拒绝理由',
+    delete: '删除订单',
+    deleteTitle: '删除订单',
+    deleteConfirm: '确定要删除「{name}」这笔待付款订单吗？',
+    deleteSuccess: '订单已删除',
     cancel: '取消'
   },
   esims: {

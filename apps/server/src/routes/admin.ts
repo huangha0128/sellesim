@@ -5,6 +5,19 @@ import { syncAllFromTiger, syncRegionsFromTiger, syncPackagesFromTiger } from '.
 import { refundOrder, rejectRefundRequest } from '../services/refund';
 import { sendRefundEmail } from '../services/email';
 import { alipay } from '../utils/alipay';
+import { clearOverrideCache } from '../pricing/priceOverride';
+
+/** 覆盖配置变更后的即时生效：清覆盖缓存 → 失效套餐缓存 → 同步重拉一次（等待完成） */
+async function refreshAfterOverride() {
+  clearOverrideCache();
+  (await import('../tiger/view')).invalidatePackageCache();
+  try {
+    const { listAllPackagesView } = await import('../tiger/view');
+    await listAllPackagesView(true, { includeOffSale: true });
+  } catch {
+    // 失败由后台定时刷新兜底，不影响本次写操作返回
+  }
+}
 
 /** 从 Tiger 创建套餐的响应中抽取创建结果（兼容 {data:{...}} / 直接对象 / 嵌套 package/item） */
 function extractTigerCreated(res: any): any {
@@ -215,8 +228,8 @@ export default (prisma: PrismaClient) => {
     let list: any[];
     try {
       const { listAllPackagesView } = await import('../tiger/view');
-      // refresh=1 时强制绕过 60s 缓存，从 Tiger 重新拉取
-      list = await listAllPackagesView(req.query.refresh === '1');
+      // refresh=1 时强制绕过缓存，从 Tiger 重新拉取；后台需看到停售套餐（includeOffSale）
+      list = await listAllPackagesView(req.query.refresh === '1', { includeOffSale: true });
     } catch (e: any) {
       return res.status(502).json({ code: 1, message: 'Tiger 套餐拉取失败：' + e.message });
     }
@@ -304,6 +317,119 @@ export default (prisma: PrismaClient) => {
       code: 1,
       message: 'TigerESIM 未提供删除套餐接口，套餐数据以 TigerESIM 后台为准，请到 TigerESIM 后台删除',
     });
+  });
+
+  // ===== 套餐自主定价（本地覆盖，不影响 Tiger 原始数据；改价即时生效）=====
+
+  /**
+   * PUT /api/admin/packages/:tigerPkgId/price 设置单个套餐的自定价/上下架
+   * body: { price?: number | null, onSale?: boolean }
+   * - price 传具体数字 → 覆盖 Tiger 原价；传 null/缺省且不带 onSale 时仅保留已有配置
+   * - onSale 传 false → 停售（公开接口彻底隐藏）；传 true → 上架
+   */
+  router.put('/packages/:tigerPkgId/price', async (req: Request, res: Response) => {
+    try {
+      const tigerPkgId = Number(req.params.tigerPkgId);
+      if (!Number.isInteger(tigerPkgId) || tigerPkgId <= 0) {
+        return res.json({ code: 1, message: '非法套餐 ID' });
+      }
+      const { price, onSale } = req.body || {};
+      const data: { price?: number | null; onSale?: boolean } = {};
+      if (price !== undefined && price !== null && price !== '') {
+        const p = Number(price);
+        if (!Number.isFinite(p) || p < 0) return res.json({ code: 1, message: '价格必须是大于等于 0 的数字' });
+        data.price = p;
+      } else if (price !== undefined) {
+        data.price = null; // 显式清空自定价，恢复 Tiger 原价
+      }
+      if (onSale !== undefined) data.onSale = !!onSale;
+      const row = await prisma.packagePrice.upsert({
+        where: { tigerPkgId },
+        update: data,
+        create: { tigerPkgId, ...data },
+      });
+      await refreshAfterOverride();
+      res.json({ code: 0, data: { override: row } });
+    } catch (e: any) {
+      console.error('[pricing] 设置套餐价格失败：', e.message);
+      res.status(400).json({ code: 1, message: '设置失败：' + e.message });
+    }
+  });
+
+  /** DELETE /api/admin/packages/:tigerPkgId/price 删除本地定价覆盖，完全恢复 Tiger 默认（原价 + 上架） */
+  router.delete('/packages/:tigerPkgId/price', async (req: Request, res: Response) => {
+    try {
+      const tigerPkgId = Number(req.params.tigerPkgId);
+      if (!Number.isInteger(tigerPkgId) || tigerPkgId <= 0) {
+        return res.json({ code: 1, message: '非法套餐 ID' });
+      }
+      await prisma.packagePrice.deleteMany({ where: { tigerPkgId } });
+      await refreshAfterOverride();
+      res.json({ code: 0, data: {} });
+    } catch (e: any) {
+      console.error('[pricing] 恢复套餐价格失败：', e.message);
+      res.status(400).json({ code: 1, message: '操作失败：' + e.message });
+    }
+  });
+
+  /**
+   * POST /api/admin/packages/prices/batch 批量设置自定价/上下架
+   * body: { items: [{ tigerPkgId, price?: number | null, onSale?: boolean }] }
+   */
+  router.post('/packages/prices/batch', async (req: Request, res: Response) => {
+    try {
+      const { items } = req.body || {};
+      if (!Array.isArray(items) || items.length === 0) {
+        return res.json({ code: 1, message: 'items 不能为空' });
+      }
+      await prisma.$transaction(
+        items.map((it: any) => {
+          const tigerPkgId = Number(it?.tigerPkgId);
+          if (!Number.isInteger(tigerPkgId) || tigerPkgId <= 0) {
+            throw new Error('存在非法套餐 ID：' + String(it?.tigerPkgId));
+          }
+          const data: { price?: number | null; onSale?: boolean } = {};
+          if (it.price !== undefined && it.price !== null && it.price !== '') {
+            const p = Number(it.price);
+            if (!Number.isFinite(p) || p < 0) throw new Error(`套餐 ${tigerPkgId} 价格非法：${it.price}`);
+            data.price = p;
+          } else if (it.price !== undefined) {
+            data.price = null;
+          }
+          if (it.onSale !== undefined) data.onSale = !!it.onSale;
+          return prisma.packagePrice.upsert({
+            where: { tigerPkgId },
+            update: data,
+            create: { tigerPkgId, ...data },
+          });
+        }),
+      );
+      await refreshAfterOverride();
+      res.json({ code: 0, data: { updated: items.length } });
+    } catch (e: any) {
+      console.error('[pricing] 批量设置失败：', e.message);
+      res.status(400).json({ code: 1, message: '批量设置失败：' + e.message });
+    }
+  });
+
+  /** POST /api/admin/packages/prices/clear 批量删除本地定价覆盖，恢复 Tiger 默认（原价 + 上架） */
+  router.post('/packages/prices/clear', async (req: Request, res: Response) => {
+    try {
+      const tigerPkgIds = Array.isArray(req.body?.tigerPkgIds)
+        ? (req.body.tigerPkgIds as any[]).map(Number)
+        : [];
+      if (tigerPkgIds.length === 0) {
+        return res.json({ code: 1, message: 'tigerPkgIds 不能为空' });
+      }
+      const invalid = tigerPkgIds.some((id) => !Number.isInteger(id) || id <= 0);
+      if (invalid) return res.json({ code: 1, message: '存在非法套餐 ID' });
+      await prisma.packagePrice.deleteMany({ where: { tigerPkgId: { in: tigerPkgIds } } });
+      await refreshAfterOverride();
+      res.json({ code: 0, data: { cleared: tigerPkgIds.length } });
+    } catch (e: any) {
+      console.error('[pricing] 批量恢复失败：', e.message);
+      res.status(400).json({ code: 1, message: '批量恢复失败：' + e.message });
+    }
   });
 
   // ===== Tiger 接入相关 =====

@@ -125,6 +125,7 @@
 
       <view v-if="order.status === 'pending'" class="bottom-cta">
         <view class="pay-btn" hover-class="pay-btn--hover" @click="goPay(order.orderNo)">{{ fmt('orders.goPay') }}</view>
+        <view class="del-btn" hover-class="del-btn--hover" @click="confirmDelete(order)">{{ fmt('orders.delete') }}</view>
       </view>
     </template>
 
@@ -263,6 +264,31 @@ export default {
     },
     goPay(orderNo) {
       uni.navigateTo({ url: `/pages/payment/payment?orderNo=${orderNo}` })
+    },
+    confirmDelete(order) {
+      uni.showModal({
+        title: this.fmt('orders.deleteTitle'),
+        content: this.fmt('orders.deleteConfirm', { name: order.pkgName || order.countryName || '' }),
+        confirmText: this.fmt('orders.delete'),
+        confirmColor: '#E05A4E',
+        cancelText: this.fmt('orders.cancel'),
+        success: async (r) => {
+          if (!r.confirm) return
+          try {
+            const res = await api.deleteOrder(this.orderNo)
+            if (res.code === 0) {
+              uni.showToast({ title: this.fmt('orders.deleteSuccess'), icon: 'none' })
+              setTimeout(() => uni.navigateBack(), 600)
+            } else if (res.code === 401) {
+              uni.navigateTo({ url: '/pages/login/login' })
+            } else {
+              uni.showToast({ title: res.message || this.fmt('orders.networkError'), icon: 'none' })
+            }
+          } catch (e) {
+            uni.showToast({ title: this.fmt('orders.networkError'), icon: 'none' })
+          }
+        }
+      })
     },
     openRefundForm() {
       this.refundReasonInput = ''
@@ -527,6 +553,22 @@ export default {
   }
 }
 
+.del-btn {
+  margin-top: 20rpx;
+  background: #ffffff;
+  color: $coral;
+  border: 2rpx solid $coral;
+  font-size: 28rpx;
+  font-weight: 600;
+  text-align: center;
+  padding: 22rpx 0;
+  border-radius: 999rpx;
+
+  &--hover {
+    transform: scale(0.97);
+  }
+}
+
 .footer-safe {
   height: calc(40rpx + env(safe-area-inset-bottom));
 }
@@ -630,7 +672,7 @@ export default {
   height: 180rpx;
   background: $bg-page;
   border: 2rpx solid $line;
-  border-radius: $radius-md;
+  border-radius: $radius;
   padding: 20rpx;
   font-size: 26rpx;
   color: $ink;

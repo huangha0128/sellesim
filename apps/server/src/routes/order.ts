@@ -57,6 +57,7 @@ export default (prisma: PrismaClient) => {
         userId: req.userId,
         countryCode: pkg.countryCode,
         pkgName: pkg.name || `${pkg.countryCode} ${pkg.gb}GB/${pkg.days}天`,
+        pkgNameEn: pkg.nameEn || `${pkg.countryCode} ${pkg.gb}GB/${pkg.days} Days`,
         gb: pkg.gb,
         days: pkg.days,
         tigerPkgId: pkg.tigerPkgId,
@@ -175,6 +176,30 @@ export default (prisma: PrismaClient) => {
       return res.json({ code: 1, message: '订单不存在' });
     }
     res.json({ code: 0, data: { order } });
+  });
+
+  /**
+   * DELETE /api/orders/:orderNo 删除订单
+   * - 仅待付款（status=pending）且属于当前用户的订单可删除
+   * - 已支付、退款中的订单不可删除
+   */
+  router.delete('/:orderNo', authMiddleware, async (req: AuthRequest, res: Response) => {
+    const order = await prisma.order.findFirst({
+      where: { orderNo: req.params.orderNo, userId: req.userId },
+    });
+    if (!order) {
+      return res.json({ code: 1, message: '订单不存在' });
+    }
+    if (order.status !== 'pending') {
+      return res.json({ code: 1, message: '仅待付款订单可删除' });
+    }
+    try {
+      await prisma.order.delete({ where: { id: order.id } });
+      res.json({ code: 0, data: { orderNo: order.orderNo } });
+    } catch (e: any) {
+      console.error(`[order] 删除订单 ${req.params.orderNo} 失败：`, e.message);
+      res.json({ code: 1, message: '删除订单失败，请稍后重试' });
+    }
   });
 
   /**

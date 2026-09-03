@@ -103,6 +103,26 @@ export default {
     empty: 'No plans available for this destination yet',
     tip: 'After purchase, the activation code will be sent to "My eSIMs". Scan the QR code to install.'
   },
+  package: {
+    // Coverage types
+    coverageMulti: '{region} Multi-country',
+    coverageLocal: '{region} Coverage',
+    // Package types
+    typeMulti: 'Multi-country',
+    typeLocal: 'Local Plan',
+    // Tags
+    tagHot: 'Hot',
+    // Features
+    feature1: 'Buy & use, instant activation',
+    feature2: 'High-speed 4G/5G network',
+    feature3: 'Hotspot sharing supported',
+    feature4: 'No registration, no SIM swap',
+    // Installation steps
+    step1: 'Copy activation code below QR code',
+    step2: 'Settings → Cellular → Add eSIM',
+    step3: 'Scan QR or enter code to install',
+    step4: 'Enable data roaming at destination'
+  },
   detail: {
     tabSelect: 'Select Plan',
     tabDetail: 'Plan Details',
@@ -232,6 +252,10 @@ export default {
     refundSubmit: 'Submit Request',
     refundAppliedToast: 'Refund request submitted, please wait patiently',
     rejectReasonLabel: 'Rejection Reason',
+    delete: 'Delete Order',
+    deleteTitle: 'Delete Order',
+    deleteConfirm: 'Are you sure you want to delete the unpaid order "{name}"?',
+    deleteSuccess: 'Order deleted',
     cancel: 'Cancel'
   },
   esims: {

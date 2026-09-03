@@ -40,6 +40,8 @@ export interface PackageItem {
   gb: number;
   days: number;
   price: number;
+  originalPrice?: number;
+  onSale?: boolean;
   name?: string;
   type?: string;
   network?: string;
@@ -150,4 +152,14 @@ export const adminApi = {
   createPackage: (data: any) => http.post('/admin/packages', data),
   updatePackage: (id: string, data: any) => http.put(`/admin/packages/${id}`, data),
   deletePackage: (id: string) => http.delete(`/admin/packages/${id}`),
+
+  // 套餐自主定价（本地覆盖 Tiger 原价；不影响 Tiger 原始数据）
+  updatePackagePrice: (tigerPkgId: number, data: { price?: number | null; onSale?: boolean }) =>
+    http.put(`/admin/packages/${tigerPkgId}/price`, data),
+  clearPackagePrice: (tigerPkgId: number) => http.delete(`/admin/packages/${tigerPkgId}/price`),
+  batchUpdatePackagePrices: (
+    items: { tigerPkgId: number; price?: number | null; onSale?: boolean }[],
+  ) => http.post('/admin/packages/prices/batch', { items }),
+  batchClearPackagePrices: (tigerPkgIds: number[]) =>
+    http.post('/admin/packages/prices/clear', { tigerPkgIds }),
 };

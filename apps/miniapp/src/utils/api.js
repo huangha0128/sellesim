@@ -1,12 +1,32 @@
 const BASE_URL = 'https://www.bjyyxx.com/api';
 
+// 获取当前语言
+function getCurrentLang() {
+  try {
+    return uni.getStorageSync('yy_locale') || 'zh-CN';
+  } catch (e) {
+    return 'zh-CN';
+  }
+}
+
 // 将后端嵌套的 package.country 扁平化为前端所需字段
 function flattenPkg(p) {
   if (!p) return p;
   const c = p.country || {};
+  const isEn = getCurrentLang() === 'en';
+
   return {
     ...p,
-    countryName: p.countryName || c.name,
+    // 根据语言选择国家名称
+    countryName: isEn ? (p.countryNameEn || p.countryName || c.name) : (p.countryName || c.name),
+    // 根据语言选择套餐名称
+    name: isEn ? (p.nameEn || p.name) : p.name,
+    // 根据语言选择描述
+    desc: isEn ? (p.descEn || p.desc) : p.desc,
+    // 根据语言选择速度描述
+    speed: isEn ? (p.speedEn || p.speed) : p.speed,
+    // 根据语言选择覆盖范围参数
+    coverageParams: isEn ? (p.coverageParamsEn || p.coverageParams) : p.coverageParams,
     flag: p.flag || c.flag,
     features: typeof p.features === 'string' ? JSON.parse(p.features) : (p.features || []),
     installSteps: typeof p.installSteps === 'string' ? JSON.parse(p.installSteps) : (p.installSteps || []),
@@ -62,7 +82,12 @@ export const api = {
     for (const c of hotCountries) {
       const pkgRes = await request('GET', `/packages?countryCode=${c.code}`);
       const list = pkgRes.data.packages || [];
-      const hot = list.find((p) => p.tag === '热销') || list[1];
+      // 取该国最便宜的真实套餐作「热销」卡片，价格与「起价」一致；
+      // 真实后端 tag 只有「热门」，故不再用不存在的「热销」去匹配
+      const featured = list.filter((p) => p.tag);
+      const hot = (featured.length ? featured : list)
+        .slice()
+        .sort((a, b) => a.price - b.price)[0] || null;
       if (hot) hotPackages.push(flattenPkg(hot));
     }
     const priceMap = {};
@@ -118,30 +143,37 @@ export const api = {
 
   async getOrders() {
     const res = await request('GET', '/orders');
-    // 订单自带套餐快照字段（countryCode/pkgName/gb/days），不再嵌套 package
-    res.data.orders = (res.data.orders || []).map((o) => ({
-      id: o.id,
-      orderNo: o.orderNo,
-      pkgId: o.pkgId,
-      email: o.email,
-      payMethod: o.payMethod,
-      status: o.status,
-      price: o.price,
-      paidAt: o.paidAt,
-      createdAt: o.createdAt,
-      countryName: o.pkgName || o.countryCode || '未知',
-      countryCode: o.countryCode,
-      gb: o.gb,
-      days: o.days,
-      flag: o.countryCode || '',
-      esimStatus: (o.esim && o.esim.status) || '',
-      refundedAt: o.refundedAt,
-      refundStatus: o.refundStatus,
-      refundReason: o.refundReason,
-      refundRequestedAt: o.refundRequestedAt,
-      refundRejectReason: o.refundRejectReason,
-      refundRejectedAt: o.refundRejectedAt,
-    }));
+    const isEn = getCurrentLang() === 'en';
+    // 订单自带套餐快照字段（countryCode/pkgName/pkgNameEn/gb/days），不再嵌套 package
+    res.data.orders = (res.data.orders || []).map((o) => {
+      // 根据语言选择套餐名称：英文优先用 pkgNameEn，中文用 pkgName
+      const countryName = isEn
+        ? (o.pkgNameEn || `${o.countryCode || ''} ${o.gb || 0}GB/${o.days || 0} Days`)
+        : (o.pkgName || o.countryCode || '未知');
+      return {
+        id: o.id,
+        orderNo: o.orderNo,
+        pkgId: o.pkgId,
+        email: o.email,
+        payMethod: o.payMethod,
+        status: o.status,
+        price: o.price,
+        paidAt: o.paidAt,
+        createdAt: o.createdAt,
+        countryName,
+        countryCode: o.countryCode,
+        gb: o.gb,
+        days: o.days,
+        flag: o.countryCode || '',
+        esimStatus: (o.esim && o.esim.status) || '',
+        refundedAt: o.refundedAt,
+        refundStatus: o.refundStatus,
+        refundReason: o.refundReason,
+        refundRequestedAt: o.refundRequestedAt,
+        refundRejectReason: o.refundRejectReason,
+        refundRejectedAt: o.refundRejectedAt,
+      };
+    });
     return res;
   },
 
@@ -158,14 +190,41 @@ export const api = {
   },
 
   async getOrder(orderNo) {
-    return request('GET', `/orders/${orderNo}`);
+    const res = await request('GET', `/orders/${orderNo}`);
+    if (res.code === 0 && res.data.order) {
+      const o = res.data.order;
+      const isEn = getCurrentLang() === 'en';
+      // 根据语言选择套餐名称：英文优先用 pkgNameEn，中文用 pkgName
+      const countryName = isEn
+        ? (o.pkgNameEn || `${o.countryCode || ''} ${o.gb || 0}GB/${o.days || 0} Days`)
+        : (o.pkgName || o.countryCode || '未知');
+      res.data.order.countryName = countryName;
+      // 处理 esim 的 countryName
+      if (o.esim) {
+        const e = o.esim;
+        const esimCountryName = isEn
+          ? (e.pkgNameEn || o.pkgNameEn || `${e.countryCode || o.countryCode || ''} ${e.gb ?? o.gb ?? 0}GB/${e.days ?? o.days ?? 0} Days`)
+          : (e.pkgName || o.pkgName || e.countryCode || o.countryCode || '未知');
+        res.data.order.esim.countryName = esimCountryName;
+      }
+    }
+    return res;
+  },
+
+  async deleteOrder(orderNo) {
+    return request('DELETE', `/orders/${orderNo}`);
   },
 
   async getMyEsims() {
     const res = await request('GET', '/esims');
-    // eSIM 自带套餐快照字段（countryCode/pkgName/gb/days），不再嵌套 package
+    const isEn = getCurrentLang() === 'en';
+    // eSIM 自带套餐快照字段（countryCode/pkgName/pkgNameEn/gb/days），不再嵌套 package
     res.data.esims = (res.data.esims || []).map((e) => {
       const o = e.order || {};
+      // 根据语言选择套餐名称：英文优先用 pkgNameEn，中文用 pkgName
+      const countryName = isEn
+        ? (e.pkgNameEn || o.pkgNameEn || `${e.countryCode || o.countryCode || ''} ${e.gb ?? o.gb ?? 0}GB/${e.days ?? o.days ?? 0} Days`)
+        : (e.pkgName || o.pkgName || e.countryCode || o.countryCode || '未知');
       return {
         id: e.id,
         activationCode: e.activationCode,
@@ -177,7 +236,7 @@ export const api = {
         pkg: {
           id: e.orderId || e.id,
           countryCode: e.countryCode || o.countryCode || '',
-          countryName: e.pkgName || o.pkgName || e.countryCode || o.countryCode || '未知',
+          countryName,
           flag: e.countryCode || '',
           gb: e.gb ?? o.gb ?? 0,
           days: e.days ?? o.days ?? 0,

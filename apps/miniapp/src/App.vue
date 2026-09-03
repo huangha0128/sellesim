@@ -2,6 +2,10 @@
 import { applyAppLocale } from './locales'
 
 export default {
+  globalData: {
+    // 跨页面传递当前选中的订单，避免依赖 navigateTo query 传参
+    ticketOrder: null
+  },
   onLaunch() {
     console.log('YYeSim App Launch')
     applyAppLocale()
