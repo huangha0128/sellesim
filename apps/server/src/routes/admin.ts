@@ -250,27 +250,50 @@ export default (prisma: PrismaClient) => {
       return res.json({ code: 1, message: '未配置 TIGER_CLIENT_ID / TIGER_CLIENT_SECRET，无法获取 Tiger 套餐目录' });
     }
     try {
-      const { fetchAndNormalize } = await import('../tiger/view');
+      const { getCatalogView } = await import('../tiger/view');
       const keyword = String(req.query.keyword || '').trim().toLowerCase();
       const countryCode = String(req.query.countryCode || '').trim();
-      let all = await fetchAndNormalize();
+      // 优先读缓存（避免每次打开添加套餐对话框都请求 Tiger API）；refresh=1 强制重新拉取
+      const all = await getCatalogView(req.query.refresh === '1');
       const addedRows = await prisma.packagePrice.findMany({ where: { price: { not: null } }, select: { tigerPkgId: true } });
       const addedSet = new Set(addedRows.map((r) => r.tigerPkgId));
-      if (countryCode) all = all.filter((p) => p.countryCode === countryCode);
+      let filtered = all;
+      if (countryCode) filtered = filtered.filter((p) => p.countryCode === countryCode);
       if (keyword) {
-        all = all.filter((p) =>
-          [p.name, p.countryCode, p.desc, String(p.gb) + 'GB', String(p.days)].some((v) =>
-            String(v || '').toLowerCase().includes(keyword),
-          ),
+        filtered = filtered.filter((p) =>
+          [
+            p.name,
+            p.countryCode,
+            p.tigerPid,
+            String(p.tigerPkgId),
+            p.desc,
+            String(p.gb) + 'GB',
+            String(p.days),
+          ].some((v) => String(v || '').toLowerCase().includes(keyword)),
         );
       }
-      all.sort((a, b) => String(a.countryCode).localeCompare(b.countryCode) || a.gb - b.gb || a.days - b.days);
+      filtered.sort((a, b) => String(a.countryCode).localeCompare(b.countryCode) || a.gb - b.gb || a.days - b.days);
       res.json({
         code: 0,
-        data: { catalog: all.map((p) => ({ ...p, added: addedSet.has(Number(p.tigerPkgId)) })), total: all.length },
+        data: { catalog: filtered.map((p) => ({ ...p, added: addedSet.has(Number(p.tigerPkgId)) })), total: filtered.length },
       });
     } catch (e: any) {
       res.status(502).json({ code: 1, message: 'Tiger 套餐目录拉取失败：' + e.message });
+    }
+  });
+
+  /** POST /api/admin/packages/catalog/refresh 强制刷新 Tiger 套餐目录缓存（立即生效，无需等后台定时刷新） */
+  router.post('/packages/catalog/refresh', async (_req: Request, res: Response) => {
+    if (!tigerClient.configured) return res.json({ code: 1, message: '未配置 Tiger，无法刷新目录' });
+    try {
+      const { refreshCatalogCache, getCatalogView } = await import('../tiger/view');
+      await refreshCatalogCache();
+      const all = await getCatalogView(true);
+      const addedRows = await prisma.packagePrice.findMany({ where: { price: { not: null } }, select: { tigerPkgId: true } });
+      const addedSet = new Set(addedRows.map((r) => r.tigerPkgId));
+      res.json({ code: 0, data: { total: all.length, catalog: all.map((p) => ({ ...p, added: addedSet.has(Number(p.tigerPkgId)) })) } });
+    } catch (e: any) {
+      res.status(502).json({ code: 1, message: 'Tiger 套餐目录刷新失败：' + e.message });
     }
   });
 
@@ -560,7 +583,9 @@ export default (prisma: PrismaClient) => {
   router.post('/tiger/sync-all', async (_req: Request, res: Response) => {
     try {
       const result = await syncAllFromTiger(prisma);
-      (await import('../tiger/view')).invalidatePackageCache();
+      const viewMod = await import('../tiger/view');
+      viewMod.invalidatePackageCache();
+      viewMod.invalidateCatalogCache();
       res.json({ code: 0, data: result });
     } catch (e: any) {
       res.json({ code: 2, message: `同步失败：${e.message}` });
@@ -589,7 +614,12 @@ export default (prisma: PrismaClient) => {
         const rc = String((p.region || p)?.code || (p.region || p)?.name_en || '');
         unique.set(rc + ':' + (p.id || p.pid), p);
       }
-      (await import('../tiger/view')).invalidatePackageCache();
+      // 立即刷新套餐缓存 与 目录缓存（从 Tiger 重拉全量写入缓存，避免调用方再次等待 Tiger API）
+      const viewMod = await import('../tiger/view');
+      viewMod.invalidatePackageCache();
+      viewMod.invalidateCatalogCache();
+      await viewMod.refreshPackageCache();
+      await viewMod.refreshCatalogCache();
       res.json({ code: 0, data: { tigerTotal: unique.size, items: Array.from(unique.values()) } });
     } catch (e: any) {
       res.json({ code: 2, message: `同步失败：${e.message}` });

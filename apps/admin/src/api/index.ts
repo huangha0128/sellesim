@@ -160,6 +160,7 @@ export const adminApi = {
 
   getPackagesPage: (params?: any) => http.get('/admin/packages/page', { params }),
   getPackageCatalog: (params?: any) => http.get('/admin/packages/catalog', { params }),
+  refreshPackageCatalog: () => http.post('/admin/packages/catalog/refresh'),
   updatePackage: (id: string, data: any) => http.put(`/admin/packages/${id}`, data),
 
   // 套餐白名单（本地 PackagePrice：只有添加并设价的套餐才在小程序/后台展示）

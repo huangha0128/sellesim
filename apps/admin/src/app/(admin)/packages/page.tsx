@@ -281,6 +281,25 @@ export default function PackagesPage() {
     });
   };
 
+  // 强制刷新 Tiger 套餐目录缓存后重载
+  const refreshCatalog = async () => {
+    setAddLoading(true);
+    try {
+      const res = await adminApi.refreshPackageCatalog();
+      const body = unwrap<{ catalog: CatalogItem[] }>(res);
+      if (body.code === 0) {
+        setCatalog(body.data.catalog || []);
+        toast.success(`已从 Tiger 刷新目录缓存，共 ${body.data.catalog?.length ?? 0} 条`);
+      } else {
+        toast.error(body.message || '刷新目录缓存失败');
+      }
+    } catch (e) {
+      toast.error(getErrorMessage(e, '刷新目录缓存失败'));
+    } finally {
+      setAddLoading(false);
+    }
+  };
+
   // 提交添加：将选中的套餐写入白名单并设价
   const submitAdd = async () => {
     if (!chosen?.tigerPkgId) return toast.warning('请先从 Tiger 套餐中选择一个');
@@ -654,7 +673,7 @@ export default function PackagesPage() {
                 value={catalogFilter.keyword}
                 onChange={(e) => setCatalogFilter({ ...catalogFilter, keyword: e.target.value })}
                 onKeyDown={(e) => e.key === 'Enter' && applyCatalogFilter()}
-                placeholder="关键词 / 描述"
+                placeholder="关键词 / 套餐ID / 描述"
                 className="w-48"
               />
             </Field>
@@ -669,6 +688,14 @@ export default function PackagesPage() {
             </Field>
             <Button size="sm" onClick={applyCatalogFilter} disabled={addLoading}>
               <Search className="h-4 w-4" /> 搜索
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={refreshCatalog}
+              disabled={addLoading}
+            >
+              <RefreshCw className={`h-4 w-4 ${addLoading ? 'animate-spin' : ''}`} /> 刷新缓存
             </Button>
           </div>
 
@@ -685,6 +712,7 @@ export default function PackagesPage() {
                   <TableRow>
                     <TableHead className="w-16">选择</TableHead>
                     <TableHead>国家</TableHead>
+                    <TableHead>套餐名称</TableHead>
                     <TableHead>流量</TableHead>
                     <TableHead>有效期</TableHead>
                     <TableHead>类型</TableHead>
@@ -720,10 +748,20 @@ export default function PackagesPage() {
                             <span className="font-medium text-ink">{c.country?.name || c.countryCode}</span>
                           </div>
                         </TableCell>
+                        <TableCell>
+                          <span className="max-w-[13rem] truncate text-ink">{c.name}</span>
+                        </TableCell>
                         <TableCell>{c.gb}GB</TableCell>
                         <TableCell>{c.days}天</TableCell>
                         <TableCell className="text-muted-foreground">{c.type}</TableCell>
-                        <TableCell className="font-mono text-[12.5px]">{c.tigerPkgId}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col font-mono text-[12.5px]">
+                            <span>ID: {c.tigerPkgId}</span>
+                            {c.tigerPid && c.tigerPid !== String(c.tigerPkgId) && (
+                              <span className="text-muted-foreground">PID: {c.tigerPid}</span>
+                            )}
+                          </div>
+                        </TableCell>
                       </TableRow>
                     );
                   })}
@@ -737,7 +775,9 @@ export default function PackagesPage() {
             <Field label="已选套餐">
               <div className="flex h-9 items-center rounded-md border border-input bg-background px-3 text-[13px] text-ink">
                 {chosen ? (
-                  `${chosen.country?.name || chosen.countryCode} ${chosen.gb}GB / ${chosen.days}天`
+                  <span className="truncate">
+                    [{chosen.tigerPkgId}] {chosen.country?.name || chosen.countryCode} {chosen.name} · {chosen.gb}GB / {chosen.days}天
+                  </span>
                 ) : (
                   <span className="text-muted-foreground">未选择</span>
                 )}

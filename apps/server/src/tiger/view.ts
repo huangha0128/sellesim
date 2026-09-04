@@ -222,6 +222,91 @@ export async function refreshPackageCache(): Promise<void> {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Tiger 套餐目录缓存（添加套餐对话框使用，含全部套餐，未经白名单过滤）
+// ---------------------------------------------------------------------------
+const CATALOG_KEY = 'yyesim:packages:catalog';
+let memCatalog: any[] | null = null;
+let memCatalogAt = 0;
+
+/** 手动失效目录缓存（保持与套餐缓存一致，供 Tiger 同步后调用） */
+export function invalidateCatalogCache(): void {
+  memCatalog = null;
+  memCatalogAt = 0;
+  if (redis) {
+    redis.del(CATALOG_KEY).catch(() => {
+      /* ignore */
+    });
+  }
+}
+
+async function readCachedCatalog(): Promise<{ data: any[]; fresh: boolean } | null> {
+  if (redis) {
+    try {
+      const raw = await redis.get(CATALOG_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          memCatalog = parsed;
+          memCatalogAt = Date.now();
+          return { data: parsed, fresh: true };
+        }
+      }
+    } catch {
+      /* ignore */
+    }
+  }
+  if (memCatalog && Array.isArray(memCatalog)) {
+    return { data: memCatalog, fresh: Date.now() - memCatalogAt < FRESH_TTL_MS };
+  }
+  return null;
+}
+
+async function writeCachedCatalog(data: any[]): Promise<void> {
+  memCatalog = data;
+  memCatalogAt = Date.now();
+  if (redis) {
+    try {
+      await redis.set(CATALOG_KEY, JSON.stringify(data), 'EX', REDIS_TTL_SEC);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/** 后台刷新目录缓存：重新从 Tiger 拉全量并写入内存/Redis */
+export async function refreshCatalogCache(): Promise<void> {
+  if (!tigerClient.configured) return;
+  try {
+    await writeCachedCatalog(await singleFlightFetch());
+  } catch (e: any) {
+    console.error('[package-catalog] 刷新失败：' + (e?.message || e));
+  }
+}
+
+/**
+ * 惰性获取 Tiger 全量目录（添加套餐对话框使用）。
+ * - 命中内存/Redis 目录缓存则直接返回（不用每次请求 Tiger API）
+ * - 目录数据过期时返回旧数据并在后台异步刷新（stale-while-revalidate）
+ * - force=true 强制绕过缓存重新拉取并写入缓存（供「刷新」按钮使用）
+ */
+export async function getCatalogView(force = false): Promise<any[]> {
+  if (!tigerClient.configured) return [];
+  if (force) {
+    const data = await singleFlightFetch();
+    await writeCachedCatalog(data);
+    return data;
+  }
+  const cached = await readCachedCatalog();
+  if (cached) {
+    if (!cached.fresh) refreshCatalogCache(); // fire-and-forget
+    return cached.data;
+  }
+  const data = await singleFlightFetch();
+  await writeCachedCatalog(data);
+  return data;
+}
+
 /**
  * 惰性刷新并等待完成（仅当确实需要调用）：
  * 若本地内存/Redis 已有数据则立即返回现有数据并触发后台刷新（stale-while-revalidate）；
