@@ -40,7 +40,6 @@ export interface PackageItem {
   gb: number;
   days: number;
   price: number;
-  originalPrice?: number;
   onSale?: boolean;
   name?: string;
   type?: string;
@@ -56,6 +55,11 @@ export interface PackageItem {
   features?: string;
   installSteps?: string;
   country?: Country;
+}
+
+/** 后台「添加套餐」目录条目：来自 TigerESIM 全量套餐，added 表示是否已在白名单 */
+export interface CatalogItem extends PackageItem {
+  added: boolean;
 }
 
 export interface Order {
@@ -149,11 +153,10 @@ export const adminApi = {
   deleteCountry: (code: string) => http.delete(`/admin/countries/${code}`),
 
   getPackagesPage: (params?: any) => http.get('/admin/packages/page', { params }),
-  createPackage: (data: any) => http.post('/admin/packages', data),
+  getPackageCatalog: (params?: any) => http.get('/admin/packages/catalog', { params }),
   updatePackage: (id: string, data: any) => http.put(`/admin/packages/${id}`, data),
-  deletePackage: (id: string) => http.delete(`/admin/packages/${id}`),
 
-  // 套餐自主定价（本地覆盖 Tiger 原价；不影响 Tiger 原始数据）
+  // 套餐白名单（本地 PackagePrice：只有添加并设价的套餐才在小程序/后台展示）
   updatePackagePrice: (tigerPkgId: number, data: { price?: number | null; onSale?: boolean }) =>
     http.put(`/admin/packages/${tigerPkgId}/price`, data),
   clearPackagePrice: (tigerPkgId: number) => http.delete(`/admin/packages/${tigerPkgId}/price`),

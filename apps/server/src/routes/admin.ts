@@ -5,11 +5,11 @@ import { syncAllFromTiger, syncRegionsFromTiger, syncPackagesFromTiger } from '.
 import { refundOrder, rejectRefundRequest } from '../services/refund';
 import { sendRefundEmail } from '../services/email';
 import { alipay } from '../utils/alipay';
-import { clearOverrideCache } from '../pricing/priceOverride';
+import { clearWhitelistCache } from '../pricing/priceOverride';
 
-/** 覆盖配置变更后的即时生效：清覆盖缓存 → 失效套餐缓存 → 同步重拉一次（等待完成） */
+/** 白名单（添加/移出/改价/停售）变更后的即时生效：清白名单缓存 → 失效套餐缓存 → 同步重拉一次（等待完成） */
 async function refreshAfterOverride() {
-  clearOverrideCache();
+  clearWhitelistCache();
   (await import('../tiger/view')).invalidatePackageCache();
   try {
     const { listAllPackagesView } = await import('../tiger/view');
@@ -17,17 +17,6 @@ async function refreshAfterOverride() {
   } catch {
     // 失败由后台定时刷新兜底，不影响本次写操作返回
   }
-}
-
-/** 从 Tiger 创建套餐的响应中抽取创建结果（兼容 {data:{...}} / 直接对象 / 嵌套 package/item） */
-function extractTigerCreated(res: any): any {
-  if (!res || typeof res !== 'object') return null;
-  let box: any = res;
-  if (box.data && typeof box.data === 'object' && !Array.isArray(box.data)) {
-    box = box.data;
-  }
-  if (!box || typeof box !== 'object') return null;
-  return box.package || box.item || box.system || (box.id !== undefined || box.pid !== undefined ? box : null);
 }
 
 export default (prisma: PrismaClient) => {
@@ -248,60 +237,38 @@ export default (prisma: PrismaClient) => {
     res.json({ code: 0, data: { packages, total, page, pageSize } });
   });
 
-  // ===== 套餐新增/修改/删除（数据以 TigerESIM 为准，本地不存储套餐）=====
+  // ===== 套餐白名单（本地 PackagePrice 表：只有「已添加、有价格」的套餐才在小程序/后台展示）=====
 
-  router.post('/packages', async (req: Request, res: Response) => {
+  /**
+   * GET /api/admin/packages/catalog 返回 Tiger 全量套餐（未加白名单过滤），每项标注 added。
+   * 供后台「添加套餐」从 Tiger 全量中挑选并绑定；已 added 的套餐标注并禁用。
+   */
+  router.get('/packages/catalog', async (req: Request, res: Response) => {
+    if (!tigerClient.configured) {
+      return res.json({ code: 1, message: '未配置 TIGER_CLIENT_ID / TIGER_CLIENT_SECRET，无法获取 Tiger 套餐目录' });
+    }
     try {
-      if (!tigerClient.configured) {
-        return res.json({ code: 1, message: '未配置 TIGER_CLIENT_ID / TIGER_CLIENT_SECRET，新增套餐需直调 TigerESIM API，请先配置密钥' });
+      const { fetchAndNormalize } = await import('../tiger/view');
+      const keyword = String(req.query.keyword || '').trim().toLowerCase();
+      const countryCode = String(req.query.countryCode || '').trim();
+      let all = await fetchAndNormalize();
+      const addedRows = await prisma.packagePrice.findMany({ where: { price: { not: null } }, select: { tigerPkgId: true } });
+      const addedSet = new Set(addedRows.map((r) => r.tigerPkgId));
+      if (countryCode) all = all.filter((p) => p.countryCode === countryCode);
+      if (keyword) {
+        all = all.filter((p) =>
+          [p.name, p.countryCode, p.desc, String(p.gb) + 'GB', String(p.days)].some((v) =>
+            String(v || '').toLowerCase().includes(keyword),
+          ),
+        );
       }
-      const data = req.body || {};
-      let regionId = Number(data.region_id || 0);
-      if (!regionId && data.countryCode) {
-        const country = await prisma.country.findUnique({ where: { code: String(data.countryCode).toUpperCase() } });
-        regionId = Number(country?.tigerRegionId || 0);
-      }
-      if (!regionId) {
-        return res.json({ code: 1, message: '缺少 region_id，请选择所属国家/区域（TigerESIM 使用 region_id）' });
-      }
-      const amount = Math.round(Number(data.amount ?? data.gb ?? 0) * (data.amount ? 1 : 1024));
-      const validDays = Number(data.valid_days ?? data.days ?? 1);
-      const sales = Number(data.sales ?? data.price ?? 0);
-      const tigerRes: any = await tigerClient.createPackage({
-        name: data.name || `Region ${regionId} ${amount / 1024}GB/${validDays}天`,
-        amount,
-        valid_days: validDays,
-        region_id: regionId,
-        sales,
-        package_type: data.package_type || 'data',
-      });
-      const created = extractTigerCreated(tigerRes);
-      const tigerPkgId = Number(created?.id ?? created?.pid ?? 0);
-      if (!tigerPkgId) {
-        return res.json({ code: 2, message: `Tiger 创建套餐未返回有效 id/pid：${JSON.stringify(tigerRes).slice(0, 500)}` });
-      }
-      // 创建成功即失效套餐缓存，确保后续列表/下单拉到新套餐
-      (await import('../tiger/view')).invalidatePackageCache();
+      all.sort((a, b) => String(a.countryCode).localeCompare(b.countryCode) || a.gb - b.gb || a.days - b.days);
       res.json({
         code: 0,
-        data: {
-          created,
-          tigerPkgId,
-          tigerPid: String(created?.pid || ''),
-          message: '已通过 TigerESIM 创建真实套餐',
-        },
+        data: { catalog: all.map((p) => ({ ...p, added: addedSet.has(Number(p.tigerPkgId)) })), total: all.length },
       });
     } catch (e: any) {
-      const msg = String(e?.message || '');
-      if (/403|FORBIDDEN|not allowed|STATUS_403/.test(msg)) {
-        return res.status(200).json({
-          code: 403,
-          message:
-            '当前 TigerESIM 账号没有通过 API 创建套餐的权限（403：Your account is not allowed）。' +
-            '请登录 TigerESIM 后台手动创建套餐；创建成功后套餐会实时出现在本列表/小程序中，无需在后台重复添加。',
-        });
-      }
-      return res.status(400).json({ code: 1, message: `新增套餐失败：${msg}` });
+      res.status(502).json({ code: 1, message: 'Tiger 套餐目录拉取失败：' + e.message });
     }
   });
 
@@ -319,13 +286,14 @@ export default (prisma: PrismaClient) => {
     });
   });
 
-  // ===== 套餐自主定价（本地覆盖，不影响 Tiger 原始数据；改价即时生效）=====
+  // ===== 套餐白名单维护（本地覆盖：添加即设价格；移出即删除记录；停售 onSale=false）=====
 
   /**
-   * PUT /api/admin/packages/:tigerPkgId/price 设置单个套餐的自定价/上下架
+   * PUT /api/admin/packages/:tigerPkgId/price 添加/改价/上下架某个白名单套餐
    * body: { price?: number | null, onSale?: boolean }
-   * - price 传具体数字 → 覆盖 Tiger 原价；传 null/缺省且不带 onSale 时仅保留已有配置
-   * - onSale 传 false → 停售（公开接口彻底隐藏）；传 true → 上架
+   * - 传具体数字 price → 添加进白名单并设为自定价
+   * - price 传 null → 从白名单移出（彻底不再展示）
+   * - onSale 传 false → 停售（仍在白名单但前端隐藏）；传 true → 上架
    */
   router.put('/packages/:tigerPkgId/price', async (req: Request, res: Response) => {
     try {
@@ -340,7 +308,7 @@ export default (prisma: PrismaClient) => {
         if (!Number.isFinite(p) || p < 0) return res.json({ code: 1, message: '价格必须是大于等于 0 的数字' });
         data.price = p;
       } else if (price !== undefined) {
-        data.price = null; // 显式清空自定价，恢复 Tiger 原价
+        data.price = null; // 置空即移出白名单
       }
       if (onSale !== undefined) data.onSale = !!onSale;
       const row = await prisma.packagePrice.upsert({
@@ -356,7 +324,7 @@ export default (prisma: PrismaClient) => {
     }
   });
 
-  /** DELETE /api/admin/packages/:tigerPkgId/price 删除本地定价覆盖，完全恢复 Tiger 默认（原价 + 上架） */
+  /** DELETE /api/admin/packages/:tigerPkgId/price 移出白名单（删除本地记录，彻底不再展示） */
   router.delete('/packages/:tigerPkgId/price', async (req: Request, res: Response) => {
     try {
       const tigerPkgId = Number(req.params.tigerPkgId);
@@ -367,13 +335,13 @@ export default (prisma: PrismaClient) => {
       await refreshAfterOverride();
       res.json({ code: 0, data: {} });
     } catch (e: any) {
-      console.error('[pricing] 恢复套餐价格失败：', e.message);
+      console.error('[pricing] 移出白名单失败：', e.message);
       res.status(400).json({ code: 1, message: '操作失败：' + e.message });
     }
   });
 
   /**
-   * POST /api/admin/packages/prices/batch 批量设置自定价/上下架
+   * POST /api/admin/packages/prices/batch 批量添加/改价/上下架白名单套餐
    * body: { items: [{ tigerPkgId, price?: number | null, onSale?: boolean }] }
    */
   router.post('/packages/prices/batch', async (req: Request, res: Response) => {
@@ -412,7 +380,7 @@ export default (prisma: PrismaClient) => {
     }
   });
 
-  /** POST /api/admin/packages/prices/clear 批量删除本地定价覆盖，恢复 Tiger 默认（原价 + 上架） */
+  /** POST /api/admin/packages/prices/clear 批量移出白名单（删除本地记录，彻底不再展示） */
   router.post('/packages/prices/clear', async (req: Request, res: Response) => {
     try {
       const tigerPkgIds = Array.isArray(req.body?.tigerPkgIds)
@@ -427,8 +395,8 @@ export default (prisma: PrismaClient) => {
       await refreshAfterOverride();
       res.json({ code: 0, data: { cleared: tigerPkgIds.length } });
     } catch (e: any) {
-      console.error('[pricing] 批量恢复失败：', e.message);
-      res.status(400).json({ code: 1, message: '批量恢复失败：' + e.message });
+      console.error('[pricing] 批量移出失败：', e.message);
+      res.status(400).json({ code: 1, message: '批量移出失败：' + e.message });
     }
   });
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Search, RefreshCw, Tags, RotateCcw } from 'lucide-react';
+import { Plus, Search, RefreshCw, Tags, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,63 +50,49 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { adminApi, unwrap, getErrorMessage, type PackageItem } from '@/api';
-
-// 套餐表单字段与 TigerESIM 创建套餐接口对齐：name / amount(GB) / valid_days / region_id / sales / package_type
-interface PackageForm {
-  name: string;
-  countryCode: string;
-  gb: number; // amount，单位 GB
-  days: number; // valid_days
-  price: number; // sales
-}
-
-const defaultForm: PackageForm = {
-  name: '',
-  countryCode: '',
-  gb: 1,
-  days: 7,
-  price: 0,
-};
+import { adminApi, unwrap, getErrorMessage, type PackageItem, type CatalogItem } from '@/api';
 
 export default function PackagesPage() {
+  // 白名单套餐列表（仅已添加、有价格的套餐）
   const [packages, setPackages] = useState<PackageItem[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
 
   // 筛选条件状态
   const [filter, setFilter] = useState({ keyword: '', countryCode: '', onlyFeatured: false });
 
-  const [open, setOpen] = useState(false);
-  const [editing, setEditing] = useState<PackageItem | null>(null);
-  const [form, setForm] = useState<PackageForm>(defaultForm);
-  const [saving, setSaving] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<PackageItem | null>(null);
-  // 关联了 TigerESIM 的套餐，编辑/删除时提示前往 Tiger 后台操作
-  const [tigerReminder, setTigerReminder] = useState<{ name: string; action: string } | null>(null);
-
-  // 自主定价状态：价格草稿 / 行内保存中 / 多选
+  // 价格草稿 / 行内保存中 / 多选
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
   const [priceSaving, setPriceSaving] = useState<number | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
+
   // 批量定价弹窗
   const [batchOpen, setBatchOpen] = useState(false);
-  const [batchPriceMode, setBatchPriceMode] = useState<'keep' | 'set' | 'reset'>('keep');
+  const [batchPriceMode, setBatchPriceMode] = useState<'keep' | 'set' | 'remove'>('keep');
   const [batchPrice, setBatchPrice] = useState('');
   const [batchSaleMode, setBatchSaleMode] = useState<'keep' | 'on' | 'off'>('keep');
   const [batchSaving, setBatchSaving] = useState(false);
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  // 添加套餐（从 Tiger 全量挑选绑定）
+  const [addOpen, setAddOpen] = useState(false);
+  const [addLoading, setAddLoading] = useState(false);
+  const [catalog, setCatalog] = useState<CatalogItem[]>([]);
+  const [catalogFilter, setCatalogFilter] = useState({ keyword: '', countryCode: '' });
+  const [chosen, setChosen] = useState<CatalogItem | null>(null);
+  const [addPrice, setAddPrice] = useState('');
+  const [addSaving, setAddSaving] = useState(false);
 
-  const isOverridden = (p: PackageItem) =>
-    p.originalPrice !== undefined && Math.abs((p.price || 0) - (p.originalPrice || 0)) > 1e-9;
+  // 移出白名单确认
+  const [removeTarget, setRemoveTarget] = useState<PackageItem | null>(null);
+  const [removeSaving, setRemoveSaving] = useState(false);
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const isOffSale = (p: PackageItem) => p.onSale === false;
 
-  // 单行保存自定价（失焦触发）
+  // 单行改价（白名单内套餐，失焦触发）
   const saveRowPrice = async (p: PackageItem) => {
     if (!p.tigerPkgId) return;
     const raw = priceDrafts[String(p.tigerPkgId)] ?? String(p.price ?? '');
@@ -122,9 +108,9 @@ export default function PackagesPage() {
       return;
     }
     if (Math.abs(val - (p.price || 0)) < 1e-9) return; // 未变更
-    setPriceSaving(p.tigerPkgId ?? null);
+    setPriceSaving(p.tigerPkgId);
     try {
-      const res = await adminApi.updatePackagePrice(p.tigerPkgId!, { price: val });
+      const res = await adminApi.updatePackagePrice(p.tigerPkgId, { price: val });
       const body = unwrap<unknown>(res);
       if (body.code === 0) {
         toast.success(`已更新「${p.country?.name || p.countryCode} ${p.gb}GB/${p.days}天」售价 ¥${val}`);
@@ -159,15 +145,16 @@ export default function PackagesPage() {
     }
   };
 
-  // 删除覆盖，恢复 Tiger 默认（原价 + 上架）
-  const restoreRowPrice = async (p: PackageItem) => {
-    if (!p.tigerPkgId) return;
-    setPriceSaving(p.tigerPkgId);
+  // 移出白名单
+  const confirmRemove = async () => {
+    if (!removeTarget?.tigerPkgId) return;
+    setRemoveSaving(true);
     try {
-      const res = await adminApi.clearPackagePrice(p.tigerPkgId);
+      const res = await adminApi.clearPackagePrice(removeTarget.tigerPkgId);
       const body = unwrap<unknown>(res);
       if (body.code === 0) {
-        toast.success(`「${p.country?.name || p.countryCode} ${p.gb}GB/${p.days}天」已恢复 Tiger 默认价格`);
+        toast.success(`「${removeTarget.country?.name || removeTarget.countryCode} ${removeTarget.gb}GB/${removeTarget.days}天」已从白名单移除，将不再展示`);
+        setRemoveTarget(null);
         load();
       } else {
         toast.error(body.message || '操作失败');
@@ -175,7 +162,7 @@ export default function PackagesPage() {
     } catch (e) {
       toast.error(getErrorMessage(e, '操作失败'));
     } finally {
-      setPriceSaving(null);
+      setRemoveSaving(false);
     }
   };
 
@@ -188,7 +175,7 @@ export default function PackagesPage() {
       setPrice = Number(batchPrice);
       if (!Number.isFinite(setPrice) || setPrice < 0) return toast.warning('请输入有效的统一售价');
     }
-    if (batchPriceMode === 'reset') setPrice = null; // price=null 恢复 Tiger 原价
+    if (batchPriceMode === 'remove') setPrice = null; // price=null 移出白名单
     const items = ids.map((tigerPkgId) => ({
       tigerPkgId,
       price: batchPriceMode === 'keep' ? undefined : setPrice,
@@ -199,7 +186,7 @@ export default function PackagesPage() {
       const res = await adminApi.batchUpdatePackagePrices(items);
       const body = unwrap<{ updated: number }>(res);
       if (body.code === 0) {
-        toast.success(`已更新 ${body.data.updated} 个套餐的自定价/上下架`);
+        toast.success(`已更新 ${body.data.updated} 个套餐`);
         setBatchOpen(false);
         setSelected(new Set());
         load();
@@ -242,68 +229,71 @@ export default function PackagesPage() {
     load();
   };
 
-  const openAdd = () => {
-    setForm(defaultForm);
-    setOpen(true);
+  // 打开「添加套餐」弹窗并加载 Tiger 全量目录
+  const openAdd = async () => {
+    setAddOpen(true);
+    setChosen(null);
+    setAddPrice('');
+    setCatalogFilter({ keyword: '', countryCode: '' });
+    await loadCatalog();
   };
 
-  const openEdit = (p: PackageItem) => {
-    // 所有套餐均实时来自 TigerESIM，本地不支持修改，统一引导前往 Tiger 后台
-    setTigerReminder({ name: `${p.country?.name || p.countryCode} ${p.gb}GB/${p.days}天`, action: '编辑' });
-  };
-
-  const save = async () => {
-    if (!form.countryCode) return toast.warning('请输入国家/区域代码');
-    if (form.gb < 1) return toast.warning('流量必须大于 0');
-    if (form.days < 1) return toast.warning('有效期必须大于 0');
-    if (form.price < 0) return toast.warning('价格不能为负数');
-
-    setSaving(true);
-    // 直调 TigerESIM 创建套餐（字段与 createPackage 接口一致）
-    const data = {
-      name: form.name || `${form.countryCode} ${form.gb}GB/${form.days}天`,
-      countryCode: form.countryCode.toUpperCase(),
-      gb: form.gb,
-      days: form.days,
-      price: form.price,
-      package_type: 'data',
-    };
+  const loadCatalog = async (filters?: { keyword?: string; countryCode?: string }) => {
+    setAddLoading(true);
+    const params: Record<string, unknown> = {};
+    if (filters?.keyword) params.keyword = filters.keyword;
+    if (filters?.countryCode) params.countryCode = filters.countryCode;
     try {
-      const res = await adminApi.createPackage(data);
-      const body = unwrap<{ tigerPkgId: number }>(res);
-      if (body.code === 0) {
-        toast.success(`已通过 TigerESIM 创建真实套餐（Tiger ID: ${body.data.tigerPkgId}）`);
-        setOpen(false);
-        load();
-      } else {
-        toast.error(body.message || '新增套餐失败');
-      }
+      const res = await adminApi.getPackageCatalog(params);
+      const body = unwrap<{ catalog: CatalogItem[] }>(res);
+      if (body.code === 0) setCatalog(body.data.catalog || []);
+      else toast.error(body.message || '加载套餐目录失败');
     } catch (e) {
-      toast.error(getErrorMessage(e, '保存失败'));
+      toast.error(getErrorMessage(e, '加载套餐目录失败'));
     } finally {
-      setSaving(false);
+      setAddLoading(false);
     }
   };
 
-  const confirmDelete = async () => {
-    if (!deleteTarget) return;
+  const applyCatalogFilter = () => {
+    loadCatalog({
+      keyword: catalogFilter.keyword.trim(),
+      countryCode: catalogFilter.countryCode.trim(),
+    });
+  };
+
+  // 提交添加：将选中的套餐写入白名单并设价
+  const submitAdd = async () => {
+    if (!chosen?.tigerPkgId) return toast.warning('请先从 Tiger 套餐中选择一个');
+    const val = Number(addPrice);
+    if (addPrice.trim() === '' || !Number.isFinite(val) || val < 0) {
+      return toast.warning('请输入有效价格');
+    }
+    setAddSaving(true);
     try {
-      await adminApi.deletePackage(deleteTarget.id);
-      toast.success('已删除');
-      setDeleteTarget(null);
-      load();
+      const res = await adminApi.updatePackagePrice(chosen.tigerPkgId, { price: val, onSale: true });
+      const body = unwrap<unknown>(res);
+      if (body.code === 0) {
+        toast.success(`已添加「${chosen.country?.name || chosen.countryCode} ${chosen.gb}GB/${chosen.days}天」并设价 ¥${val}`);
+        setAddOpen(false);
+        load();
+      } else {
+        toast.error(body.message || '添加失败');
+      }
     } catch (e) {
-      toast.error(getErrorMessage(e, '删除失败'));
+      toast.error(getErrorMessage(e, '添加失败'));
+    } finally {
+      setAddSaving(false);
     }
   };
 
   const syncFromTiger = async () => {
-    setSyncing(true);
+    setAddLoading(true);
     try {
       const res = await adminApi.syncTigerPackages();
-      const body = unwrap<{ matched: number; total: number; tigerTotal: number }>(res);
+      const body = unwrap<{ tigerTotal: number }>(res);
       if (body.code === 0) {
-        toast.success(`同步成功：Tiger 共 ${body.data.tigerTotal} 个套餐，本地匹配 ${body.data.matched} 个，总计 ${body.data.total} 个`);
+        toast.success(`同步成功：Tiger 共 ${body.data.tigerTotal} 个套餐`);
         load();
       } else {
         toast.error(body.message || '同步失败');
@@ -311,13 +301,13 @@ export default function PackagesPage() {
     } catch (e) {
       toast.error(getErrorMessage(e, '同步失败'));
     } finally {
-      setSyncing(false);
+      setAddLoading(false);
     }
   };
 
   return (
     <div className="animate-fade-up space-y-5">
-      {/* 筛选条件卡片 —— 中文文案均以 UTF-8 硬编码 */}
+      {/* 筛选条件卡片 */}
       <Card className="border-transparent bg-white/70 backdrop-blur-sm">
         <CardContent className="flex flex-wrap items-end gap-3 pt-5">
           <Field label="关键词">
@@ -359,11 +349,11 @@ export default function PackagesPage() {
               <Tags className="h-4 w-4" />
               批量定价{selected.size > 0 ? `（${selected.size}）` : ''}
             </Button>
-            <Button size="sm" variant="outline" onClick={openAdd}>
+            <Button size="sm" onClick={openAdd}>
               <Plus className="h-4 w-4" /> 添加套餐
             </Button>
-            <Button size="sm" variant="secondary" onClick={syncFromTiger} disabled={syncing}>
-              <RefreshCw className={syncing ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} /> 从 Tiger 导入
+            <Button size="sm" variant="secondary" onClick={syncFromTiger} disabled={addLoading}>
+              <RefreshCw className={addLoading ? 'h-4 w-4 animate-spin' : 'h-4 w-4'} /> 从 Tiger 刷新
             </Button>
           </div>
         </CardContent>
@@ -372,13 +362,13 @@ export default function PackagesPage() {
       <Card className="border-transparent bg-white/70 backdrop-blur-sm">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-baseline justify-between text-[15px] text-ink">
-            <span>套餐列表</span>
+            <span>套餐列表（仅展示已添加的套餐）</span>
             <span className="text-[12px] font-normal text-muted-foreground">共 {total} 条</span>
           </CardTitle>
         </CardHeader>
         <CardContent>
           {packages.length === 0 && !loading ? (
-            <EmptyState title="暂无套餐" hint="可通过「从 Tiger 导入」或手动添加" />
+            <EmptyState title="暂无套餐" hint="通过右上角「添加套餐」从 Tiger 套餐中挑选并定价" />
           ) : (
             <>
               <Table>
@@ -405,7 +395,7 @@ export default function PackagesPage() {
                     <TableHead>国家</TableHead>
                     <TableHead>流量</TableHead>
                     <TableHead>有效期</TableHead>
-                    <TableHead>自定价 (¥)</TableHead>
+                    <TableHead>售价 (¥)</TableHead>
                     <TableHead>状态</TableHead>
                     <TableHead>类型</TableHead>
                     <TableHead>标签</TableHead>
@@ -416,7 +406,6 @@ export default function PackagesPage() {
                 <TableBody>
                   {packages.map((p) => {
                     const tigerId = Number(p.tigerPkgId || 0);
-                    const overridden = isOverridden(p);
                     const offSale = isOffSale(p);
                     const key = String(tigerId || p.id);
                     const draft = priceDrafts[key] ?? String(p.price ?? '');
@@ -448,38 +437,18 @@ export default function PackagesPage() {
                         <TableCell>{p.gb}GB</TableCell>
                         <TableCell>{p.days}天</TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-1.5">
-                            <div className="flex flex-col items-start">
-                              {overridden && (
-                                <span className="text-[11px] text-muted-foreground line-through">
-                                  ¥{p.originalPrice}
-                                </span>
-                              )}
-                              <div className="flex items-center gap-1">
-                                <span className="text-[12.5px] font-medium text-emerald-700">¥</span>
-                                <Input
-                                  className="h-7 w-20 px-1.5 text-[12.5px]"
-                                  value={draft}
-                                  disabled={priceSaving === tigerId}
-                                  onChange={(e) =>
-                                    setPriceDrafts((d) => ({ ...d, [key]: e.target.value }))
-                                  }
-                                  onBlur={() => saveRowPrice(p)}
-                                  onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
-                                />
-                              </div>
-                            </div>
-                            {overridden && tigerId > 0 && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-7 w-7 px-0 text-muted-foreground hover:text-ink"
-                                title="恢复 Tiger 原价"
-                                onClick={() => restoreRowPrice(p)}
-                              >
-                                <RotateCcw className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
+                          <div className="flex items-center gap-1">
+                            <span className="text-[12.5px] font-medium text-emerald-700">¥</span>
+                            <Input
+                              className="h-7 w-20 px-1.5 text-[12.5px]"
+                              value={draft}
+                              disabled={!tigerId || priceSaving === tigerId}
+                              onChange={(e) =>
+                                setPriceDrafts((d) => ({ ...d, [key]: e.target.value }))
+                              }
+                              onBlur={() => saveRowPrice(p)}
+                              onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                            />
                           </div>
                         </TableCell>
                         <TableCell>
@@ -508,27 +477,16 @@ export default function PackagesPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {p.tigerPkgId ? (
-                            <span className="font-mono text-[12.5px]">{p.tigerPkgId}</span>
-                          ) : (
-                            <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">未关联</span>
-                          )}
+                          <span className="font-mono text-[12.5px]">{p.tigerPkgId}</span>
                         </TableCell>
                         <TableCell align="right">
-                          <Button size="sm" variant="ghost" onClick={() => openEdit(p)}>
-                            编辑
-                          </Button>
                           <Button
                             size="sm"
                             variant="ghost"
                             className="text-destructive hover:text-destructive"
-                            onClick={() =>
-                              p.tigerPkgId
-                                ? setTigerReminder({ name: `${p.country?.name || p.countryCode} ${p.gb}GB/${p.days}天`, action: '删除' })
-                                : setDeleteTarget(p)
-                            }
+                            onClick={() => setRemoveTarget(p)}
                           >
-                            删除
+                            移出
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -596,7 +554,7 @@ export default function PackagesPage() {
         </CardContent>
       </Card>
 
-      {/* 批量定价弹窗：本地覆盖 Tiger 原价，即时生效 */}
+      {/* 批量定价弹窗 */}
       <Dialog open={batchOpen} onOpenChange={setBatchOpen}>
         <DialogContent className="max-h-[88vh] max-w-xl overflow-y-auto">
           <DialogHeader>
@@ -604,7 +562,7 @@ export default function PackagesPage() {
           </DialogHeader>
 
           <div className="rounded-lg border border-dashed bg-muted/40 px-4 py-3 text-[12px] text-muted-foreground">
-            自定价仅保存在本地，不会修改 TigerESIM 原始数据；保存后对所有端（小程序 / H5）即时生效。停售的套餐在前端彻底隐藏。
+            价格保存在本地 PackagePrice 表，不会修改 TigerESIM 原始数据；保存后对小程序 / H5 即时生效。停售的套餐仍保留在白名单但前端隐藏。
           </div>
 
           <Section title="售价设置" />
@@ -612,7 +570,7 @@ export default function PackagesPage() {
             <Field label="价格策略">
               <Select
                 value={batchPriceMode}
-                onValueChange={(v) => setBatchPriceMode(v as 'keep' | 'set' | 'reset')}
+                onValueChange={(v) => setBatchPriceMode(v as 'keep' | 'set' | 'remove')}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -620,7 +578,7 @@ export default function PackagesPage() {
                 <SelectContent>
                   <SelectItem value="keep">保持不变</SelectItem>
                   <SelectItem value="set">统一设置为指定价格</SelectItem>
-                  <SelectItem value="reset">恢复为 Tiger 原价</SelectItem>
+                  <SelectItem value="remove">移出白名单（不再展示）</SelectItem>
                 </SelectContent>
               </Select>
             </Field>
@@ -659,81 +617,142 @@ export default function PackagesPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 添加 / 编辑弹窗 */}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-h-[88vh] max-w-2xl overflow-y-auto">
+      {/* 添加套餐弹窗：从 Tiger 全量挑选并定价 */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent className="max-h-[88vh] max-w-3xl overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>添加套餐（直调 TigerESIM 创建）</DialogTitle>
+            <DialogTitle>添加套餐（从 TigerESIM 套餐中挑选）</DialogTitle>
           </DialogHeader>
 
           <div className="rounded-lg border border-dashed bg-muted/40 px-4 py-3 text-[12px] text-muted-foreground">
-            套餐数据以 TigerESIM 为准，创建后将实时生效，本地不存储套餐数据。
+            套餐内容实时来自 TigerESIM，此处仅需为其设定自定义价格即可加入白名单；只有添加后的套餐才会在小程序与后台展示。
           </div>
 
-          <Section title="Tiger 套餐信息" />
+          <div className="flex flex-wrap items-end gap-3">
+            <Field label="关键词">
+              <Input
+                value={catalogFilter.keyword}
+                onChange={(e) => setCatalogFilter({ ...catalogFilter, keyword: e.target.value })}
+                onKeyDown={(e) => e.key === 'Enter' && applyCatalogFilter()}
+                placeholder="关键词 / 描述"
+                className="w-48"
+              />
+            </Field>
+            <Field label="国家代码">
+              <Input
+                value={catalogFilter.countryCode}
+                onChange={(e) => setCatalogFilter({ ...catalogFilter, countryCode: e.target.value })}
+                onKeyDown={(e) => e.key === 'Enter' && applyCatalogFilter()}
+                placeholder="如 JP"
+                className="w-32"
+              />
+            </Field>
+            <Button size="sm" onClick={applyCatalogFilter} disabled={addLoading}>
+              <Search className="h-4 w-4" /> 搜索
+            </Button>
+          </div>
+
+          <div className="max-h-72 overflow-y-auto rounded-lg border">
+            {addLoading ? (
+              <div className="flex items-center justify-center gap-2 py-8 text-[12.5px] text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" /> 正在拉取 Tiger 套餐…
+              </div>
+            ) : catalog.length === 0 ? (
+              <div className="py-8 text-center text-[12.5px] text-muted-foreground">未找到套餐</div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-16">选择</TableHead>
+                    <TableHead>国家</TableHead>
+                    <TableHead>流量</TableHead>
+                    <TableHead>有效期</TableHead>
+                    <TableHead>类型</TableHead>
+                    <TableHead>Tiger ID</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {catalog.map((c) => {
+                    const selectedThis = chosen?.tigerPkgId === Number(c.tigerPkgId);
+                    const alreadyAdded = c.added;
+                    return (
+                      <TableRow
+                        key={String(c.tigerPkgId || c.id)}
+                        className={alreadyAdded ? 'opacity-50' : selectedThis ? 'bg-emerald-50' : 'cursor-pointer'}
+                        onClick={() => !alreadyAdded && !addSaving && setChosen(c)}
+                      >
+                        <TableCell>
+                          {alreadyAdded ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+                              <Check className="h-3 w-3" /> 已添加
+                            </span>
+                          ) : (
+                            <span className="inline-flex h-4 w-4 items-center justify-center rounded-sm border border-emerald-700">
+                              {selectedThis && <span className="h-2 w-2 rounded-sm bg-emerald-700" />}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            {c.country?.flag && (
+                              <img src={c.country.flag} alt={c.country?.name} className="h-4 w-6 rounded-sm object-cover" />
+                            )}
+                            <span className="font-medium text-ink">{c.country?.name || c.countryCode}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{c.gb}GB</TableCell>
+                        <TableCell>{c.days}天</TableCell>
+                        <TableCell className="text-muted-foreground">{c.type}</TableCell>
+                        <TableCell className="font-mono text-[12.5px]">{c.tigerPkgId}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+
+          <Section title="为所选套餐设定售价" />
           <div className="grid grid-cols-2 gap-4">
-            <Field label="套餐名称">
-              <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="如 Japan 1GB 30Days" />
-            </Field>
-            <Field label="所属国家/区域代码">
-              <Input value={form.countryCode} onChange={(e) => setForm({ ...form, countryCode: e.target.value })} placeholder="如 JP、US、GLOBAL" />
-            </Field>
-            <Field label="容量 (GB)">
-              <NumberField value={form.gb} onChange={(v) => setForm({ ...form, gb: v })} min={1} max={1000} />
-            </Field>
-            <Field label="有效期 (天)">
-              <NumberField value={form.days} onChange={(v) => setForm({ ...form, days: v })} min={1} max={365} />
+            <Field label="已选套餐">
+              <div className="flex h-9 items-center rounded-md border border-input bg-background px-3 text-[13px] text-ink">
+                {chosen ? (
+                  `${chosen.country?.name || chosen.countryCode} ${chosen.gb}GB / ${chosen.days}天`
+                ) : (
+                  <span className="text-muted-foreground">未选择</span>
+                )}
+              </div>
             </Field>
             <Field label="售价 (¥)">
-              <NumberField value={form.price} onChange={(v) => setForm({ ...form, price: v })} min={0} precision={2} step={0.1} />
+              <NumberField value={addPrice === '' ? 0 : Number(addPrice)} onChange={(v) => setAddPrice(String(v))} min={0} precision={2} step={0.1} />
             </Field>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setOpen(false)}>
+            <Button variant="outline" onClick={() => setAddOpen(false)} disabled={addSaving}>
               取消
             </Button>
-            <Button onClick={save} disabled={saving}>
-              {saving ? '创建中…' : '创建套餐'}
+            <Button onClick={submitAdd} disabled={addSaving || !chosen}>
+              {addSaving ? '添加中…' : '添加并定价'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* 删除确认 */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+      {/* 移出白名单确认 */}
+      <AlertDialog open={!!removeTarget} onOpenChange={(o) => !o && setRemoveTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>确认删除该套餐？</AlertDialogTitle>
+            <AlertDialogTitle>确认将该套餐移出白名单？</AlertDialogTitle>
             <AlertDialogDescription>
-              将删除「{deleteTarget?.country?.name || deleteTarget?.countryCode} {deleteTarget?.gb}GB / {deleteTarget?.days}天」，此操作不可撤销。
+              将移除「{removeTarget?.country?.name || removeTarget?.countryCode} {removeTarget?.gb}GB / {removeTarget?.days}天」。移出后该套餐将不再在小程序与后台展示（TigerESIM 中的原始套餐不受影响），此操作不可撤销。
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={confirmDelete}>
-              确认删除
+            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={confirmRemove} disabled={removeSaving}>
+              {removeSaving ? '移除中…' : '确认移出'}
             </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* Tiger 关联套餐：编辑/删除提醒，需前往 TigerESIM 后台操作 */}
-      <AlertDialog open={!!tigerReminder} onOpenChange={(o) => !o && setTigerReminder(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>无法在本地上{tigerReminder?.action === '编辑' ? '修改' : '删除'}该套餐</AlertDialogTitle>
-            <AlertDialogDescription>
-              「{tigerReminder?.name}」来自 TigerESIM，套餐数据以 TigerESIM 后台为准。
-              <br />
-              <br />
-              由于 TigerESIM 仅提供新增套餐接口，不提供本地{tigerReminder?.action === '编辑' ? '修改/删除' : '删除'}能力，请前往{' '}
-              <span className="font-medium text-ink">TigerESIM 管理后台</span> 完成{tigerReminder?.action === '编辑' ? '修改' : '删除'}操作，
-              再回到本页点击「从 Tiger 导入」同步数据。
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogAction>知道了</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

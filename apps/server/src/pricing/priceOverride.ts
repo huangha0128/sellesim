@@ -1,64 +1,71 @@
 import { prisma } from '../db';
 
-export interface PriceOverride {
-  price?: number | null;
+/**
+ * 白名单：一行记录 = 一个「已添加」的套餐。
+ * - price 非空 = 已添加进白名单（保留展示，用自定价）
+ * - onSale = false = 停售（仍在白名单但前端隐藏）
+ * - 无记录 / price 为空 = 未添加，直接剔除（Tiger 全量中的其它套餐不可见）
+ */
+export interface WhitelistEntry {
+  price: number;
   onSale: boolean;
 }
 
-export type OverrideMap = Map<number, PriceOverride>;
+export type WhitelistMap = Map<number, WhitelistEntry>;
 
-// In-process cache of the override table with a short TTL.
-// Invalidation (clearOverrideCache) is triggered right after any admin write,
+// In-process cache of the whitelist table with a short TTL.
+// Invalidation (clearWhitelistCache) is triggered right after any admin write,
 // so price changes take effect on the very next view read.
-let overrideCache: { map: OverrideMap; at: number } | null = null;
-const OVERRIDE_TTL_MS = 60_000;
+let whitelistCache: { map: WhitelistMap; at: number } | null = null;
+const WHITELIST_TTL_MS = 60_000;
 
-async function loadOverrideMap(): Promise<OverrideMap> {
-  if (overrideCache && Date.now() - overrideCache.at < OVERRIDE_TTL_MS) {
-    return overrideCache.map;
+async function loadWhitelistMap(): Promise<WhitelistMap> {
+  if (whitelistCache && Date.now() - whitelistCache.at < WHITELIST_TTL_MS) {
+    return whitelistCache.map;
   }
-  const rows = await prisma.packagePrice.findMany();
-  const map: OverrideMap = new Map();
+  const rows = await prisma.packagePrice.findMany({ where: { price: { not: null } } });
+  const map: WhitelistMap = new Map();
   for (const r of rows) {
+    if (r.price == null) continue;
     map.set(r.tigerPkgId, { price: r.price, onSale: r.onSale });
   }
-  overrideCache = { map, at: Date.now() };
-  return overrideCache.map;
+  whitelistCache = { map, at: Date.now() };
+  return whitelistCache.map;
 }
 
-/** Invalidate the in-process override cache (call after any admin write). */
-export function clearOverrideCache(): void {
-  overrideCache = null;
+/** Invalidate the in-process whitelist cache (call after any admin write). */
+export function clearWhitelistCache(): void {
+  whitelistCache = null;
 }
 
 /**
- * Pure mapping of local pricing overrides onto tiger package views.
+ * Pure whitelist filtering onto tiger package views.
  * No DB access - testable in isolation.
- * - price: replaced by the local price when the row has a non-null price
- * - originalPrice: always set to the tiger price before any override
- * - onSale: false hides the package from public endpoints
+ * - Returns only packages that are whitelisted (have a local price).
+ * - price: replaced by the local whitelist price.
+ * - onSale: kept from the whitelist entry (default true).
  */
-export function applyOverridesToItems(list: any[], map: OverrideMap): any[] {
-  if (!Array.isArray(list) || list.length === 0) return list;
-  return list.map((p) => {
-    // Overrides only apply to tiger-linked packages; local-only packages are untouched.
+export function applyWhitelistToItems(list: any[], map: WhitelistMap): any[] {
+  if (!Array.isArray(list) || list.length === 0) return [];
+  const out: any[] = [];
+  for (const p of list) {
+    // Whitelist only applies to tiger-linked packages.
     const id = p.tigerPkgId != null ? Number(p.tigerPkgId) : NaN;
-    const ov = map.get(id);
-    const originalPrice = p.price;
-    const price = ov && ov.price != null ? ov.price : p.price;
-    const onSale = ov ? ov.onSale : true;
-    return { ...p, originalPrice, price, onSale };
-  });
+    const entry = map.get(id);
+    if (!entry) continue; // not added -> hidden
+    out.push({ ...p, price: entry.price, onSale: entry.onSale, originalPrice: undefined });
+  }
+  return out;
 }
 
 /**
- * Merge local pricing overrides into tiger package views.
- * - price: replaced by the local price when the row has a non-null price
- * - originalPrice: always set to the tiger price before any override
- * - onSale: false hides the package from public endpoints
+ * Merge the local whitelist into tiger package views.
+ * - returns only whitelisted packages
+ * - price: replaced by the local whitelist price
+ * - onSale: kept from the whitelist entry
  */
-export async function applyOverrides(list: any[]): Promise<any[]> {
-  if (!Array.isArray(list) || list.length === 0) return list;
-  const map = await loadOverrideMap();
-  return applyOverridesToItems(list, map);
+export async function applyWhitelist(list: any[]): Promise<any[]> {
+  if (!Array.isArray(list) || list.length === 0) return [];
+  const map = await loadWhitelistMap();
+  return applyWhitelistToItems(list, map);
 }

@@ -1,6 +1,6 @@
 import Redis from 'ioredis';
 import { tigerClient } from './client';
-import { applyOverrides } from '../pricing/priceOverride';
+import { applyWhitelist } from '../pricing/priceOverride';
 
 /**
  * 实时套餐视图层：把 TigerESIM（/api/package）原包数据归一化为前端所需结构。
@@ -134,8 +134,8 @@ if (redisUrl) {
   });
 }
 
-/** 从 Tiger 拉取并归一化全部套餐（不含缓存） */
-async function fetchAndNormalize(): Promise<any[]> {
+/** 从 Tiger 拉取并归一化全部套餐（不含缓存、不含白名单过滤）——供后台「添加套餐」挑选全量套餐用 */
+export async function fetchAndNormalize(): Promise<any[]> {
   const packages = await tigerClient.listAllPackages({ category: 'esim', package_type: 'data', is_active: true });
   const unique = new Map<string, any>();
   for (const p of packages) {
@@ -210,12 +210,13 @@ export function invalidatePackageCache(): void {
 /**
  * 后台刷新套餐缓存（fire-and-forget，失败不阻塞调用方）。
  * 供启动预热、定时刷新、失效后补偿刷新使用。
+ * 缓存内容 = 白名单套餐（仅已添加、有价格的套餐），未添加的 Tiger 套餐不可见。
  */
 export async function refreshPackageCache(): Promise<void> {
   if (!tigerClient.configured) return;
   try {
     const data = await singleFlightFetch();
-    await writeCached(await applyOverrides(data));
+    await writeCached(await applyWhitelist(data));
   } catch (e: any) {
     console.error('[package-cache] 后台刷新失败：' + (e?.message || e));
   }
@@ -225,7 +226,7 @@ export async function refreshPackageCache(): Promise<void> {
  * 惰性刷新并等待完成（仅当确实需要时调用）：
  * 若本地内存/Redis 已有数据则立即返回现有数据并触发后台刷新（stale-while-revalidate）；
  * 若完全没有缓存，则等待一次 Tiger 拉取（首冷启动必经）。
- * opts.includeOffSale 用于管理后台：默认过滤停售套餐（onSale=false），后台传 true 查看全部。
+ * 仅返回白名单套餐（已添加、有价格）。公开接口剔除停售（onSale=false），后台传 includeOffSale=true 查看全部白名单。
  */
 export async function listAllPackagesView(
   force = false,
@@ -235,7 +236,7 @@ export async function listAllPackagesView(
     opts.includeOffSale ? list : list.filter((p) => p.onSale !== false);
   if (!tigerClient.configured) return [];
   if (force) {
-    const data = await applyOverrides(await singleFlightFetch());
+    const data = await applyWhitelist(await singleFlightFetch());
     await writeCached(data);
     return filter(data);
   }
@@ -248,7 +249,7 @@ export async function listAllPackagesView(
     return filter(cached.data);
   }
   // 完全没有缓存：等待一次真实拉取
-  const data = await applyOverrides(await singleFlightFetch());
+  const data = await applyWhitelist(await singleFlightFetch());
   await writeCached(data);
   return filter(data);
 }
