@@ -71,7 +71,7 @@
               <text v-else class="hot-flag-letter">{{ flagLetter(c.name) }}</text>
             </view>
             <text class="hot-name">{{ c.name }}</text>
-            <text class="hot-price">{{ fmt('index.priceFrom', { price: minPrice(c.code) }) }}</text>
+            <text class="hot-price">{{ startPriceText(c.code) }}</text>
           </view>
         </scroll-view>
       </view>
@@ -109,7 +109,7 @@
           </view>
           <view class="pkg-right">
             <view class="pkg-price">
-              <text class="pkg-price-symbol">¥</text>
+              <text class="pkg-price-symbol">{{ sym(p.currency) }}</text>
               <text class="pkg-price-num">{{ fmtPrice(p.price) }}</text>
             </view>
             <view class="pkg-arrow">
@@ -139,6 +139,7 @@
 import FloatingTabBar from '@/components/FloatingTabBar.vue'
 import { api } from '@/utils/api'
 import { store } from '@/store'
+import { currencySymbol } from '@/utils/format'
 import { t as translate } from '@/locales'
 
 // 命名占位符兜底替换（如 {gb}、{days}、{price}）
@@ -203,6 +204,7 @@ export default {
       hotCountries: [],
       hotPackages: [],
       priceMap: {},
+      displayCurrency: 'CNY',
       store
     }
   },
@@ -221,6 +223,9 @@ export default {
       const v = Number(n)
       return Number(v).toFixed(2)
     },
+    sym(currency) {
+      return currencySymbol(currency)
+    },
     async loadData() {
       uni.showLoading({ title: this.fmt('common.loading'), mask: true })
       try {
@@ -229,6 +234,7 @@ export default {
         this.hotCountries = res.data.hotCountries
         this.hotPackages = res.data.hotPackages
         this.priceMap = res.data.priceMap || {}
+        this.displayCurrency = res.data.displayCurrency || 'CNY'
       } finally {
         uni.hideLoading()
       }
@@ -246,6 +252,11 @@ export default {
     minPrice(code) {
       const v = this.priceMap[code]
       return v === undefined || v === null ? '--' : v
+    },
+    startPriceText(code) {
+      const v = this.priceMap[code]
+      if (v === undefined || v === null) return '--'
+      return `${currencySymbol(this.displayCurrency)}${v} 起`
     },
     goCountries() {
       uni.navigateTo({ url: '/pages/countries/countries' })

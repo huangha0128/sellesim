@@ -33,13 +33,15 @@ export default (prisma: PrismaClient) => {
     try {
       const all = await listAllPackagesView();
       const byRegion = new Map<string, number>();
+      let currency = 'CNY';
       for (const p of all) {
         // 取全部套餐中的最低价，保证首页「起价」与详情页可选价格一致（详情页 all=1 展示所有套餐）
         const cur = byRegion.get(p.countryCode);
         if (cur === undefined || p.price < cur) byRegion.set(p.countryCode, p.price);
+        currency = p.currency || currency; // 展示货币全量一致，取第一个非空即可
       }
       const countries = await prisma.country.findMany({ select: { code: true } });
-      const minPrices = countries.map((c) => ({ code: c.code, minPrice: byRegion.get(c.code) || 0 }));
+      const minPrices = countries.map((c) => ({ code: c.code, currency, minPrice: byRegion.get(c.code) || 0 }));
       res.json({ code: 0, data: { minPrices } });
     } catch (e: any) {
       res.status(502).json({ code: 1, message: 'Tiger 套餐拉取失败：' + e.message });

@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Zap,
   Bell,
+  Settings,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -30,6 +31,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/esims', label: 'eSIM 管理', icon: Smartphone },
   { href: '/cards', label: '卡片管理', icon: CreditCard },
   { href: '/tiger-sync', label: 'Tiger 同步', icon: RefreshCw },
+  { href: '/settings', label: '系统设置', icon: Settings },
 ];
 
 const TITLE_MAP: Record<string, string> = {
@@ -40,6 +42,7 @@ const TITLE_MAP: Record<string, string> = {
   '/esims': 'eSIM 管理',
   '/cards': '卡片管理',
   '/tiger-sync': 'Tiger 同步',
+  '/settings': '系统设置',
 };
 
 export function AppShell({ children }: { children: React.ReactNode }) {

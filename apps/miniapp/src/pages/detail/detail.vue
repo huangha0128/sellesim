@@ -110,7 +110,7 @@
     <!-- 底部价格栏 -->
     <view v-if="pkg" class="bottom-bar">
       <view class="price-area">
-        <text class="price-currency">RMB</text>
+        <text class="price-currency">{{ sym }}</text>
         <text class="price-main">{{ priceNum }}</text>
       </view>
       <view class="buy-btn" hover-class="buy-btn--hover" @click="buy">{{ fmt('detail.buyNow') }}</view>
@@ -121,6 +121,7 @@
 <script>
 import { api } from '@/utils/api'
 import { setNavTitle, t as translate } from '@/locales'
+import { currencySymbol } from '@/utils/format'
 
 // 渲染名称占位符兜底（v 存在则使用）
 function fmtNamed(str, p) {
@@ -174,6 +175,10 @@ export default {
     priceNum() {
       const price = this.selectedPkg ? this.selectedPkg.price : 0
       return Number(price).toFixed(2)
+    },
+    sym() {
+      const pkg = this.selectedPkg || this.pkg
+      return currencySymbol(pkg ? pkg.currency : 'CNY')
     }
   },
   onLoad(options) {

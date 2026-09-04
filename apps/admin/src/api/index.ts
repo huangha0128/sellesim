@@ -40,6 +40,7 @@ export interface PackageItem {
   gb: number;
   days: number;
   price: number;
+  currency?: 'CNY' | 'USD';
   onSale?: boolean;
   name?: string;
   type?: string;
@@ -128,6 +129,11 @@ export interface TigerStatus {
   synced?: boolean;
 }
 
+export interface Settings {
+  displayCurrency: 'CNY' | 'USD';
+  usdCnyRate: number;
+}
+
 // ---------- 接口 ----------
 export const adminApi = {
   getTigerStatus: () => http.get('/admin/tiger/status'),
@@ -157,12 +163,19 @@ export const adminApi = {
   updatePackage: (id: string, data: any) => http.put(`/admin/packages/${id}`, data),
 
   // 套餐白名单（本地 PackagePrice：只有添加并设价的套餐才在小程序/后台展示）
-  updatePackagePrice: (tigerPkgId: number, data: { price?: number | null; onSale?: boolean }) =>
-    http.put(`/admin/packages/${tigerPkgId}/price`, data),
+  updatePackagePrice: (
+    tigerPkgId: number,
+    data: { price?: number | null; onSale?: boolean; currency?: 'CNY' | 'USD' },
+  ) => http.put(`/admin/packages/${tigerPkgId}/price`, data),
   clearPackagePrice: (tigerPkgId: number) => http.delete(`/admin/packages/${tigerPkgId}/price`),
   batchUpdatePackagePrices: (
-    items: { tigerPkgId: number; price?: number | null; onSale?: boolean }[],
+    items: { tigerPkgId: number; price?: number | null; onSale?: boolean; currency?: 'CNY' | 'USD' }[],
   ) => http.post('/admin/packages/prices/batch', { items }),
   batchClearPackagePrices: (tigerPkgIds: number[]) =>
     http.post('/admin/packages/prices/clear', { tigerPkgIds }),
+
+  // 汇率与展示货币设置
+  getSettings: () => http.get('/admin/settings'),
+  updateSettings: (data: { displayCurrency?: 'CNY' | 'USD'; usdCnyRate?: number }) =>
+    http.put('/admin/settings', data),
 };

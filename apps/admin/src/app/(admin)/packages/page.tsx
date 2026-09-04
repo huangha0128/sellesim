@@ -50,7 +50,12 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { adminApi, unwrap, getErrorMessage, type PackageItem, type CatalogItem } from '@/api';
+import { adminApi, unwrap, getErrorMessage, type PackageItem, type CatalogItem, type Settings } from '@/api';
+
+/** 存储货币符号：USD 用 $，其余（含缺省）用 ¥ */
+function curSym(currency?: string): string {
+  return currency === 'USD' ? '$' : '¥';
+}
 
 export default function PackagesPage() {
   // 白名单套餐列表（仅已添加、有价格的套餐）
@@ -82,6 +87,7 @@ export default function PackagesPage() {
   const [catalogFilter, setCatalogFilter] = useState({ keyword: '', countryCode: '' });
   const [chosen, setChosen] = useState<CatalogItem | null>(null);
   const [addPrice, setAddPrice] = useState('');
+  const [addCurrency, setAddCurrency] = useState<'CNY' | 'USD'>('CNY');
   const [addSaving, setAddSaving] = useState(false);
 
   // 移出白名单确认
@@ -113,7 +119,7 @@ export default function PackagesPage() {
       const res = await adminApi.updatePackagePrice(p.tigerPkgId, { price: val });
       const body = unwrap<unknown>(res);
       if (body.code === 0) {
-        toast.success(`已更新「${p.country?.name || p.countryCode} ${p.gb}GB/${p.days}天」售价 ¥${val}`);
+        toast.success(`已更新「${p.country?.name || p.countryCode} ${p.gb}GB/${p.days}天」售价 ${curSym(p.currency)}${val}`);
         load();
       } else {
         toast.error(body.message || '保存失败');
@@ -224,6 +230,19 @@ export default function PackagesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, pageSize]);
 
+  // 读取全局设置，用于「添加套餐」默认货币单位（跟随后台展示货币）
+  useEffect(() => {
+    adminApi
+      .getSettings()
+      .then((res) => {
+        const data = unwrap<{ settings?: Settings }>(res).data?.settings;
+        if (data) setAddCurrency(data.displayCurrency);
+      })
+      .catch(() => {
+        /* 读取设置失败时保持默认 CNY */
+      });
+  }, []);
+
   const applyFilter = () => {
     setPage(1);
     load();
@@ -271,10 +290,10 @@ export default function PackagesPage() {
     }
     setAddSaving(true);
     try {
-      const res = await adminApi.updatePackagePrice(chosen.tigerPkgId, { price: val, onSale: true });
+      const res = await adminApi.updatePackagePrice(chosen.tigerPkgId, { price: val, onSale: true, currency: addCurrency });
       const body = unwrap<unknown>(res);
       if (body.code === 0) {
-        toast.success(`已添加「${chosen.country?.name || chosen.countryCode} ${chosen.gb}GB/${chosen.days}天」并设价 ¥${val}`);
+        toast.success(`已添加「${chosen.country?.name || chosen.countryCode} ${chosen.gb}GB/${chosen.days}天」并设价 ${curSym(addCurrency)}${val}`);
         setAddOpen(false);
         load();
       } else {
@@ -395,7 +414,7 @@ export default function PackagesPage() {
                     <TableHead>国家</TableHead>
                     <TableHead>流量</TableHead>
                     <TableHead>有效期</TableHead>
-                    <TableHead>售价 (¥)</TableHead>
+                    <TableHead>售价</TableHead>
                     <TableHead>状态</TableHead>
                     <TableHead>类型</TableHead>
                     <TableHead>标签</TableHead>
@@ -438,7 +457,7 @@ export default function PackagesPage() {
                         <TableCell>{p.days}天</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
-                            <span className="text-[12.5px] font-medium text-emerald-700">¥</span>
+                            <span className="text-[12.5px] font-medium text-emerald-700">{curSym(p.currency)}</span>
                             <Input
                               className="h-7 w-20 px-1.5 text-[12.5px]"
                               value={draft}
@@ -450,6 +469,7 @@ export default function PackagesPage() {
                               onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
                             />
                           </div>
+                          <span className="mt-0.5 text-[11px] text-muted-foreground">{curSym(p.currency)} 存储</span>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1">
@@ -713,7 +733,7 @@ export default function PackagesPage() {
           </div>
 
           <Section title="为所选套餐设定售价" />
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid gap-4 sm:grid-cols-3">
             <Field label="已选套餐">
               <div className="flex h-9 items-center rounded-md border border-input bg-background px-3 text-[13px] text-ink">
                 {chosen ? (
@@ -723,7 +743,18 @@ export default function PackagesPage() {
                 )}
               </div>
             </Field>
-            <Field label="售价 (¥)">
+            <Field label="货币单位">
+              <Select value={addCurrency} onValueChange={(v) => setAddCurrency(v as 'CNY' | 'USD')}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="CNY">人民币（¥）</SelectItem>
+                  <SelectItem value="USD">美元（$）</SelectItem>
+                </SelectContent>
+              </Select>
+            </Field>
+            <Field label={`售价 (${curSym(addCurrency)})`}>
               <NumberField value={addPrice === '' ? 0 : Number(addPrice)} onChange={(v) => setAddPrice(String(v))} min={0} precision={2} step={0.1} />
             </Field>
           </div>

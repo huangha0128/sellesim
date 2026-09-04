@@ -40,7 +40,7 @@
         </view>
         <view class="pkg-right">
           <view class="pkg-price">
-            <text class="pkg-price-symbol">¥</text>
+            <text class="pkg-price-symbol">{{ sym(series.currency) }}</text>
             <text class="pkg-price-num">{{ fmtPrice(series.startPrice) }}</text>
             <text class="pkg-price-unit">起</text>
           </view>
@@ -68,6 +68,7 @@
 <script>
 import { api } from '@/utils/api'
 import { setNavTitle, t as translate } from '@/locales'
+import { currencySymbol } from '@/utils/format'
 
 // 命名占位符兜底替换（如 {min}、{max}）
 function fmtNamed(str, p) {
@@ -102,6 +103,9 @@ export default {
     fmtPrice(n) {
       const v = Number(n)
       return Number(v).toFixed(2)
+    },
+    sym(currency) {
+      return currencySymbol(currency)
     },
     async loadCountry() {
       try {

@@ -19,7 +19,7 @@
     </view>
     <view class="pkg-right">
       <view class="pkg-price">
-        <text class="pkg-price-symbol">¥</text>
+        <text class="pkg-price-symbol">{{ sym }}</text>
         <text class="pkg-price-num">{{ priceNum }}</text>
       </view>
       <view class="pkg-buy">
@@ -31,7 +31,7 @@
 </template>
 
 <script>
-import { formatPrice } from '@/utils/format'
+import { currencySymbol } from '@/utils/format'
 import { t as translate } from '@/locales'
 
 // 命名占位符兜底替换（如 {gb}、{days}）
@@ -48,9 +48,12 @@ export default {
   },
   computed: {
     priceNum() {
-      const n = Number(this.pkg.price)
-      return Number(n).toFixed(2)
-    }
+        const n = Number(this.pkg.price)
+        return Number(n).toFixed(2)
+      },
+      sym() {
+        return currencySymbol(this.pkg.currency)
+      }
   },
   emits: ['tap'],
   methods: {

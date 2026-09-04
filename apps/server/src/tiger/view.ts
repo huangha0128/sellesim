@@ -1,6 +1,6 @@
 import Redis from 'ioredis';
 import { tigerClient } from './client';
-import { applyWhitelist } from '../pricing/priceOverride';
+import { applyWhitelist, applyDisplayCurrency } from '../pricing/priceOverride';
 
 /**
  * 实时套餐视图层：把 TigerESIM（/api/package）原包数据归一化为前端所需结构。
@@ -223,22 +223,26 @@ export async function refreshPackageCache(): Promise<void> {
 }
 
 /**
- * 惰性刷新并等待完成（仅当确实需要时调用）：
+ * 惰性刷新并等待完成（仅当确实需要调用）：
  * 若本地内存/Redis 已有数据则立即返回现有数据并触发后台刷新（stale-while-revalidate）；
  * 若完全没有缓存，则等待一次 Tiger 拉取（首冷启动必经）。
  * 仅返回白名单套餐（已添加、有价格）。公开接口剔除停售（onSale=false），后台传 includeOffSale=true 查看全部白名单。
+ * 默认把白名单价格换算成展示货币（displayCurrency）；后台传 convertDisplayCurrency=false 拿到存储价格+货币单位用于回显编辑。
  */
 export async function listAllPackagesView(
   force = false,
-  opts: { includeOffSale?: boolean } = {},
+  opts: { includeOffSale?: boolean; convertDisplayCurrency?: boolean } = {},
 ): Promise<any[]> {
-  const filter = (list: any[]) =>
-    opts.includeOffSale ? list : list.filter((p) => p.onSale !== false);
+  const convert = opts.convertDisplayCurrency !== false;
+  const finalize = (list: any[]): Promise<any[]> => {
+    const filtered = opts.includeOffSale ? list : list.filter((p) => p.onSale !== false);
+    return convert ? applyDisplayCurrency(filtered) : Promise.resolve(filtered);
+  };
   if (!tigerClient.configured) return [];
   if (force) {
     const data = await applyWhitelist(await singleFlightFetch());
     await writeCached(data);
-    return filter(data);
+    return finalize(data);
   }
   const cached = await readCached();
   if (cached) {
@@ -246,12 +250,12 @@ export async function listAllPackagesView(
     if (!cached.fresh) {
       refreshPackageCache(); // fire-and-forget
     }
-    return filter(cached.data);
+    return finalize(cached.data);
   }
   // 完全没有缓存：等待一次真实拉取
   const data = await applyWhitelist(await singleFlightFetch());
   await writeCached(data);
-  return filter(data);
+  return finalize(data);
 }
 
 /** 按区域（即国家 code）取套餐视图 */

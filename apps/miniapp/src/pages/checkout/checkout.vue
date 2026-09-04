@@ -13,7 +13,7 @@
             <text class="sum-name">{{ fmt('checkout.skuName', { name: pkg.countryName }) }}</text>
             <text class="sum-meta">{{ fmt('checkout.sumMeta', { label: dataLabel, days, network: pkg.network }) }}</text>
           </view>
-          <view class="sum-price">¥{{ priceNum }}</view>
+          <view class="sum-price">{{ sym }}{{ priceNum }}</view>
         </view>
       </view>
 
@@ -60,16 +60,16 @@
       <view class="section-card">
         <view class="amount-row">
           <text class="amount-label">{{ fmt('checkout.amountLabel') }}</text>
-          <text class="amount-value">¥{{ priceNum }}</text>
+          <text class="amount-value">{{ sym }}{{ priceNum }}</text>
         </view>
         <view class="amount-row">
           <text class="amount-label">{{ fmt('checkout.discountLabel') }}</text>
-          <text class="amount-value free">- ¥0</text>
+          <text class="amount-value free">- {{ sym }}0</text>
         </view>
         <view class="amount-row total">
           <text class="amount-label">{{ fmt('checkout.totalLabel') }}</text>
           <view class="total-price">
-            <text class="total-symbol">¥</text>
+            <text class="total-symbol">{{ sym }}</text>
             <text class="total-num">{{ priceNum }}</text>
           </view>
         </view>
@@ -89,7 +89,7 @@
       <view class="pay-total">
         <text class="pay-total-label">{{ fmt('checkout.payActual') }}</text>
         <view class="pay-total-price">
-          <text class="pts">¥</text>
+          <text class="pts">{{ sym }}</text>
           <text class="ptn">{{ priceNum }}</text>
         </view>
       </view>
@@ -109,6 +109,7 @@
 import { api } from '@/utils/api'
 import { store } from '@/store'
 import { setNavTitle, t as translate } from '@/locales'
+import { currencySymbol } from '@/utils/format'
 
 // 命名占位符兜底替换（如 {name}、{label}、{days}、{network}）
 function fmtNamed(str, p) {
@@ -144,6 +145,9 @@ export default {
       if (!this.pkg) return '0.00'
       const price = this.pkg.price
       return Number(price).toFixed(2)
+    },
+    sym() {
+      return currencySymbol(this.pkg ? this.pkg.currency : 'CNY')
     }
   },
   onLoad(options) {

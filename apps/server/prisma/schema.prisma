@@ -112,7 +112,14 @@ model PackagePrice {
   id         String   @id @default(uuid())
   tigerPkgId Int      @unique @map("tiger_pkg_id")
   price      Float?   @map("price")
+  currency   String   @default("CNY") @map("currency")
   onSale     Boolean  @default(true) @map("on_sale")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+// Global key-value settings (e.g. display currency + usd/cny exchange rate).
+model Setting {
+  key   String @id
+  value String
 }

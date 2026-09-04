@@ -3,6 +3,17 @@ export function formatPrice(n) {
   return `¥${num % 1 === 0 ? num.toFixed(0) : num.toFixed(1)}`
 }
 
+/** 货币符号：USD 用 $，其余（含缺省）用 ¥ */
+export function currencySymbol(currency) {
+  return currency === 'USD' ? '$' : '¥'
+}
+
+/** 按货币符号格式化价格（后端已按展示货币换算好的 price + currency） */
+export function formatPriceByCurrency(n, currency) {
+  const num = Number(n)
+  return `${currencySymbol(currency)}${num % 1 === 0 ? num.toFixed(0) : num.toFixed(1)}`
+}
+
 export function formatDate(ts) {
   const d = new Date(ts)
   const p = (x) => String(x).padStart(2, '0')

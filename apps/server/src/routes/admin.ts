@@ -5,15 +5,16 @@ import { syncAllFromTiger, syncRegionsFromTiger, syncPackagesFromTiger } from '.
 import { refundOrder, rejectRefundRequest } from '../services/refund';
 import { sendRefundEmail } from '../services/email';
 import { alipay } from '../utils/alipay';
-import { clearWhitelistCache } from '../pricing/priceOverride';
+import { clearWhitelistCache, clearSettingsCache } from '../pricing/priceOverride';
 
-/** 白名单（添加/移出/改价/停售）变更后的即时生效：清白名单缓存 → 失效套餐缓存 → 同步重拉一次（等待完成） */
+/** 白名单/汇率（添加/移出/改价/停售/设置）变更后的即时生效：清缓存 → 失效套餐缓存 → 同步重拉一次（等待完成） */
 async function refreshAfterOverride() {
   clearWhitelistCache();
+  clearSettingsCache();
   (await import('../tiger/view')).invalidatePackageCache();
   try {
     const { listAllPackagesView } = await import('../tiger/view');
-    await listAllPackagesView(true, { includeOffSale: true });
+    await listAllPackagesView(true, { includeOffSale: true, convertDisplayCurrency: false });
   } catch {
     // 失败由后台定时刷新兜底，不影响本次写操作返回
   }
@@ -218,7 +219,8 @@ export default (prisma: PrismaClient) => {
     try {
       const { listAllPackagesView } = await import('../tiger/view');
       // refresh=1 时强制绕过缓存，从 Tiger 重新拉取；后台需看到停售套餐（includeOffSale）
-      list = await listAllPackagesView(req.query.refresh === '1', { includeOffSale: true });
+      // convertDisplayCurrency=false：后台回显存储价格 + 存储货币单位，便于编辑
+      list = await listAllPackagesView(req.query.refresh === '1', { includeOffSale: true, convertDisplayCurrency: false });
     } catch (e: any) {
       return res.status(502).json({ code: 1, message: 'Tiger 套餐拉取失败：' + e.message });
     }
@@ -301,8 +303,8 @@ export default (prisma: PrismaClient) => {
       if (!Number.isInteger(tigerPkgId) || tigerPkgId <= 0) {
         return res.json({ code: 1, message: '非法套餐 ID' });
       }
-      const { price, onSale } = req.body || {};
-      const data: { price?: number | null; onSale?: boolean } = {};
+      const { price, onSale, currency } = req.body || {};
+      const data: { price?: number | null; onSale?: boolean; currency?: string } = {};
       if (price !== undefined && price !== null && price !== '') {
         const p = Number(price);
         if (!Number.isFinite(p) || p < 0) return res.json({ code: 1, message: '价格必须是大于等于 0 的数字' });
@@ -311,6 +313,7 @@ export default (prisma: PrismaClient) => {
         data.price = null; // 置空即移出白名单
       }
       if (onSale !== undefined) data.onSale = !!onSale;
+      if (currency === 'CNY' || currency === 'USD') data.currency = currency;
       const row = await prisma.packagePrice.upsert({
         where: { tigerPkgId },
         update: data,
@@ -356,7 +359,7 @@ export default (prisma: PrismaClient) => {
           if (!Number.isInteger(tigerPkgId) || tigerPkgId <= 0) {
             throw new Error('存在非法套餐 ID：' + String(it?.tigerPkgId));
           }
-          const data: { price?: number | null; onSale?: boolean } = {};
+          const data: { price?: number | null; onSale?: boolean; currency?: string } = {};
           if (it.price !== undefined && it.price !== null && it.price !== '') {
             const p = Number(it.price);
             if (!Number.isFinite(p) || p < 0) throw new Error(`套餐 ${tigerPkgId} 价格非法：${it.price}`);
@@ -365,6 +368,7 @@ export default (prisma: PrismaClient) => {
             data.price = null;
           }
           if (it.onSale !== undefined) data.onSale = !!it.onSale;
+          if (it.currency === 'CNY' || it.currency === 'USD') data.currency = it.currency;
           return prisma.packagePrice.upsert({
             where: { tigerPkgId },
             update: data,
@@ -397,6 +401,68 @@ export default (prisma: PrismaClient) => {
     } catch (e: any) {
       console.error('[pricing] 批量移出失败：', e.message);
       res.status(400).json({ code: 1, message: '批量移出失败：' + e.message });
+    }
+  });
+
+  // ===== 汇率与展示货币设置（全局）=====
+
+  /** GET /api/admin/settings 读取全局设置：展示货币 + USD⇄CNY 汇率 */
+  router.get('/settings', async (_req: Request, res: Response) => {
+    const rows = await prisma.setting.findMany({
+      where: { key: { in: ['displayCurrency', 'usdCnyRate'] } },
+    });
+    const map = new Map(rows.map((r) => [r.key, r.value]));
+    res.json({
+      code: 0,
+      data: {
+        settings: {
+          displayCurrency: map.get('displayCurrency') === 'USD' ? 'USD' : 'CNY',
+          usdCnyRate: Number(map.get('usdCnyRate') || 7),
+        },
+      },
+    });
+  });
+
+  /**
+   * PUT /api/admin/settings 设置展示货币与汇率
+   * body: { displayCurrency?: 'CNY'|'USD', usdCnyRate?: number }
+   * 写完后清 settings 白名单缓存 + 失效套餐缓存并同步重拉，保证前台即时重新换算。
+   */
+  router.put('/settings', async (req: Request, res: Response) => {
+    try {
+      const { displayCurrency, usdCnyRate } = req.body || {};
+      const writes = [];
+      if (displayCurrency === 'USD' || displayCurrency === 'CNY') {
+        writes.push(
+          prisma.setting.upsert({
+            where: { key: 'displayCurrency' },
+            update: { value: displayCurrency },
+            create: { key: 'displayCurrency', value: displayCurrency },
+          }),
+        );
+      }
+      if (usdCnyRate !== undefined && usdCnyRate !== null && usdCnyRate !== '') {
+        const r = Number(usdCnyRate);
+        if (!Number.isFinite(r) || r <= 0) {
+          return res.json({ code: 1, message: '汇率必须是大于 0 的数字' });
+        }
+        writes.push(
+          prisma.setting.upsert({
+            where: { key: 'usdCnyRate' },
+            update: { value: String(r) },
+            create: { key: 'usdCnyRate', value: String(r) },
+          }),
+        );
+      }
+      if (writes.length === 0) {
+        return res.json({ code: 1, message: '请至少提供 displayCurrency 或 usdCnyRate' });
+      }
+      await prisma.$transaction(writes);
+      await refreshAfterOverride();
+      res.json({ code: 0, data: { saved: true } });
+    } catch (e: any) {
+      console.error('[settings] 保存设置失败：', e.message);
+      res.status(400).json({ code: 1, message: '保存失败：' + e.message });
     }
   });
 

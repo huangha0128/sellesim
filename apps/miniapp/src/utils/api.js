@@ -91,8 +91,10 @@ export const api = {
       if (hot) hotPackages.push(flattenPkg(hot));
     }
     const priceMap = {};
+    let displayCurrency = 'CNY';
     (minRes.data.minPrices || []).forEach((m) => {
       priceMap[m.code] = m.minPrice;
+      if (m.currency) displayCurrency = m.currency;
     });
     return {
       code: 0,
@@ -101,6 +103,7 @@ export const api = {
         hotPackages: hotPackages.slice(0, 6),
         regions,
         priceMap,
+        displayCurrency,
         categories: [...new Set(allCountries.filter((c) => c.cat !== '全球').map((c) => c.cat))],
       },
     };
