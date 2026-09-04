@@ -5,6 +5,8 @@
 # ---------- 构建阶段 ----------
 FROM node:22-alpine AS build
 RUN corepack enable
+# corepack 默认从 registry.npmjs.org 下载 pnpm（国内不可达），改为 npmmirror
+ENV COREPACK_NPM_REGISTRY=https://registry.npmmirror.com
 WORKDIR /app
 
 # 先复制清单文件，最大化利用 Docker 层缓存
