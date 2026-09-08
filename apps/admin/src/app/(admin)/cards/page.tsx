@@ -35,7 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { adminApi, unwrap, getErrorMessage, type Card as CardType } from '@/api';
+import { adminApi, unwrap, getErrorMessage, type Card as CardType, type CardListResult } from '@/api';
 
 interface CardStats {
   total: number;
@@ -52,6 +52,7 @@ function fmt(dt?: string) {
 
 export default function CardsPage() {
   const [cards, setCards] = useState<CardType[]>([]);
+  const [mode, setMode] = useState<'tiger' | 'mock'>('mock');
   const [stats, setStats] = useState<CardStats>({ total: 0, available: 0, used: 0, envOnly: 0 });
   const [loading, setLoading] = useState(true);
 
@@ -61,13 +62,17 @@ export default function CardsPage() {
   const [adding, setAdding] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CardType | null>(null);
 
+  const hasOperation = mode !== 'tiger';
+
   const load = async () => {
     setLoading(true);
     try {
       const res = await adminApi.getCards();
-      const data = unwrap<{ cards: CardType[]; stats: CardStats }>(res).data;
+      const body = unwrap<CardListResult>(res);
+      const data = body.data;
       setCards(data.cards);
       setStats(data.stats);
+      setMode(data.mode || 'mock');
     } catch (e) {
       toast.error(getErrorMessage(e, '卡片列表加载失败'));
     } finally {
@@ -142,15 +147,19 @@ export default function CardsPage() {
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
           <div>
             <CardTitle className="text-[15px] text-ink">卡片池管理</CardTitle>
-            <p className="text-[12px] text-muted-foreground">ICCID 卡片池，新增即时生效</p>
+            <p className="text-[12px] text-muted-foreground">
+              {mode === 'tiger' ? '卡片实时来自 TigerESIM 平台，只读' : 'ICCID 卡片池，新增即时生效'}
+            </p>
           </div>
-          <Button size="sm" onClick={() => setAddOpen(true)}>
-            <Plus className="h-4 w-4" /> 批量添加卡片
-          </Button>
+          {hasOperation && (
+            <Button size="sm" onClick={() => setAddOpen(true)}>
+              <Plus className="h-4 w-4" /> 批量添加卡片
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {cards.length === 0 && !loading ? (
-            <EmptyState title="卡片池为空" hint="点击右上角「批量添加卡片」导入 ICCID" />
+            <EmptyState title="卡片池为空" hint={mode === 'tiger' ? 'TigerESIM 平台暂无可用卡片' : '点击右上角「批量添加卡片」导入 ICCID'} />
           ) : (
             <Table>
               <TableHeader>
@@ -159,7 +168,7 @@ export default function CardsPage() {
                   <TableHead>备注</TableHead>
                   <TableHead>状态</TableHead>
                   <TableHead>添加时间</TableHead>
-                  <TableHead className="text-right">操作</TableHead>
+                  {hasOperation && <TableHead className="text-right">操作</TableHead>}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -169,11 +178,13 @@ export default function CardsPage() {
                     <TableCell className="text-muted-foreground">{c.remark || '—'}</TableCell>
                     <TableCell>{c.used ? <Badge variant="warning">已使用</Badge> : <Badge variant="success">可用</Badge>}</TableCell>
                     <TableCell>{fmt(c.createdAt)}</TableCell>
-                    <TableCell align="right">
-                      <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(c)}>
-                        删除
-                      </Button>
-                    </TableCell>
+                    {hasOperation && (
+                      <TableCell align="right">
+                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(c)}>
+                          删除
+                        </Button>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>
@@ -183,56 +194,60 @@ export default function CardsPage() {
       </Card>
 
       {/* 批量添加 */}
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>批量添加卡片</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label className="text-[12.5px] text-muted-foreground">ICCID 列表</Label>
-              <Textarea
-                value={addInput}
-                rows={8}
-                onChange={(e) => setAddInput(e.target.value)}
-                placeholder="每行一个 ICCID，或逗号分隔"
-                className="font-mono"
-              />
+      {hasOperation && (
+        <Dialog open={addOpen} onOpenChange={setAddOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>批量添加卡片</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-[12.5px] text-muted-foreground">ICCID 列表</Label>
+                <Textarea
+                  value={addInput}
+                  rows={8}
+                  onChange={(e) => setAddInput(e.target.value)}
+                  placeholder="每行一个 ICCID，或逗号分隔"
+                  className="font-mono"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-[12.5px] text-muted-foreground">备注（可选）</Label>
+                <Input value={addRemark} onChange={(e) => setAddRemark(e.target.value)} placeholder="如：第一批采购" />
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-[12.5px] text-muted-foreground">备注（可选）</Label>
-              <Input value={addRemark} onChange={(e) => setAddRemark(e.target.value)} placeholder="如：第一批采购" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddOpen(false)}>
-              取消
-            </Button>
-            <Button onClick={handleAdd} disabled={adding}>
-              {adding ? '添加中…' : '确认添加'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAddOpen(false)}>
+                取消
+              </Button>
+              <Button onClick={handleAdd} disabled={adding}>
+                {adding ? '添加中…' : '确认添加'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* 删除确认 */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>确认删除卡片？</AlertDialogTitle>
-            <AlertDialogDescription>
-              确认删除 ICCID：<span className="font-mono font-medium text-ink">{deleteTarget?.iccid}</span>
-              {deleteTarget?.used ? '该卡片已使用，删除后不影响已有 eSIM 业务。' : ''}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={confirmDelete}>
-              确认删除
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {hasOperation && (
+        <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>确认删除卡片？</AlertDialogTitle>
+              <AlertDialogDescription>
+                确认删除 ICCID：<span className="font-mono font-medium text-ink">{deleteTarget?.iccid}</span>
+                {deleteTarget?.used ? '该卡片已使用，删除后不影响已有 eSIM 业务。' : ''}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>取消</AlertDialogCancel>
+              <AlertDialogAction className="bg-destructive hover:bg-destructive/90" onClick={confirmDelete}>
+                确认删除
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }

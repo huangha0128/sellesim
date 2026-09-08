@@ -110,15 +110,15 @@
     <!-- 底部导航栏 -->
     <view class="tab-bar">
       <view class="tab-item" :class="{ active: currentTab === 'home' }" @click="switchTab('home')">
-        <image class="tab-icon" src="/static/icons/tab-home.png" mode="aspectFit" />
+        <image class="tab-icon" :src="currentTab === 'home' ? '/static/icons/tab-home-active.png' : '/static/icons/tab-home.png'" mode="aspectFit" />
         <text class="tab-label">首页</text>
       </view>
       <view class="tab-item" :class="{ active: currentTab === 'esim' }" @click="switchTab('esim')">
-        <image class="tab-icon" src="/static/icons/tab-esim.png" mode="aspectFit" />
+        <image class="tab-icon" :src="currentTab === 'esim' ? '/static/icons/tab-esim-active.png' : '/static/icons/tab-esim.png'" mode="aspectFit" />
         <text class="tab-label">eSIM</text>
       </view>
       <view class="tab-item" :class="{ active: currentTab === 'profile' }" @click="switchTab('profile')">
-        <image class="tab-icon" src="/static/icons/tab-profile.png" mode="aspectFit" />
+        <image class="tab-icon" :src="currentTab === 'profile' ? '/static/icons/tab-profile-active.png' : '/static/icons/tab-profile.png'" mode="aspectFit" />
         <text class="tab-label">我的</text>
       </view>
     </view>

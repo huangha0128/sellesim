@@ -14,6 +14,7 @@ interface SyncResult {
   regionsSynced?: number;
   packagesSynced?: number;
   packageTotal?: number;
+  cardsCount?: number;
 }
 
 export default function TigerSyncPage() {
@@ -119,10 +120,11 @@ export default function TigerSyncPage() {
           </div>
 
           {result && (
-            <div className="mt-4 grid grid-cols-3 gap-3">
+            <div className="mt-4 grid grid-cols-4 gap-3">
               <MiniStat label="新增国家" value={result.regionsSynced ?? 0} />
               <MiniStat label="新增套餐" value={result.packagesSynced ?? 0} />
               <MiniStat label="套餐总数" value={result.packageTotal ?? 0} />
+              <MiniStat label="卡片总数" value={result.cardsCount ?? 0} />
             </div>
           )}
 

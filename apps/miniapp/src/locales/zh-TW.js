@@ -170,17 +170,7 @@ export default {
     originalPrice: '原價 ¥{price}',
     discount: '立減{percent}%',
     buyNow: '立即購買',
-    navTitle: 'eSIM 詳情',
-    renewEntryPrompt: '有已過期的 eSIM？加購/續費到這張卡',
-    renewSelect: '選擇卡片',
-    renewSelectedLabel: '續費到',
-    renewClear: '清除',
-    renewDrawerTitle: '選擇要續費的 eSIM',
-    renewNoEsim: '暫無已過期的 eSIM',
-    renewNewBuy: '不續費，直接新購',
-    renewExpire: '到期 {date}',
-    renewCountryMismatch: '該 eSIM 與目前套餐國家不一致',
-    renewPreselectGone: '目標卡不可續費，已轉為新購'
+    navTitle: 'eSIM 詳情'
   },
   checkout: {
     title: '商品資訊',
@@ -206,7 +196,21 @@ export default {
     needLogin: '請先登入後再下單',
     needLoginTip: '登入後訂單和 eSIM 將歸入你的帳號',
     skuName: '{name} eSIM',
-    sumMeta: '{label} · {days}天 · {network}'
+    sumMeta: '{label} · {days}天 · {network}',
+    buyMode: '購買方式',
+    buyNew: '新購新卡',
+    buyNewDesc: '購買一張新的 eSIM 卡並安裝',
+    buyAdd: '加購到已到期的 eSIM',
+    buyAddDesc: '為已到期的 eSIM 卡儲值新套餐',
+    buyAddTo: '加購到',
+    buyDayUnit: '天',
+    buyExpire: '到期 {date}',
+    buyClear: '清除',
+    buySelectCard: '請選擇要加購到的 eSIM 卡',
+    buyAddEmpty: '暫無已到期的 eSIM 可加購',
+    buyChoose: '選擇卡片',
+    buyDrawerTitle: '選擇要加購的 eSIM',
+    buyPreselectGone: '目標卡不可續費，已轉為新購'
   },
   payment: {
     amountLabel: '支付金額',

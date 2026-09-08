@@ -7,7 +7,7 @@
         :key="i"
         class="tab-item"
         :class="{ active: currentTab === i }"
-        @click="currentTab = i"
+        @tap="currentTab = i"
       >
         <text class="tab-text">{{ fmt(tab) }}</text>
       </view>
@@ -18,7 +18,7 @@
       <view class="pkg-name-card">
         <view class="pkg-name-row">
           <text class="pkg-name-text">{{ fmt('detail.nameSuffix', { name: pkg.countryName }) }}</text>
-          <view class="pkg-name-arrow-icon" @click="openPackageDrawer">
+          <view class="pkg-name-arrow-icon" @tap="openPackageDrawer">
             <view class="chevron-down"></view>
           </view>
         </view>
@@ -45,7 +45,7 @@
             :key="d"
             class="day-cell"
             :class="{ active: selectedDays === d }"
-            @click="selectDays(d)"
+            @tap="selectDays(d)"
           >
             <text class="day-text">{{ fmt('detail.dayUnit', { d }) }}</text>
             <view v-if="selectedDays === d" class="day-check-badge">
@@ -64,7 +64,7 @@
             :key="c.gb"
             class="data-cell"
             :class="{ active: selectedGb === c.gb }"
-            @click="selectData(c.gb)"
+            @tap="selectData(c.gb)"
           >
             <text class="data-text" :class="{ unlimited: c.isUnlimited }">{{ fmt('detail.totalGb', { gb: c.gb }) }}</text>
             <text v-if="c.isUnlimited" class="data-price-hint">{{ selectedDays }}{{ fmt('detail.dayUnitShort') }}{{ fmt('detail.onlyNeed') }}{{ c.priceDisplay }}</text>
@@ -93,7 +93,7 @@
           <text class="info-label">{{ fmt('detail.network') }}</text>
           <text class="info-value desc-inline">{{ pkgDescText }}</text>
         </view>
-        <view class="pkg-type-link" @click="goGuide">
+        <view class="pkg-type-link" @tap="goGuide">
           <text class="pkg-type-link-text">{{ fmt('detail.pkgTypeIntro') }}</text>
           <text class="pkg-type-link-arrow">›</text>
         </view>
@@ -103,10 +103,10 @@
       <view class="info-section">
         <text class="info-title">{{ fmt('detail.installTitle') }}</text>
         <view class="install-btns">
-          <view class="install-btn android-btn" @click="goGuide">
+          <view class="install-btn android-btn" @tap="goGuide">
             <text class="install-btn-text">{{ fmt('detail.androidInstall') }}</text>
           </view>
-          <view class="install-btn apple-btn" @click="goGuide">
+          <view class="install-btn apple-btn" @tap="goGuide">
             <text class="install-btn-text">{{ fmt('detail.appleInstall') }}</text>
           </view>
         </view>
@@ -114,12 +114,12 @@
 
       <!-- 支持型号 & 使用须知 -->
       <view class="link-section">
-        <view class="link-row" @click="goGuide">
+        <view class="link-row" @tap="goGuide">
           <text class="link-text">{{ fmt('detail.supportModels') }}</text>
           <text class="link-arrow">›</text>
         </view>
         <view class="link-divider"></view>
-        <view class="link-row" @click="goGuide">
+        <view class="link-row" @tap="goGuide">
           <text class="link-text">{{ fmt('detail.usageNotice') }}</text>
           <text class="link-arrow">›</text>
         </view>
@@ -141,52 +141,32 @@
 
     <!-- 底部价格栏 -->
     <view v-if="pkg" class="bottom-bar">
-      <!-- 加购/续费到已过期 eSIM 入口 -->
-      <view v-if="showRenewEntry" class="renew-entry" @click="openEsimDrawer">
-        <template v-if="selectedEsim">
-          <view class="renew-entry-left">
-            <text class="renew-entry-label">{{ fmt('detail.renewSelectedLabel') }}</text>
-            <text class="renew-entry-name">{{ selectedEsim.pkg.countryName }}</text>
-            <text class="renew-entry-spec">{{ selectedEsim.pkg.gb }}GB · {{ selectedEsim.pkg.days }}{{ fmt('detail.dayUnitShort') }} · {{ fmt('detail.renewExpire', { date: formatDate(selectedEsim.expireAt) }) }}</text>
-          </view>
-          <view class="renew-clear-btn" @click.stop="clearEsimSelection">{{ fmt('detail.renewClear') }}</view>
-        </template>
-        <template v-else>
-          <view class="renew-entry-left">
-            <text class="renew-entry-prompt">{{ fmt('detail.renewEntryPrompt') }}</text>
-          </view>
-          <view class="renew-select-btn">{{ fmt('detail.renewSelect') }} ›</view>
-        </template>
-      </view>
-
-      <view class="bar-row">
-        <view class="price-area">
-          <text class="price-currency">{{ sym }}</text>
-          <text class="price-main">{{ priceNum }}</text>
-          <view class="price-original-area">
-            <text class="price-discount-badge">{{ fmt('detail.discount', { percent: discountPercent }) }}</text>
-            <text class="price-orig-text">{{ fmt('detail.originalPrice', { price: originalPrice }) }}</text>
-          </view>
+      <view class="price-area">
+        <text class="price-currency">{{ sym }}</text>
+        <text class="price-main">{{ priceNum }}</text>
+        <view class="price-original-area">
+          <text class="price-discount-badge">{{ fmt('detail.discount', { percent: discountPercent }) }}</text>
+          <text class="price-orig-text">{{ fmt('detail.originalPrice', { price: originalPrice }) }}</text>
         </view>
-        <view class="buy-btn" hover-class="buy-btn--hover" @click="buy">{{ fmt('detail.buyNow') }}</view>
       </view>
+      <view class="buy-btn" hover-class="buy-btn--hover" @tap="buy">{{ fmt('detail.buyNow') }}</view>
     </view>
 
     <!-- 套餐选择抽屉 -->
-    <view v-if="showDrawer" class="drawer-mask" @click="closePackageDrawer"></view>
-    <view v-if="showDrawer" class="drawer-panel">
+    <view v-if="showDrawer" class="drawer-mask" @tap="closePackageDrawer"></view>
+    <view v-if="showDrawer" class="drawer-panel drawer-panel-v2">
       <!-- 抽屉头部 -->
-      <view class="drawer-header">
-        <text class="drawer-title">{{ fmt('detail.selectPackage') }}</text>
-        <view class="drawer-close" @click="closePackageDrawer">✕</view>
+      <view class="drawer-header drawer-header-v2">
+        <text class="drawer-title drawer-title-v2">{{ fmt('detail.drawerTitle') || '目的地选择' }}</text>
+        <view class="drawer-close drawer-close-v2" @tap="closePackageDrawer">✕</view>
       </view>
 
       <!-- 搜索栏 -->
-      <view class="drawer-search-bar">
-        <view class="drawer-search-input">
-          <text class="search-icon">🔍</text>
+      <view class="drawer-search-bar drawer-search-v2">
+        <view class="drawer-search-input drawer-search-input-v2">
+          <text class="search-icon-v2">🔍</text>
           <input
-            class="search-input"
+            class="search-input search-input-v2"
             type="text"
             :placeholder="fmt('detail.searchPlaceholder')"
             v-model="drawerSearch"
@@ -195,82 +175,39 @@
         </view>
       </view>
 
-      <!-- 分类标签 -->
-      <scroll-view class="drawer-tabs" scroll-x>
-        <view
-          v-for="cat in drawerCategories"
-          :key="cat"
-          class="drawer-tab"
-          :class="{ active: drawerActiveCat === cat }"
-          @click="drawerActiveCat = cat"
-        >
-          <text class="drawer-tab-text">{{ cat }}</text>
-        </view>
-      </scroll-view>
-
-      <!-- 套餐列表 -->
-      <scroll-view class="drawer-body" scroll-y>
-        <view v-if="filteredDrawerPackages.length === 0" class="drawer-empty">
-          <text class="drawer-empty-text">{{ fmt('detail.noResults') }}</text>
-        </view>
-        <view v-for="(group, idx) in filteredDrawerPackages" :key="idx" class="drawer-group">
-          <text class="drawer-group-title">{{ group.region }}</text>
+      <!-- 左右两栏布局 -->
+      <view class="drawer-two-col">
+        <!-- 左侧分类导航 -->
+        <scroll-view class="drawer-sidebar" scroll-y>
           <view
-            v-for="p in group.packages"
-            :key="p.id"
-            class="drawer-pkg-item"
-            :class="{ active: isCurrentPkg(p) }"
-            @click="selectPackage(p)"
+            v-for="cat in drawerCategories"
+            :key="cat"
+            class="drawer-sidebar-item"
+            :class="{ active: drawerActiveCat === cat }"
+            @tap="drawerActiveCat = cat"
           >
-            <view class="drawer-pkg-info">
-              <text class="drawer-pkg-name">{{ p.name }}</text>
-              <text class="drawer-pkg-spec">{{ p.gb }}GB · {{ p.days }}{{ fmt('detail.dayUnitShort') }}</text>
-            </view>
-            <text class="drawer-pkg-price">{{ formatDrawerPrice(p) }}</text>
-            <view v-if="isCurrentPkg(p)" class="drawer-pkg-check">✓</view>
+            <text class="drawer-sidebar-text">{{ cat }}</text>
           </view>
-        </view>
-      </scroll-view>
-    </view>
+        </scroll-view>
 
-    <!-- 加购目标 eSIM 选择抽屉 -->
-    <view v-if="showEsimDrawer" class="drawer-mask esim-drawer-mask" @click="closeEsimDrawer"></view>
-    <view v-if="showEsimDrawer" class="drawer-panel esim-drawer-panel">
-      <view class="drawer-header">
-        <text class="drawer-title">{{ fmt('detail.renewDrawerTitle') }}</text>
-        <view class="drawer-close" @click="closeEsimDrawer">✕</view>
-      </view>
-
-      <!-- 国家不一致软提示 -->
-      <view
-        v-if="selectedEsim && selectedEsim.pkg.countryCode !== pkg.countryCode"
-        class="renew-mismatch"
-      >{{ fmt('detail.renewCountryMismatch') }}</view>
-
-      <scroll-view class="drawer-body esim-drawer-body" scroll-y>
-        <view v-if="expiredEsims.length === 0" class="drawer-empty">
-          <text class="drawer-empty-text">{{ fmt('detail.renewNoEsim') }}</text>
-        </view>
-        <view
-          v-for="e in expiredEsims"
-          :key="e.id"
-          class="drawer-pkg-item esim-pkg-item"
-          :class="{ active: e.id === selectedEsimId }"
-          @click="selectEsim(e)"
-        >
-          <view class="drawer-pkg-info">
-            <view class="esim-pkg-name-row">
-              <text class="drawer-pkg-name">{{ e.pkg.countryName }}</text>
-              <text class="esim-pkg-gb">{{ e.pkg.gb }}GB · {{ e.pkg.days }}{{ fmt('detail.dayUnitShort') }}</text>
-            </view>
-            <text class="esim-pkg-expire">{{ fmt('detail.renewExpire', { date: formatDate(e.expireAt) }) }}</text>
+        <!-- 右侧内容区 -->
+        <scroll-view class="drawer-content" scroll-y>
+          <view v-if="filteredDrawerPackages.length === 0" class="drawer-empty">
+            <text class="drawer-empty-text">{{ fmt('detail.noResults') }}</text>
           </view>
-          <view v-if="e.id === selectedEsimId" class="drawer-pkg-check">✓</view>
-        </view>
-      </scroll-view>
-
-      <view class="esim-drawer-footer" @click="clearEsimSelection(); closeEsimDrawer()">
-        <text class="esim-drawer-newbuy">{{ fmt('detail.renewNewBuy') }}</text>
+          <view v-for="(group, idx) in filteredDrawerPackages" :key="idx" class="drawer-group-v2">
+            <text class="drawer-group-subtitle">{{ group.region }}</text>
+            <view
+              v-for="p in group.packages"
+              :key="p.id"
+              class="drawer-pkg-tag"
+              :class="{ active: isCurrentPkg(p) }"
+              @tap="selectPackage(p)"
+            >
+              <text class="drawer-pkg-tag-text">{{ p.name }}</text>
+            </view>
+          </view>
+        </scroll-view>
       </view>
     </view>
   </view>
@@ -279,8 +216,7 @@
 <script>
 import { api } from '@/utils/api'
 import { setNavTitle, t as translate } from '@/locales'
-import { currencySymbol, formatDate } from '@/utils/format'
-import { store } from '@/store'
+import { currencySymbol } from '@/utils/format'
 
 function fmtNamed(str, p) {
   return String(str).replace(/\{(\w+)\}/g, (m, k) =>
@@ -322,13 +258,9 @@ export default {
       selectedGb: 0,
       showDrawer: false,
       drawerSearch: '',
-      drawerActiveCat: '全部',
-      drawerCategories: ['全部'],
-      drawerAllPackages: [],
-      // 加购/续费到已过期 eSIM 选择器
-      renewEsims: [],
-      showEsimDrawer: false,
-      selectedEsimId: ''
+      drawerActiveCat: '历史/热门',
+      drawerCategories: ['历史/热门', '跨境组合', '亚洲', '欧洲', '美洲', '非洲', '大洋洲'],
+      drawerAllPackages: []
     }
   },
   computed: {
@@ -420,10 +352,32 @@ export default {
         )
       }
       // 分类过滤
-      if (this.drawerActiveCat !== '全部') {
-        packages = packages.filter(p => p.countryName === this.drawerActiveCat || p.countryCode === this.drawerActiveCat)
+      if (this.drawerActiveCat === '历史/热门') {
+        // 显示所有套餐，按热门推荐排序
+        // 分为"历史选择"和"热门推荐"两组
+        const historyPackages = packages.slice(0, 3) // 模拟历史选择
+        const hotPackages = packages.slice(3) // 热门推荐
+        const result = []
+        if (historyPackages.length > 0) {
+          result.push({ region: '历史选择', packages: historyPackages })
+        }
+        result.push({ region: '热门推荐', packages: hotPackages.length > 0 ? hotPackages : packages })
+        return result
+      } else if (this.drawerActiveCat === '跨境组合') {
+        packages = packages.filter(p => p.isMulti || p.countryCode === 'GLOBAL')
+      } else {
+        // 按地区过滤
+        const regionMap = {
+          '亚洲': ['CN', 'HK', 'MO', 'TW', 'JP', 'KR', 'TH', 'SG', 'MY', 'VN', 'ID', 'PH', 'IN', 'AE', 'TR', 'IL'],
+          '欧洲': ['GB', 'FR', 'DE', 'IT', 'ES', 'NL', 'BE', 'AT', 'CH', 'PT', 'GR', 'CZ', 'PL', 'HU', 'RO', 'SE', 'NO', 'DK', 'FI', 'IE', 'RU', 'UA'],
+          '美洲': ['US', 'CA', 'MX', 'BR', 'AR', 'CL', 'CO', 'PE'],
+          '非洲': ['ZA', 'EG', 'MA', 'KE', 'NG', 'TN'],
+          '大洋洲': ['AU', 'NZ', 'FJ']
+        }
+        const codes = regionMap[this.drawerActiveCat] || []
+        packages = packages.filter(p => codes.includes(p.countryCode))
       }
-      // 按地区分组
+      // 按国家/地区分组
       const byRegion = new Map()
       for (const p of packages) {
         const region = p.countryName || p.countryCode || '其他'
@@ -436,18 +390,6 @@ export default {
         region,
         packages: packages.sort((a, b) => a.price - b.price)
       }))
-    },
-    expiredEsims() {
-      // 兜底过滤：已激活 && 已过期，与 esim-detail canRenew / 后端 expireAt<now 保持一致
-      return this.renewEsims.filter(
-        e => e.status === 'activated' && new Date(e.expireAt) < new Date()
-      )
-    },
-    selectedEsim() {
-      return this.renewEsims.find(e => e.id === this.selectedEsimId) || null
-    },
-    showRenewEntry() {
-      return store.isLoggedIn && this.expiredEsims.length > 0
     }
   },
   onLoad(options) {
@@ -457,7 +399,6 @@ export default {
     this.esimId = options.esimId || ''
     this.load()
     this.loadAllPackages()
-    this.loadReneEsims()
   },
   methods: {
     fmt(key, params) {
@@ -507,24 +448,25 @@ export default {
       }
     },
     async loadAllPackages() {
+      // 尝试加载全量套餐（需线上服务器部署 /catalog/all 路由后才可用）
+      let loaded = false
       try {
         const res = await api.getAllPackages()
         if (res.code === 0 && res.data.packages && res.data.packages.length > 0) {
           this.drawerAllPackages = res.data.packages
-          // 提取分类（国家/地区）
           const cats = new Set(['全部'])
           for (const p of this.drawerAllPackages) {
             if (p.countryName) cats.add(p.countryName)
           }
           this.drawerCategories = Array.from(cats)
-          return
+          loaded = true
         }
       } catch (e) {
-        console.error('加载全量套餐失败:', e)
+        // 线上未部署 /catalog/all 路由时静默 fallback
       }
-      
+
       // Fallback: 使用当前国家的套餐
-      if (this.allPackages.length > 0) {
+      if (!loaded && this.allPackages.length > 0) {
         this.drawerAllPackages = this.allPackages
         const cats = new Set(['全部'])
         for (const p of this.allPackages) {
@@ -535,11 +477,8 @@ export default {
     },
     buy() {
       const pkgId = (this.selectedPkg && this.selectedPkg.id) || (this.pkg ? this.pkg.id : '')
-      // 选中已过期卡则加购/续费到该卡，否则走普通新购
-      const mode = this.selectedEsimId ? 'renew' : ''
-      const esimId = this.selectedEsimId || ''
       uni.navigateTo({
-        url: `/pages/checkout/checkout?pkgId=${pkgId}&mode=${mode}&esimId=${esimId}`
+        url: `/pages/checkout/checkout?pkgId=${pkgId}&mode=${this.mode}&esimId=${this.esimId}`
       })
     },
     goGuide() {
@@ -572,39 +511,6 @@ export default {
       if (!p.price) return ''
       const sym = currencySymbol(p.currency || 'CNY')
       return `${sym}${Number(p.price).toFixed(2)}`
-    },
-    async loadReneEsims() {
-      if (!store.isLoggedIn) return
-      try {
-        const res = await api.getMyEsims()
-        this.renewEsims = (res.data.esims || [])
-          .filter(e => e.status === 'activated' && new Date(e.expireAt) < new Date())
-        // 预选：从 eSIM 详情页续费进入时（onLoad 已带 mode=renew&esimId）
-        if (this.mode === 'renew' && this.esimId) {
-          if (this.renewEsims.some(e => e.id === this.esimId)) {
-            this.selectedEsimId = this.esimId
-          } else {
-            // 预选卡不可续费（不在过期列表）→ 清空转新购并提示
-            this.selectedEsimId = ''
-            uni.showToast({ title: this.fmt('detail.renewPreselectGone'), icon: 'none' })
-          }
-        }
-      } catch (e) {
-        console.error('[detail] 加载我的 eSIM 失败：', e)
-      }
-    },
-    openEsimDrawer() {
-      this.showEsimDrawer = true
-    },
-    closeEsimDrawer() {
-      this.showEsimDrawer = false
-    },
-    selectEsim(e) {
-      this.selectedEsimId = e.id
-      this.closeEsimDrawer()
-    },
-    clearEsimSelection() {
-      this.selectedEsimId = ''
     }
   }
 }
@@ -682,8 +588,8 @@ export default {
 }
 
 .pkg-name-arrow-icon {
-  width: 48rpx;
-  height: 48rpx;
+  width: 64rpx;
+  height: 64rpx;
   border-radius: 50%;
   background: #F5F5FF;
   display: flex;
@@ -1101,79 +1007,11 @@ export default {
   bottom: 0;
   background: #ffffff;
   display: flex;
-  flex-direction: column;
+  align-items: center;
   padding: 20rpx $page-pad;
-  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
   box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.06);
   z-index: 10;
-}
-
-/* 加购/续费入口行 */
-.renew-entry {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  background: #F0EEFF;
-  border-radius: 16rpx;
-  padding: 14rpx 20rpx;
-  margin-bottom: 16rpx;
-}
-
-.renew-entry-left {
-  flex: 1;
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  min-width: 0;
-}
-
-.renew-entry-label {
-  font-size: 22rpx;
-  color: #6C63FF;
-  font-weight: 700;
-  margin-right: 12rpx;
-}
-
-.renew-entry-name {
-  font-size: 26rpx;
-  color: #1A1A2E;
-  font-weight: 700;
-}
-
-.renew-entry-spec {
-  font-size: 22rpx;
-  color: #8A8AA0;
-  margin-left: 16rpx;
-  white-space: nowrap;
-}
-
-.renew-entry-prompt {
-  font-size: 26rpx;
-  color: #6C63FF;
-  font-weight: 600;
-}
-
-.renew-select-btn {
-  font-size: 26rpx;
-  color: #6C63FF;
-  font-weight: 700;
-  margin-left: 16rpx;
-  flex-shrink: 0;
-}
-
-.renew-clear-btn {
-  font-size: 24rpx;
-  color: #999999;
-  padding: 8rpx 20rpx;
-  background: #ffffff;
-  border-radius: 999rpx;
-  margin-left: 16rpx;
-  flex-shrink: 0;
-}
-
-.bar-row {
-  display: flex;
-  align-items: center;
 }
 
 .price-area {
@@ -1437,59 +1275,148 @@ export default {
   flex-shrink: 0;
 }
 
-/* ========== 加购目标 eSIM 选择抽屉 ========== */
-.renew-mismatch {
-  margin: 20rpx 40rpx 0;
-  padding: 14rpx 20rpx;
-  background: #FFF4EC;
-  border-radius: 12rpx;
-  font-size: 24rpx;
-  color: #E8883A;
-  line-height: 1.5;
+/* ========== 新抽屉样式（左右两栏） ========== */
+.drawer-panel-v2 {
+  border-radius: 32rpx 32rpx 0 0;
+  max-height: 90vh;
+  overflow: hidden;
 }
 
-.esim-drawer-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 20rpx 40rpx;
-  padding-bottom: 40rpx;
-}
-
-.esim-pkg-item {
-  cursor: pointer;
-}
-
-.esim-pkg-name-row {
+.drawer-header-v2 {
   display: flex;
-  align-items: baseline;
-  margin-bottom: 4rpx;
+  align-items: center;
+  justify-content: center;
+  padding: 32rpx 40rpx 24rpx;
+  border-bottom: 1rpx solid #F0F0F0;
+  position: relative;
 }
 
-.esim-pkg-name-row .drawer-pkg-name {
-  margin-bottom: 0;
+.drawer-title-v2 {
+  font-size: 36rpx;
+  font-weight: 700;
+  color: #1A1A2E;
 }
 
-.esim-pkg-gb {
-  font-size: 22rpx;
-  color: #999999;
-  margin-left: 12rpx;
-}
-
-.esim-pkg-expire {
-  font-size: 22rpx;
-  color: #B0B0C0;
-}
-
-.esim-drawer-footer {
-  padding: 20rpx 40rpx;
-  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
-  border-top: 1rpx solid #F0F0F0;
-  text-align: center;
-}
-
-.esim-drawer-newbuy {
+.drawer-close-v2 {
+  position: absolute;
+  right: 32rpx;
+  top: 32rpx;
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   font-size: 28rpx;
-  color: #6C63FF;
-  font-weight: 600;
+  color: #999999;
+}
+
+.drawer-search-v2 {
+  padding: 20rpx 32rpx;
+}
+
+.drawer-search-input-v2 {
+  display: flex;
+  align-items: center;
+  background: #F5F5F7;
+  border-radius: 16rpx;
+  padding: 18rpx 24rpx;
+}
+
+.search-icon-v2 {
+  font-size: 28rpx;
+  margin-right: 12rpx;
+  flex-shrink: 0;
+}
+
+.search-input-v2 {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333333;
+}
+
+/* 左右两栏 */
+.drawer-two-col {
+  display: flex;
+  height: 60vh;
+  overflow: hidden;
+}
+
+/* 左侧分类导航 */
+.drawer-sidebar {
+  width: 180rpx;
+  background: #F8F8FA;
+  border-right: 1rpx solid #EEEEEE;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+
+.drawer-sidebar-item {
+  padding: 28rpx 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-left: 6rpx solid transparent;
+  transition: all 0.2s ease;
+
+  &.active {
+    background: #ffffff;
+    border-left-color: #6C63FF;
+  }
+}
+
+.drawer-sidebar-text {
+  font-size: 26rpx;
+  color: #666666;
+  font-weight: 500;
+
+  .active & {
+    color: #6C63FF;
+    font-weight: 700;
+  }
+}
+
+/* 右侧内容区 */
+.drawer-content {
+  flex: 1;
+  padding: 24rpx 32rpx;
+  overflow-y: auto;
+}
+
+.drawer-group-v2 {
+  margin-bottom: 28rpx;
+}
+
+.drawer-group-subtitle {
+  font-size: 24rpx;
+  color: #999999;
+  font-weight: 500;
+  margin-bottom: 16rpx;
+  display: block;
+}
+
+.drawer-pkg-tag {
+  display: inline-block;
+  padding: 16rpx 28rpx;
+  background: #F5F5F7;
+  border-radius: 12rpx;
+  margin-right: 16rpx;
+  margin-bottom: 16rpx;
+  transition: all 0.2s ease;
+
+  &.active {
+    background: #6C63FF;
+  }
+}
+
+.drawer-pkg-tag-text {
+  font-size: 26rpx;
+  color: #333333;
+  font-weight: 500;
+  white-space: nowrap;
+
+  .active & {
+    color: #ffffff;
+    font-weight: 600;
+  }
 }
 </style>

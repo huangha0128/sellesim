@@ -20,20 +20,36 @@ export function cardPool(envIds: string[], dbIccids: string[]): string[] {
   return Array.from(new Set([...envIds, ...dbIccids]));
 }
 
-/** 从数据库与环境变量获取完整卡片池（去重） */
-export async function getIccidPool(prisma: PrismaClient): Promise<string[]> {
+/** Tiger 卡片拉取函数签名（由调用方注入，避免本模块依赖 tigerClient 而影响单测） */
+export type IccidFetcher = () => Promise<string[]>;
+
+/**
+ * 解析完整卡片池（去重）：优先使用调用方注入的 Tiger 拉取函数（有值时以其为准），
+ * 否则回退到环境变量 + 数据库本地卡片池。
+ */
+async function resolvePool(prisma: PrismaClient, fetcher?: IccidFetcher): Promise<string[]> {
+  if (fetcher) {
+    const ids = await fetcher();
+    if (ids.length) return ids; // Tiger 有卡则以其为准
+    // Tiger 未返回卡片时回退本地兜底
+  }
   const dbCards = await prisma.card.findMany({ select: { iccid: true } });
   return cardPool(envPool(), dbCards.map((c) => c.iccid));
 }
 
+/** 从数据库与环境变量获取完整卡片池（去重） */
+export async function getIccidPool(prisma: PrismaClient, fetcher?: IccidFetcher): Promise<string[]> {
+  return resolvePool(prisma, fetcher);
+}
+
 /** 卡片池中的卡片总数（去重） */
-export async function iccidPoolCount(prisma: PrismaClient): Promise<number> {
-  return (await getIccidPool(prisma)).length;
+export async function iccidPoolCount(prisma: PrismaClient, fetcher?: IccidFetcher): Promise<number> {
+  return (await resolvePool(prisma, fetcher)).length;
 }
 
 /** 取一张尚未在本地 esim 表中使用过的 ICCID；池子为空或无可用卡时返回 null */
-export async function getAvailableIccid(prisma: PrismaClient): Promise<string | null> {
-  const ids = await getIccidPool(prisma);
+export async function getAvailableIccid(prisma: PrismaClient, fetcher?: IccidFetcher): Promise<string | null> {
+  const ids = await resolvePool(prisma, fetcher);
   if (ids.length === 0) return null;
   const used = new Set((await prisma.esim.findMany({ select: { iccid: true } })).map((e) => e.iccid));
   return ids.find((i) => !used.has(i)) || null;

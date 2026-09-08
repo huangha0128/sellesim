@@ -35,6 +35,89 @@
 
       <view class="section-card">
         <view class="order-head">
+          <text class="order-title">{{ fmt('checkout.buyMode') }}</text>
+        </view>
+
+        <!-- 新购 -->
+        <view
+          class="bm-item"
+          :class="{ active: buyMode === 'new' }"
+          @click="selectBuyMode('new')"
+        >
+          <view class="bm-logo">新</view>
+          <view class="bm-info">
+            <text class="bm-name">{{ fmt('checkout.buyNew') }}</text>
+            <text class="bm-desc">{{ fmt('checkout.buyNewDesc') }}</text>
+          </view>
+          <view class="bm-check" :class="{ checked: buyMode === 'new' }">
+            <image v-if="buyMode === 'new'" src="/static/icons/co-check.png" mode="aspectFit" class="check-icon" />
+          </view>
+        </view>
+
+        <!-- 加购到已过期 eSIM -->
+        <view
+          class="bm-item"
+          :class="{ active: buyMode === 'renew' }"
+          @click="selectBuyMode('renew')"
+        >
+          <view class="bm-logo renew-logo">充</view>
+          <view class="bm-info">
+            <text class="bm-name">{{ fmt('checkout.buyAdd') }}</text>
+            <text class="bm-desc">{{ fmt('checkout.buyAddDesc') }}</text>
+          </view>
+          <view class="bm-check" :class="{ checked: buyMode === 'renew' }">
+            <image v-if="buyMode === 'renew'" src="/static/icons/co-check.png" mode="aspectFit" class="check-icon" />
+          </view>
+        </view>
+
+        <!-- 已选择加购目标卡 -->
+        <view v-if="buyMode === 'renew'" class="bm-target" @click="openEsimDrawer">
+          <template v-if="selectedEsim">
+            <view class="bm-target-left">
+              <text class="bm-target-label">{{ fmt('checkout.buyAddTo') }}</text>
+              <text class="bm-target-name">{{ selectedEsim.pkg.countryName }}</text>
+              <text class="bm-target-spec">{{ selectedEsim.pkg.gb }}GB · {{ selectedEsim.pkg.days }}{{ fmt('checkout.buyDayUnit') }} · {{ fmt('checkout.buyExpire', { date: formatDate(selectedEsim.expireAt) }) }}</text>
+            </view>
+            <view class="bm-clear" @click.stop="selectEsim('')">{{ fmt('checkout.buyClear') }}</view>
+          </template>
+          <template v-else>
+            <view class="bm-target-left">
+              <text class="bm-target-empty">{{ expiredEsims.length ? fmt('checkout.buySelectCard') : fmt('checkout.buyAddEmpty') }}</text>
+            </view>
+            <view v-if="expiredEsims.length" class="bm-target-btn">{{ fmt('checkout.buyChoose') }} ›</view>
+          </template>
+        </view>
+      </view>
+
+      <!-- 加购目标卡选择抽屉 -->
+      <view v-if="showEsimDrawer" class="drawer-mask" @click="closeEsimDrawer"></view>
+      <view v-if="showEsimDrawer" class="drawer-panel">
+        <view class="drawer-header">
+          <text class="drawer-title">{{ fmt('checkout.buyDrawerTitle') }}</text>
+          <view class="drawer-close" @click="closeEsimDrawer">✕</view>
+        </view>
+        <scroll-view class="drawer-body" scroll-y>
+          <view v-if="expiredEsims.length === 0" class="drawer-empty">
+            <text class="drawer-empty-text">{{ fmt('checkout.buyAddEmpty') }}</text>
+          </view>
+          <view
+            v-for="e in expiredEsims"
+            :key="e.id"
+            class="drawer-item"
+            :class="{ active: e.id === selectedEsimId }"
+            @click="selectEsim(e.id)"
+          >
+            <view class="drawer-item-info">
+              <text class="drawer-item-name">{{ e.pkg.countryName }}</text>
+              <text class="drawer-item-spec">{{ e.pkg.gb }}GB · {{ e.pkg.days }}{{ fmt('checkout.buyDayUnit') }} · {{ fmt('checkout.buyExpire', { date: formatDate(e.expireAt) }) }}</text>
+            </view>
+            <view v-if="e.id === selectedEsimId" class="drawer-item-check">✓</view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <view class="section-card">
+        <view class="order-head">
           <text class="order-title">{{ fmt('checkout.payMethod') }}</text>
         </view>
         <view class="pay-item" :class="{ active: payMethod === 'alipay' }" @click="payMethod = 'alipay'">
@@ -109,7 +192,7 @@
 import { api } from '@/utils/api'
 import { store } from '@/store'
 import { setNavTitle, t as translate } from '@/locales'
-import { currencySymbol } from '@/utils/format'
+import { currencySymbol, formatDate } from '@/utils/format'
 
 // 命名占位符兜底替换（如 {name}、{label}、{days}、{network}）
 function fmtNamed(str, p) {
@@ -129,6 +212,11 @@ export default {
       payMethod: 'alipay',
       agreed: true,
       submitting: false,
+      // 购买方式：'new' 新购 / 'renew' 加购到已过期 eSIM
+      buyMode: 'new',
+      renewEsims: [],
+      selectedEsimId: '',
+      showEsimDrawer: false,
       store
     }
   },
@@ -148,6 +236,15 @@ export default {
     },
     sym() {
       return currencySymbol(this.pkg ? this.pkg.currency : 'CNY')
+    },
+    expiredEsims() {
+      // 仅已激活且已过期的卡可作为加购目标，与后端 expireAt<now 校验一致
+      return this.renewEsims.filter(
+        e => e.status === 'activated' && new Date(e.expireAt) < new Date()
+      )
+    },
+    selectedEsim() {
+      return this.renewEsims.find(e => e.id === this.selectedEsimId) || null
     }
   },
   onLoad(options) {
@@ -156,6 +253,7 @@ export default {
     this.esimId = options.esimId || ''
     setNavTitle('pageTitle.checkout')
     this.load()
+    this.loadReneEsims()
   },
   methods: {
     fmt(key, params) {
@@ -173,6 +271,42 @@ export default {
         uni.hideLoading()
       }
     },
+    async loadReneEsims() {
+      if (!store.isLoggedIn) return
+      try {
+        const res = await api.getMyEsims()
+        this.renewEsims = (res.data.esims || [])
+          .filter(e => e.status === 'activated' && new Date(e.expireAt) < new Date())
+        // 预选：从 eSIM 详情页续费进入时（onLoad 已带 mode=renew&esimId）
+        if (this.mode === 'renew' && this.esimId) {
+          if (this.renewEsims.some(e => e.id === this.esimId)) {
+            this.buyMode = 'renew'
+            this.selectedEsimId = this.esimId
+          } else {
+            // 预选卡不可续费（不在过期列表）→ 清空转新购并提示
+            this.buyMode = 'new'
+            this.selectedEsimId = ''
+            uni.showToast({ title: this.fmt('checkout.buyPreselectGone'), icon: 'none' })
+          }
+        }
+      } catch (e) {
+        console.error('[checkout] 加载我的 eSIM 失败：', e)
+      }
+    },
+    selectBuyMode(m) {
+      this.buyMode = m
+      if (m === 'new') this.selectedEsimId = ''
+    },
+    selectEsim(id) {
+      this.selectedEsimId = id
+      this.closeEsimDrawer()
+    },
+    openEsimDrawer() {
+      this.showEsimDrawer = true
+    },
+    closeEsimDrawer() {
+      this.showEsimDrawer = false
+    },
     async submit() {
       if (!this.agreed) {
         uni.showToast({ title: this.fmt('checkout.agreeFirst'), icon: 'none' })
@@ -182,10 +316,15 @@ export default {
         uni.showToast({ title: this.fmt('checkout.emailInvalid'), icon: 'none' })
         return
       }
+      // 加购必须已选目标卡，否则不予提交
+      if (this.buyMode === 'renew' && !this.selectedEsimId) {
+        uni.showToast({ title: this.fmt('checkout.buySelectCard'), icon: 'none' })
+        return
+      }
       // 下单前强制登录，确保订单归属当前账号
       if (!store.isLoggedIn) {
         uni.showToast({ title: this.fmt('checkout.needLogin'), icon: 'none' })
-        const redirect = `/pages/checkout/checkout?pkgId=${this.pkgId}&mode=${this.mode || ''}&esimId=${this.esimId || ''}`
+        const redirect = `/pages/checkout/checkout?pkgId=${this.pkgId}`
         uni.navigateTo({
           url: `/pages/login/login?redirect=${encodeURIComponent(redirect)}`,
         })
@@ -197,8 +336,8 @@ export default {
           pkgId: this.pkgId,
           email: this.email,
           payMethod: this.payMethod,
-          orderType: this.mode || 'new',
-          targetEsimId: this.esimId || undefined
+          orderType: this.buyMode === 'renew' ? 'renew' : 'new',
+          targetEsimId: this.buyMode === 'renew' ? this.selectedEsimId : undefined
         })
         if (res.code === 0) {
           const order = {
@@ -417,6 +556,256 @@ export default {
   background: $bg-soft;
   padding: 8rpx 18rpx;
   border-radius: 999rpx;
+}
+
+/* ========== 购买方式（新购 / 加购到已过期 eSIM） ========== */
+.bm-item {
+  display: flex;
+  align-items: center;
+  border: 2rpx solid $line;
+  border-radius: $radius;
+  padding: 24rpx;
+  margin-bottom: 20rpx;
+  transition: all 0.2s ease;
+
+  &.active {
+    border-color: $brand;
+    background: $brand-lighter;
+  }
+}
+
+.bm-logo {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font-size: 32rpx;
+  font-weight: 800;
+  flex-shrink: 0;
+  background: $brand;
+
+  &.renew-logo {
+    background: #E8883A;
+  }
+}
+
+.bm-info {
+  flex: 1;
+  margin-left: 22rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.bm-name {
+  font-size: 28rpx;
+  font-weight: 700;
+  color: $ink;
+}
+
+.bm-desc {
+  margin-top: 4rpx;
+  font-size: 21rpx;
+  color: $ink-3;
+}
+
+.bm-check {
+  width: 44rpx;
+  height: 44rpx;
+  border-radius: 50%;
+  border: 2rpx solid $line;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+
+  &.checked {
+    background: $brand;
+    border-color: $brand;
+  }
+}
+
+.bm-target {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: $bg-soft;
+  border-radius: $radius-sm;
+  padding: 20rpx 24rpx;
+  margin-top: 8rpx;
+}
+
+.bm-target-left {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.bm-target-label {
+  font-size: 22rpx;
+  color: $brand;
+  font-weight: 600;
+  margin-right: 12rpx;
+}
+
+.bm-target-name {
+  font-size: 26rpx;
+  color: $ink;
+  font-weight: 700;
+}
+
+.bm-target-spec {
+  font-size: 21rpx;
+  color: $ink-3;
+  margin-left: 14rpx;
+  white-space: nowrap;
+}
+
+.bm-target-empty {
+  font-size: 24rpx;
+  color: $ink-3;
+}
+
+.bm-target-btn {
+  font-size: 24rpx;
+  color: $brand;
+  font-weight: 700;
+  margin-left: 16rpx;
+  flex-shrink: 0;
+}
+
+.bm-clear {
+  font-size: 22rpx;
+  color: $ink-3;
+  padding: 6rpx 18rpx;
+  background: #ffffff;
+  border-radius: 999rpx;
+  margin-left: 16rpx;
+  flex-shrink: 0;
+}
+
+/* 加购目标卡选择抽屉 */
+.drawer-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 200;
+}
+
+.drawer-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 75vh;
+  background: #ffffff;
+  border-radius: 32rpx 32rpx 0 0;
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx 40rpx;
+  border-bottom: 1rpx solid $line;
+}
+
+.drawer-title {
+  font-size: 30rpx;
+  font-weight: 700;
+  color: $ink;
+}
+
+.drawer-close {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32rpx;
+  color: $ink-3;
+}
+
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 40rpx;
+  padding-bottom: 40rpx;
+}
+
+.drawer-empty {
+  padding: 60rpx 0;
+  text-align: center;
+}
+
+.drawer-empty-text {
+  font-size: 26rpx;
+  color: $ink-3;
+}
+
+.drawer-item {
+  display: flex;
+  align-items: center;
+  padding: 26rpx 0;
+  border-bottom: 1rpx solid $line;
+
+  &.active {
+    background: $brand-lighter;
+    margin: 0 -40rpx;
+    padding-left: 40rpx;
+    padding-right: 40rpx;
+    border-radius: 12rpx;
+    border-bottom: none;
+  }
+}
+
+.drawer-item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.drawer-item-name {
+  font-size: 27rpx;
+  color: $ink;
+  font-weight: 600;
+  margin-bottom: 6rpx;
+}
+
+.drawer-item-spec {
+  font-size: 21rpx;
+  color: $ink-3;
+}
+
+.drawer-item-check {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: $brand;
+  color: #ffffff;
+  font-size: 20rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
 
 .amount-row {

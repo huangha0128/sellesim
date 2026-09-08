@@ -9,7 +9,7 @@
     </view>
 
     <view v-if="!store.esims.length" class="empty">
-      <image class="empty-emoji" src="/static/icons/prof-esim.png" mode="aspectFit" />
+      <image class="empty-icon" src="/static/icons/prof-esim.png" mode="aspectFit" />
       <text class="empty-title">{{ fmt('esims.emptyTitle') }}</text>
       <text class="empty-sub">{{ fmt('esims.emptySub') }}</text>
       <view class="empty-btn" hover-class="empty-btn--hover" @click="goBuy">{{ fmt('esims.goBuy') }}</view>
@@ -57,15 +57,15 @@
     <!-- 底部导航栏 -->
     <view class="tab-bar">
       <view class="tab-item" :class="{ active: currentTab === 'home' }" @click="switchTab('home')">
-        <image class="tab-icon" src="/static/icons/tab-home.png" mode="aspectFit" />
+        <image class="tab-icon" :src="currentTab === 'home' ? '/static/icons/tab-home-active.png' : '/static/icons/tab-home.png'" mode="aspectFit" />
         <text class="tab-label">首页</text>
       </view>
       <view class="tab-item" :class="{ active: currentTab === 'esim' }" @click="switchTab('esim')">
-        <image class="tab-icon" src="/static/icons/tab-esim.png" mode="aspectFit" />
+        <image class="tab-icon" :src="currentTab === 'esim' ? '/static/icons/tab-esim-active.png' : '/static/icons/tab-esim.png'" mode="aspectFit" />
         <text class="tab-label">eSIM</text>
       </view>
       <view class="tab-item" :class="{ active: currentTab === 'profile' }" @click="switchTab('profile')">
-        <image class="tab-icon" src="/static/icons/tab-profile.png" mode="aspectFit" />
+        <image class="tab-icon" :src="currentTab === 'profile' ? '/static/icons/tab-profile-active.png' : '/static/icons/tab-profile.png'" mode="aspectFit" />
         <text class="tab-label">我的</text>
       </view>
     </view>
@@ -195,8 +195,10 @@ export default {
   padding-top: 140rpx;
 }
 
-.empty-emoji {
-  font-size: 110rpx;
+.empty-icon {
+  width: 120rpx;
+  height: 120rpx;
+  margin-bottom: 8rpx;
 }
 
 .empty-title {

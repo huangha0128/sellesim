@@ -232,6 +232,33 @@ export class TigerClient {
     return this.authed(`/api/card${qs.toString() ? `?${qs}` : ''}`);
   }
 
+  /** 分页拉取全部卡片并按 ICCID 去重（官方 limit 最小值为 5，此处用 500） */
+  async listAllCards(params: { category?: string; iccid?: string } = {}): Promise<any[]> {
+    const all: any[] = [];
+    const seen = new Set<string>();
+    let index = 1;
+    while (index <= 20) {
+      const res = await this.listCards({ ...params, index, limit: 500 });
+      const data = res?.data || res || {};
+      const items: any[] = data.items || [];
+      if (!items.length) break;
+      let added = 0;
+      for (const it of items) {
+        const id = String(it.iccid || it.iccid_number || it.id);
+        if (!seen.has(id)) {
+          seen.add(id);
+          all.push(it);
+          added += 1;
+        }
+      }
+      const total = Number(data.total ?? all.length);
+      if (all.length >= total) break;
+      if (added === 0) break;
+      index += 1;
+    }
+    return all;
+  }
+
   /** GET /api/card/usage 查询卡片流量历史 */
   async getCardUsage(iccid: string, params: { index?: number; limit?: number } = {}) {
     const qs = new URLSearchParams({ iccid });

@@ -1,13 +1,15 @@
 import { PrismaClient } from '@prisma/client';
 import { tigerClient } from './client';
+import { fetchTigerIccids } from './iccid-source';
 
-/** Tiger -> 本地同步结果（套餐内容不再落本地库，仅国家/区域落库） */
+/** Tiger -> 本地同步结果（套餐内容不再落本地库，仅国家/区域落库；卡片实时来自 Tiger） */
 export interface SyncResult {
   regionsSynced: number;
   packagesSynced: number;
   packagesMatched: number;
   packagesUnmatched: number;
   packageTotal: number;
+  cardsCount?: number;
   mode: 'tiger' | 'mock';
   message: string;
 }
@@ -127,15 +129,19 @@ export async function syncAllFromTiger(prisma: PrismaClient): Promise<SyncResult
       packagesMatched: 0,
       packagesUnmatched: 0,
       packageTotal: 0,
+      cardsCount: 0,
       mode: 'mock',
       message: '未配置 TIGER_CLIENT_ID / TIGER_CLIENT_SECRET，无法同步',
     };
   }
   const regionRes = await syncRegionsFromTiger(prisma);
   const pkgRes = await syncPackagesFromTiger(prisma);
+  // 卡片实时来自 Tiger /api/card，不落本地库，仅统计供后台展示
+  const cardsCount = (await fetchTigerIccids()).length;
   return {
     ...pkgRes,
     regionsSynced: regionRes.regionsSynced,
-    message: '全量同步完成：区域 ' + regionRes.regionsSynced + ' 个，Tiger 可售套餐 ' + pkgRes.packageTotal + ' 条',
+    cardsCount,
+    message: '全量同步完成：区域 ' + regionRes.regionsSynced + ' 个，Tiger 可售套餐 ' + pkgRes.packageTotal + ' 条，卡片 ' + cardsCount + ' 张',
   };
 }

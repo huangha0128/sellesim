@@ -46,19 +46,15 @@
       >
         <!-- Left: Cover Image -->
         <view class="card-cover" :style="{ background: getCoverGradient(idx) }">
+          <!-- 装饰圆 -->
+          <view class="cover-deco-circle"></view>
+          <view class="cover-deco-circle small"></view>
           <view class="cover-content">
             <text class="cover-title">{{ p.countryName }}</text>
             <text class="cover-subtitle">流量套餐</text>
             <view class="cover-specs">
               <text class="spec-tag">1-365天</text>
               <text class="spec-tag">1-100GB</text>
-            </view>
-            <view class="cover-icons">
-              <text class="cover-icon-item">f</text>
-              <text class="cover-icon-item">in</text>
-              <text class="cover-icon-item">w</text>
-              <text class="cover-icon-item">M</text>
-              <text class="cover-icon-item">▶</text>
             </view>
           </view>
           <view class="esim-badge">eSIM</view>
@@ -88,15 +84,15 @@
     <!-- 底部导航栏 -->
     <view class="tab-bar">
       <view class="tab-item" :class="{ active: currentTab === 'home' }" @click="switchTab('home')">
-        <image class="tab-icon" src="/static/icons/tab-home.png" mode="aspectFit" />
+        <image class="tab-icon" :src="currentTab === 'home' ? '/static/icons/tab-home-active.png' : '/static/icons/tab-home.png'" mode="aspectFit" />
         <text class="tab-label">首页</text>
       </view>
       <view class="tab-item" :class="{ active: currentTab === 'esim' }" @click="switchTab('esim')">
-        <image class="tab-icon" src="/static/icons/tab-esim.png" mode="aspectFit" />
+        <image class="tab-icon" :src="currentTab === 'esim' ? '/static/icons/tab-esim-active.png' : '/static/icons/tab-esim.png'" mode="aspectFit" />
         <text class="tab-label">eSIM</text>
       </view>
       <view class="tab-item" :class="{ active: currentTab === 'profile' }" @click="switchTab('profile')">
-        <image class="tab-icon" src="/static/icons/tab-profile.png" mode="aspectFit" />
+        <image class="tab-icon" :src="currentTab === 'profile' ? '/static/icons/tab-profile-active.png' : '/static/icons/tab-profile.png'" mode="aspectFit" />
         <text class="tab-label">我的</text>
       </view>
     </view>
@@ -345,9 +341,30 @@ export default {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  padding: 20rpx;
+  padding: 24rpx;
   flex-shrink: 0;
   overflow: hidden;
+}
+
+/* 装饰圆 */
+.cover-deco-circle {
+  position: absolute;
+  top: -20rpx;
+  right: -20rpx;
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  z-index: 1;
+
+  &.small {
+    width: 60rpx;
+    height: 60rpx;
+    top: auto;
+    right: 40rpx;
+    bottom: 60rpx;
+    background: rgba(255, 255, 255, 0.1);
+  }
 }
 
 .cover-content {
@@ -356,7 +373,7 @@ export default {
 }
 
 .cover-title {
-  font-size: 32rpx;
+  font-size: 36rpx;
   font-weight: 800;
   color: #ffffff;
   text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.3);
@@ -365,44 +382,27 @@ export default {
 }
 
 .cover-subtitle {
-  font-size: 28rpx;
-  font-weight: 700;
-  color: #ffffff;
+  font-size: 26rpx;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
   text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.3);
   display: block;
-  margin-top: 4rpx;
+  margin-top: 8rpx;
 }
 
 .cover-specs {
   display: flex;
-  margin-top: 12rpx;
+  margin-top: 16rpx;
 }
 
 .spec-tag {
-  font-size: 18rpx;
-  color: rgba(255, 255, 255, 0.9);
-  background: rgba(255, 255, 255, 0.2);
-  padding: 4rpx 12rpx;
-  border-radius: 8rpx;
-  margin-right: 8rpx;
-}
-
-.cover-icons {
-  display: flex;
-  margin-top: 12rpx;
-}
-
-.cover-icon-item {
-  font-size: 16rpx;
-  color: rgba(255, 255, 255, 0.8);
-  margin-right: 8rpx;
-  width: 28rpx;
-  height: 28rpx;
-  background: rgba(255, 255, 255, 0.15);
-  border-radius: 6rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  font-size: 20rpx;
+  color: rgba(255, 255, 255, 0.95);
+  background: rgba(255, 255, 255, 0.25);
+  padding: 6rpx 14rpx;
+  border-radius: 10rpx;
+  margin-right: 10rpx;
+  font-weight: 500;
 }
 
 .esim-badge {

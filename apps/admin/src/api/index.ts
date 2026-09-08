@@ -110,6 +110,12 @@ export interface Card {
   createdAt?: string;
 }
 
+export interface CardListResult {
+  mode: 'tiger' | 'mock';
+  cards: Card[];
+  stats: { total: number; available: number; used: number; envOnly: number };
+}
+
 export interface DashboardStats {
   countryCount: number;
   packageCount: number;

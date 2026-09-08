@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
-import { tigerClient, iccidPoolCount, getIccidPool } from '../tiger';
+import { tigerClient, iccidPoolCount, getIccidPool, fetchTigerIccids } from '../tiger';
 import { syncAllFromTiger, syncRegionsFromTiger, syncPackagesFromTiger } from '../tiger/sync';
 import { refundOrder, rejectRefundRequest } from '../services/refund';
 import { sendRefundEmail } from '../services/email';
@@ -495,7 +495,7 @@ export default (prisma: PrismaClient) => {
   router.get('/tiger/status', async (_req: Request, res: Response) => {
     const [countryCount, poolCount] = await Promise.all([
       prisma.country.count(),
-      iccidPoolCount(prisma),
+      iccidPoolCount(prisma, tigerCardFetcher),
     ]);
     let packageCount = 0;
     if (tigerClient.configured) {
@@ -521,34 +521,63 @@ export default (prisma: PrismaClient) => {
   });
 
   // ===== 卡片（ICCID）池管理 =====
+  // 卡片实时来自 TigerESIM /api/card（与套餐一致），本地 card 表仅在 mock/未配置 Tiger 时兜底
+
+  /** Tiger 卡片池拉取函数（未配置 Tiger 时为 undefined，走本地兜底） */
+  const tigerCardFetcher = tigerClient.configured ? () => fetchTigerIccids() : undefined;
 
   /** GET /api/admin/cards 卡片列表与统计（已使用状态按 esim 表判断） */
   router.get('/cards', async (_req: Request, res: Response) => {
-    const [cards, esims, envCards] = await Promise.all([
-      prisma.card.findMany({ orderBy: { createdAt: 'desc' } }),
-      prisma.esim.findMany({ select: { iccid: true } }),
-      getIccidPool(prisma),
-    ]);
-    const usedSet = new Set(esims.map((e) => e.iccid));
-    const list = cards.map((c) => ({ ...c, used: usedSet.has(c.iccid) }));
-    const used = list.filter((c) => c.used).length;
-    const available = list.length - used;
-    res.json({
-      code: 0,
-      data: {
-        cards: list,
-        stats: {
-          total: list.length,
-          available,
-          used,
-          envOnly: Math.max(0, envCards.length - list.length),
+    try {
+      const [esims, envCards] = await Promise.all([
+        prisma.esim.findMany({ select: { iccid: true } }),
+        getIccidPool(prisma, tigerCardFetcher),
+      ]);
+      const usedSet = new Set(esims.map((e) => e.iccid));
+
+      if (tigerClient.configured) {
+        // Tiger 模式：卡片实时来自 Tiger /api/card
+        const tigerIccids = await fetchTigerIccids();
+        const list = tigerIccids.map((iccid) => ({ iccid, used: usedSet.has(iccid) }));
+        const used = list.filter((c) => c.used).length;
+        res.json({
+          code: 0,
+          data: {
+            mode: 'tiger',
+            cards: list,
+            stats: { total: list.length, available: list.length - used, used, envOnly: 0 },
+          },
+        });
+        return;
+      }
+
+      // mock/本地模式：列表与统计来自本地 card 表 + 环境变量
+      const cards = await prisma.card.findMany({ orderBy: { createdAt: 'desc' } });
+      const list = cards.map((c) => ({ ...c, used: usedSet.has(c.iccid) }));
+      const used = list.filter((c) => c.used).length;
+      res.json({
+        code: 0,
+        data: {
+          mode: 'mock',
+          cards: list,
+          stats: {
+            total: list.length,
+            available: list.length - used,
+            used,
+            envOnly: Math.max(0, envCards.length - list.length),
+          },
         },
-      },
-    });
+      });
+    } catch (e: any) {
+      res.status(502).json({ code: 1, message: '卡片拉取失败：' + e.message });
+    }
   });
 
-  /** POST /api/admin/cards 批量新增卡片（跳过已存在的 ICCID，新增即时生效） */
+  /** POST /api/admin/cards 批量新增卡片（仅本地/mock 模式；Tiger 模式由 TigerESIM 后台管理） */
   router.post('/cards', async (req: Request, res: Response) => {
+    if (tigerClient.configured) {
+      return res.json({ code: 1, message: 'Tiger 模式卡片由 TigerESIM 后台管理，请在合作伙伴后台维护卡片' });
+    }
     const { iccids, remark } = req.body || {};
     const list: string[] = (Array.isArray(iccids) ? iccids : []).map((s) => String(s).trim()).filter(Boolean);
     if (list.length === 0) {
@@ -567,8 +596,11 @@ export default (prisma: PrismaClient) => {
     });
   });
 
-  /** DELETE /api/admin/cards/:iccid 删除卡片（已使用的卡片删除后其 ICCID 不再参与取卡） */
+  /** DELETE /api/admin/cards/:iccid 删除卡片（仅本地/mock 模式；Tiger 模式由 TigerESIM 后台管理） */
   router.delete('/cards/:iccid', async (req: Request, res: Response) => {
+    if (tigerClient.configured) {
+      return res.json({ code: 1, message: 'Tiger 模式卡片由 TigerESIM 后台管理，请在合作伙伴后台维护卡片' });
+    }
     const iccid = String(req.params.iccid || '');
     const card = await prisma.card.findUnique({ where: { iccid } });
     if (!card) {

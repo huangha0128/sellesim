@@ -164,17 +164,7 @@ export default {
     originalPrice: 'Original ¥{price}',
     discount: 'Save {percent}%',
     buyNow: 'Buy Now',
-    navTitle: 'eSIM Details',
-    renewEntryPrompt: 'Have an expired eSIM? Top up to renew it',
-    renewSelect: 'Choose a card',
-    renewSelectedLabel: 'Renew to',
-    renewClear: 'Clear',
-    renewDrawerTitle: 'Select eSIM to renew',
-    renewNoEsim: 'No expired eSIM',
-    renewNewBuy: "Don't renew, new purchase",
-    renewExpire: 'Expires {date}',
-    renewCountryMismatch: 'This eSIM is for a different country',
-    renewPreselectGone: 'Target card not renewable, switched to new purchase'
+    navTitle: 'eSIM Details'
   },
   checkout: {
     title: 'Product Info',
@@ -200,7 +190,21 @@ export default {
     needLogin: 'Please log in first',
     needLoginTip: 'After login, orders and eSIMs belong to your account',
     skuName: '{name} eSIM',
-    sumMeta: '{label} · {days} days · {network}'
+    sumMeta: '{label} · {days} days · {network}',
+    buyMode: 'Purchase Method',
+    buyNew: 'New eSIM card',
+    buyNewDesc: 'Buy a new eSIM card and install it',
+    buyAdd: 'Top up expired eSIM',
+    buyAddDesc: 'Recharge a new plan to an expired eSIM',
+    buyAddTo: 'Top up to',
+    buyDayUnit: ' days',
+    buyExpire: 'Expires {date}',
+    buyClear: 'Clear',
+    buySelectCard: 'Please select an eSIM card to top up',
+    buyAddEmpty: 'No expired eSIM to top up',
+    buyChoose: 'Choose a card',
+    buyDrawerTitle: 'Select eSIM to top up',
+    buyPreselectGone: 'Target card not renewable, switched to new purchase'
   },
   payment: {
     amountLabel: 'Payment Amount',

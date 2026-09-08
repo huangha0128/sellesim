@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { tigerClient, extractEsimInfo, getAvailableIccid } from '../tiger';
+import { tigerClient, extractEsimInfo, getAvailableIccid, fetchTigerIccids } from '../tiger';
 
 export interface ProvisionResult {
   orderId: string;
@@ -37,9 +37,9 @@ export async function provisionEsim(prisma: PrismaClient, order: any): Promise<P
   };
 
   if (tigerClient.configured) {
-    const iccid = await getAvailableIccid(prisma);
+    const iccid = await getAvailableIccid(prisma, () => fetchTigerIccids());
     if (!iccid) {
-      throw new Error('Tiger 卡片池已用完或未配置 TIGER_ICCIDS，请补充卡片库存');
+      throw new Error('Tiger 卡片池已用完，请到 TigerESIM 后台补充卡片库存');
     }
     let tigerPkgId: number | null = snap.tigerPkgId || null;
     if (!tigerPkgId) {
