@@ -57,7 +57,7 @@ model Order {
   price         Float
   paidAmount    Float?    @map("paid_amount") // actual paid via alipay notify buyer_pay_amount; refund uses this
   orderType     String    @default("new") @map("order_type") // new/renew
-  targetEsimId  String?   @map("target_esim_id") // renew 时的目标 eSIM（仅到期后可续费）
+  targetEsimId  String?   @map("target_esim_id") // target esim for renew (only expired card can renew)
   paidAt        DateTime?
   alipayTradeNo String?   @map("alipay_trade_no")
   refundStatus  String?   @map("refund_status")
