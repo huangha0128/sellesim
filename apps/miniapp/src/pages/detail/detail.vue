@@ -195,16 +195,16 @@
           <view v-if="filteredDrawerPackages.length === 0" class="drawer-empty">
             <text class="drawer-empty-text">{{ fmt('detail.noResults') }}</text>
           </view>
-          <view v-for="(group, idx) in filteredDrawerPackages" :key="idx" class="drawer-group-v2">
-            <text class="drawer-group-subtitle">{{ group.region }}</text>
+          <view class="drawer-tag-wrap">
             <view
-              v-for="p in group.packages"
+              v-for="p in filteredDrawerPackages"
               :key="p.id"
-              class="drawer-pkg-tag"
+              class="drawer-pkg-tagv2"
               :class="{ active: isCurrentPkg(p) }"
               @tap="selectPackage(p)"
             >
-              <text class="drawer-pkg-tag-text">{{ p.name }}</text>
+              <text class="drawer-pkg-tagv2-text">{{ p.countryName }}</text>
+              <text v-if="isCurrentPkg(p)" class="drawer-pkg-tagv2-check">✓</text>
             </view>
           </view>
         </scroll-view>
@@ -353,16 +353,7 @@ export default {
       }
       // 分类过滤
       if (this.drawerActiveCat === '历史/热门') {
-        // 显示所有套餐，按热门推荐排序
-        // 分为"历史选择"和"热门推荐"两组
-        const historyPackages = packages.slice(0, 3) // 模拟历史选择
-        const hotPackages = packages.slice(3) // 热门推荐
-        const result = []
-        if (historyPackages.length > 0) {
-          result.push({ region: '历史选择', packages: historyPackages })
-        }
-        result.push({ region: '热门推荐', packages: hotPackages.length > 0 ? hotPackages : packages })
-        return result
+        // 显示所有地区，不做筛选
       } else if (this.drawerActiveCat === '跨境组合') {
         packages = packages.filter(p => p.isMulti || p.countryCode === 'GLOBAL')
       } else {
@@ -377,19 +368,18 @@ export default {
         const codes = regionMap[this.drawerActiveCat] || []
         packages = packages.filter(p => codes.includes(p.countryCode))
       }
-      // 按国家/地区分组
+      // 每个地区取一条代表套餐（最低价），像首页卡片一样展示
       const byRegion = new Map()
       for (const p of packages) {
         const region = p.countryName || p.countryCode || '其他'
-        if (!byRegion.has(region)) {
-          byRegion.set(region, [])
+        const cur = byRegion.get(region)
+        if (!cur || p.price < cur.price) {
+          byRegion.set(region, p)
         }
-        byRegion.get(region).push(p)
       }
-      return Array.from(byRegion.entries()).map(([region, packages]) => ({
-        region,
-        packages: packages.sort((a, b) => a.price - b.price)
-      }))
+      const list = Array.from(byRegion.values())
+      // 按价格排序
+      return list.sort((a, b) => a.price - b.price)
     }
   },
   onLoad(options) {
@@ -454,11 +444,6 @@ export default {
         const res = await api.getAllPackages()
         if (res.code === 0 && res.data.packages && res.data.packages.length > 0) {
           this.drawerAllPackages = res.data.packages
-          const cats = new Set(['全部'])
-          for (const p of this.drawerAllPackages) {
-            if (p.countryName) cats.add(p.countryName)
-          }
-          this.drawerCategories = Array.from(cats)
           loaded = true
         }
       } catch (e) {
@@ -468,11 +453,6 @@ export default {
       // Fallback: 使用当前国家的套餐
       if (!loaded && this.allPackages.length > 0) {
         this.drawerAllPackages = this.allPackages
-        const cats = new Set(['全部'])
-        for (const p of this.allPackages) {
-          if (p.countryName) cats.add(p.countryName)
-        }
-        this.drawerCategories = Array.from(cats)
       }
     },
     buy() {
@@ -490,18 +470,26 @@ export default {
     closePackageDrawer() {
       this.showDrawer = false
       this.drawerSearch = ''
-      this.drawerActiveCat = '全部'
+      this.drawerActiveCat = '历史/热门'
     },
     onDrawerSearch() {
-      // 搜索时重置分类
-      if (this.drawerSearch) {
-        this.drawerActiveCat = '全部'
-      }
     },
     isCurrentPkg(p) {
       return this.pkg && p.id === this.pkg.id
     },
+    getCoverGradient(idx) {
+      const gradients = [
+        'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+        'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+        'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+        'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+        'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
+      ]
+      return gradients[idx % gradients.length]
+    },
     selectPackage(p) {
+      // 切换当前套餐
       this.pkg = p
       this.selectedDays = p.days || this.selectedDays
       this.selectedGb = p.gb || this.selectedGb
@@ -1378,27 +1366,22 @@ export default {
 /* 右侧内容区 */
 .drawer-content {
   flex: 1;
-  padding: 24rpx 32rpx;
+  padding: 24rpx 24rpx;
   overflow-y: auto;
 }
 
-.drawer-group-v2 {
-  margin-bottom: 28rpx;
+/* 地区套餐标签 */
+.drawer-tag-wrap {
+  display: flex;
+  flex-wrap: wrap;
 }
 
-.drawer-group-subtitle {
-  font-size: 24rpx;
-  color: #999999;
-  font-weight: 500;
-  margin-bottom: 16rpx;
-  display: block;
-}
-
-.drawer-pkg-tag {
-  display: inline-block;
+.drawer-pkg-tagv2 {
+  display: flex;
+  align-items: center;
   padding: 16rpx 28rpx;
   background: #F5F5F7;
-  border-radius: 12rpx;
+  border-radius: 999rpx;
   margin-right: 16rpx;
   margin-bottom: 16rpx;
   transition: all 0.2s ease;
@@ -1408,7 +1391,7 @@ export default {
   }
 }
 
-.drawer-pkg-tag-text {
+.drawer-pkg-tagv2-text {
   font-size: 26rpx;
   color: #333333;
   font-weight: 500;
@@ -1418,5 +1401,12 @@ export default {
     color: #ffffff;
     font-weight: 600;
   }
+}
+
+.drawer-pkg-tagv2-check {
+  font-size: 22rpx;
+  color: #ffffff;
+  font-weight: 700;
+  margin-left: 8rpx;
 }
 </style>

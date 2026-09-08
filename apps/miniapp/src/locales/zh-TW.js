@@ -7,7 +7,8 @@ export default {
     view: '查看',
     unknown: '未知',
     know: '知道了',
-    needLogin: '請先登入'
+    needLogin: '請先登入',
+    cancel: '取消'
   },
   tab: {
     home: '首頁',
@@ -24,7 +25,9 @@ export default {
     orderDetail: '訂單詳情',
     esims: '我的 eSIM',
     profile: '我的',
-    guide: 'eSIM 安裝指南'
+    guide: 'eSIM 安裝指南',
+    email: '我的郵箱地址',
+    faq: '常見問題'
   },
   index: {
     slogan: '全球 200+ 地區流量',
@@ -72,6 +75,63 @@ export default {
     loggedOut: '已退出登入',
     languageTitle: '切換語言'
   },
+  emailPage: {
+    title: '我的郵箱地址',
+    sub: '接收訂單與 eSIM 啟用資訊通知',
+    cardTitle: '帳號郵箱',
+    notSet: '未設定郵箱',
+    placeholder: '請輸入郵箱地址',
+    edit: '修改郵箱',
+    setEmail: '設定郵箱',
+    save: '儲存',
+    saving: '儲存中...',
+    invalid: '請填寫正確的郵箱',
+    saved: '郵箱已更新',
+    tip: '郵箱用於接收訂單支付結果與 eSIM 啟用資訊提醒，也可在下單時填寫接收郵箱。',
+    loginTitle: '登入後查看帳號郵箱',
+    loginSub: '登入後即可查看與修改接收通知的郵箱地址',
+    goLogin: '去登入'
+  },
+  faq: {
+    title: '常見問題',
+    sub: '快速解決你的疑問',
+    guideEntry: '查看 eSIM 安裝指南',
+    guideEntrySub: 'iPhone / Android 圖文安裝步驟',
+    items: [
+      {
+        q: '如何查看我的 eSIM 啟用碼？',
+        a: '進入「我的 eSIM」頁面，點擊「查看啟用碼」，即可掃碼安裝或複製啟用碼手動安裝。'
+      },
+      {
+        q: '啟用碼有效期多久？',
+        a: '啟用碼自購買後長期有效，套餐有效期從「安裝啟用」當天起算，建議到達目的地後再安裝。'
+      },
+      {
+        q: '流量用完了怎麼辦？',
+        a: '已到期的 eSIM 可在下單時選擇「加購到已到期的 eSIM」，流量疊加、有效期順延、啟用碼不變；也可以直接購買一張新 eSIM。'
+      },
+      {
+        q: '可以開熱點共享嗎？',
+        a: '可以。大部分套餐支援開啟個人熱點，供同行的手機、平板等裝置共享流量。'
+      },
+      {
+        q: '到了國外沒網怎麼辦？',
+        a: '請確認已安裝 eSIM 並開啟「數據漫遊」開關；若仍無法上網，可嘗試手動選擇當地電信商網路。'
+      },
+      {
+        q: '如何申請退款？',
+        a: '在「我的訂單」中對未啟用的訂單提交退款申請，審核通過後退款將原路退回支付帳戶。'
+      },
+      {
+        q: '支援哪些裝置？',
+        a: 'iPhone XS/XR 及以上，以及部分三星、華為、小米等支援 eSIM 的機型，詳見「安裝與啟用說明」中的裝置相容性檢查。'
+      },
+      {
+        q: '如何修改接收通知的郵箱？',
+        a: '在「我的 → 我的郵箱地址」頁面可隨時查看或修改，用於接收訂單與啟用資訊通知。'
+      }
+    ]
+  },
   login: {
     subtitle: '全球流量，即買即用',
     btn: '支付寶一鍵登入',
@@ -97,7 +157,18 @@ export default {
     catMiddleEast: '中東',
     multiRegion: '多國通用套餐',
     nationalRegions: '國家與地區',
-    empty: '沒有找到「{kw}」，換個關鍵字試試'
+    empty: '沒有找到「{kw}」，換個關鍵字試試',
+    emptySearchTitle: '未找到「{kw}」',
+    emptySearchSub: '試試其他關鍵字吧',
+    emptyCatTitle: '該分類暫無國家',
+    emptyCatSub: '試試其他分類吧',
+    recentTitle: '最近搜尋',
+    clearAll: '清除',
+    hotTitle: '熱門目的地',
+    plan: '流量套餐',
+    sold: '已售 1000+',
+    instant: '即時啟用',
+    noRealName: '免實名'
   },
   packages: {
     noRealName: '免實名',

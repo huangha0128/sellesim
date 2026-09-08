@@ -7,7 +7,8 @@ export default {
     view: '查看',
     unknown: '未知',
     know: '知道了',
-    needLogin: '请先登录'
+    needLogin: '请先登录',
+    cancel: '取消'
   },
   tab: {
     home: '首页',
@@ -24,7 +25,9 @@ export default {
     orderDetail: '订单详情',
     esims: '我的 eSIM',
     profile: '我的',
-    guide: 'eSIM 安装指南'
+    guide: 'eSIM 安装指南',
+    email: '我的邮箱地址',
+    faq: '常见问题'
   },
   index: {
     slogan: '全球 200+ 地区流量',
@@ -72,6 +75,63 @@ export default {
     loggedOut: '已退出登录',
     languageTitle: '切换语言'
   },
+  emailPage: {
+    title: '我的邮箱地址',
+    sub: '接收订单与 eSIM 激活信息通知',
+    cardTitle: '账号邮箱',
+    notSet: '未设置邮箱',
+    placeholder: '请输入邮箱地址',
+    edit: '修改邮箱',
+    setEmail: '设置邮箱',
+    save: '保存',
+    saving: '保存中...',
+    invalid: '请填写正确的邮箱',
+    saved: '邮箱已更新',
+    tip: '邮箱用于接收订单支付结果与 eSIM 激活信息提醒，也可在下单时填写接收邮箱。',
+    loginTitle: '登录后查看账号邮箱',
+    loginSub: '登录后即可查看与修改接收通知的邮箱地址',
+    goLogin: '去登录'
+  },
+  faq: {
+    title: '常见问题',
+    sub: '快速解决你的疑问',
+    guideEntry: '查看 eSIM 安装指南',
+    guideEntrySub: 'iPhone / Android 图文安装步骤',
+    items: [
+      {
+        q: '如何查看我的 eSIM 激活码？',
+        a: '进入「我的 eSIM」页面，点击「查看激活码」，即可扫码安装或复制激活码手动安装。'
+      },
+      {
+        q: '激活码有效期多久？',
+        a: '激活码自购买后长期有效，套餐有效期从「安装激活」当天起算，建议到达目的地后再安装。'
+      },
+      {
+        q: '流量用完了怎么办？',
+        a: '已到期的 eSIM 可在下单时选择「加购到已到期的 eSIM」，流量叠加、有效期顺延、激活码不变；也可以直接购买一张新 eSIM。'
+      },
+      {
+        q: '可以开热点共享吗？',
+        a: '可以。大部分套餐支持开启个人热点，供同行的手机、平板等设备共享流量。'
+      },
+      {
+        q: '到了国外没网怎么办？',
+        a: '请确认已安装 eSIM 并开启「数据漫游」开关；若仍无法上网，可尝试手动选择当地运营商网络。'
+      },
+      {
+        q: '如何申请退款？',
+        a: '在「我的订单」中对未激活的订单提交退款申请，审核通过后退款将原路退回支付账户。'
+      },
+      {
+        q: '支持哪些设备？',
+        a: 'iPhone XS/XR 及以上，以及部分三星、华为、小米等支持 eSIM 的机型，详见「安装与激活说明」中的设备兼容性检查。'
+      },
+      {
+        q: '如何修改接收通知的邮箱？',
+        a: '在「我的 → 我的邮箱地址」页面可随时查看或修改，用于接收订单与激活信息通知。'
+      }
+    ]
+  },
   login: {
     subtitle: '全球流量，即买即用',
     btn: '支付宝一键登录',
@@ -97,7 +157,18 @@ export default {
     catMiddleEast: '中东',
     multiRegion: '多国通用套餐',
     nationalRegions: '国家与地区',
-    empty: '没有找到「{kw}」，换个关键词试试'
+    empty: '没有找到「{kw}」，换个关键词试试',
+    emptySearchTitle: '未找到「{kw}」',
+    emptySearchSub: '试试其他关键词吧',
+    emptyCatTitle: '该分类暂无国家',
+    emptyCatSub: '试试其他分类吧',
+    recentTitle: '最近搜索',
+    clearAll: '清除',
+    hotTitle: '热门目的地',
+    plan: '流量套餐',
+    sold: '已售 1000+',
+    instant: '即时激活',
+    noRealName: '无需实名'
   },
   packages: {
     noRealName: '免实名',

@@ -202,6 +202,13 @@ export const api = {
     return res;
   },
 
+  // 按关键词搜索套餐
+  async searchPackages(keyword) {
+    const res = await request('GET', `/packages/search?keyword=${encodeURIComponent(keyword)}`);
+    res.data.packages = (res.data.packages || []).map(flattenPkg);
+    return res;
+  },
+
   async createOrder({ pkgId, dataIndex, days, email, payMethod = 'alipay', orderType = 'new', targetEsimId }) {
     return request('POST', '/orders', { pkgId, dataIndex, days, email, payMethod, orderType, targetEsimId });
   },

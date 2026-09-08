@@ -53,8 +53,8 @@
             <text class="cover-title">{{ p.countryName }}</text>
             <text class="cover-subtitle">流量套餐</text>
             <view class="cover-specs">
-              <text class="spec-tag">1-365天</text>
-              <text class="spec-tag">1-100GB</text>
+              <text class="spec-tag">{{ p.days }}天</text>
+              <text class="spec-tag">{{ p.gb }}GB</text>
             </view>
           </view>
           <view class="esim-badge">eSIM</view>
@@ -392,6 +392,8 @@ export default {
 
 .cover-specs {
   display: flex;
+  flex-wrap: wrap;
+  row-gap: 10rpx;
   margin-top: 16rpx;
 }
 
@@ -407,8 +409,8 @@ export default {
 
 .esim-badge {
   position: absolute;
+  top: 16rpx;
   right: 16rpx;
-  bottom: 16rpx;
   background: rgba(0, 0, 0, 0.6);
   color: #ffffff;
   font-size: 18rpx;

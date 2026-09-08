@@ -7,7 +7,8 @@ export default {
     view: 'View',
     unknown: 'Unknown',
     know: 'Got it',
-    needLogin: 'Please log in first'
+    needLogin: 'Please log in first',
+    cancel: 'Cancel'
   },
   tab: {
     home: 'Home',
@@ -24,7 +25,9 @@ export default {
     orderDetail: 'Order Details',
     esims: 'My eSIMs',
     profile: 'Me',
-    guide: 'eSIM Setup Guide'
+    guide: 'eSIM Setup Guide',
+    email: 'My Email',
+    faq: 'FAQ'
   },
   index: {
     slogan: 'Data in 200+ destinations worldwide',
@@ -58,6 +61,8 @@ export default {
     menuEsims: 'My eSIMs',
     menuOrders: 'My Orders',
     menuGuide: 'eSIM Setup Guide',
+    menuEmail: 'My Email',
+    menuFaq: 'FAQ',
     menuAbout: 'About YYeSim',
     menuLanguage: 'Language / 语言',
     menuLogout: 'Log Out',
@@ -66,6 +71,63 @@ export default {
     logoutConfirm: 'Are you sure you want to log out?',
     loggedOut: 'Logged out',
     languageTitle: 'Switch Language'
+  },
+  emailPage: {
+    title: 'My Email',
+    sub: 'Receive order & eSIM activation notifications',
+    cardTitle: 'Account Email',
+    notSet: 'No email set',
+    placeholder: 'Enter your email address',
+    edit: 'Change Email',
+    setEmail: 'Set Email',
+    save: 'Save',
+    saving: 'Saving...',
+    invalid: 'Please enter a valid email',
+    saved: 'Email updated',
+    tip: 'Your email is used to receive payment results and eSIM activation info. You can also enter it at checkout.',
+    loginTitle: 'Log in to view your email',
+    loginSub: 'View and update the email address for notifications after logging in',
+    goLogin: 'Log In'
+  },
+  faq: {
+    title: 'FAQ',
+    sub: 'Quick answers to common questions',
+    guideEntry: 'View eSIM Setup Guide',
+    guideEntrySub: 'Step-by-step guides for iPhone / Android',
+    items: [
+      {
+        q: 'How do I view my eSIM activation code?',
+        a: 'Open the "My eSIMs" page and tap "View Activation Code" to scan the QR code or copy the code for manual installation.'
+      },
+      {
+        q: 'How long is the activation code valid?',
+        a: 'The activation code stays valid for a long time after purchase. The plan validity starts from the day of installation and activation, so we recommend installing after arriving at your destination.'
+      },
+      {
+        q: 'What if I run out of data?',
+        a: 'For an expired eSIM, choose "Add to an expired eSIM" at checkout — data is stacked, validity is extended, and the activation code stays the same. You can also buy a brand-new eSIM.'
+      },
+      {
+        q: 'Can I share my hotspot?',
+        a: 'Yes. Most plans support Personal Hotspot, so you can share data with your companions\' phones, tablets, and other devices.'
+      },
+      {
+        q: 'What if I have no network abroad?',
+        a: 'Please make sure the eSIM is installed and "Data roaming" is on; if you still cannot get online, try manually selecting a local carrier network.'
+      },
+      {
+        q: 'How do I apply for a refund?',
+        a: 'Submit a refund request in "My Orders" for orders that have not been activated. Once approved, the refund will be returned to your original payment account.'
+      },
+      {
+        q: 'Which devices are supported?',
+        a: 'iPhone XS/XR and above, plus selected eSIM-capable models from Samsung, Huawei, Xiaomi, etc. See the device compatibility check in the "Setup Guide".'
+      },
+      {
+        q: 'How do I change my notification email?',
+        a: 'You can view or update it anytime under "Me → My Email". It is used to receive order and activation notifications.'
+      }
+    ]
   },
   login: {
     subtitle: 'Global data, buy and use instantly',
@@ -92,7 +154,18 @@ export default {
     catMiddleEast: 'Middle East',
     multiRegion: 'Multi-country Plans',
     nationalRegions: 'Countries & Regions',
-    empty: 'No results for "{kw}", try a different keyword'
+    empty: 'No results for "{kw}", try a different keyword',
+    emptySearchTitle: 'No results for "{kw}"',
+    emptySearchSub: 'Try a different keyword',
+    emptyCatTitle: 'No destinations in this category',
+    emptyCatSub: 'Try another category',
+    recentTitle: 'Recent Searches',
+    clearAll: 'Clear',
+    hotTitle: 'Popular Destinations',
+    plan: 'Data Plan',
+    sold: '1000+ sold',
+    instant: 'Instant Activation',
+    noRealName: 'No Real-name'
   },
   packages: {
     noRealName: 'No real-name required',

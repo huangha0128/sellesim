@@ -64,6 +64,32 @@ export default (prisma: PrismaClient) => {
     }
   });
 
+  /** 按关键词搜索套餐（国家/套餐名/流量/天数/覆盖地区）——必须放在 /:id 之前 */
+  router.get('/search', async (req: Request, res: Response) => {
+    if (!tigerClient.configured) {
+      return res.json({ code: 1, message: '未配置 TIGER_CLIENT_ID / TIGER_CLIENT_SECRET' });
+    }
+    try {
+      const all = await listAllPackagesView();
+      const kw = String(req.query.keyword || '').trim().toLowerCase();
+      const packages = kw
+        ? all.filter((p) =>
+            String(p.countryName || '').includes(kw) ||
+            String(p.countryNameEn || '').toLowerCase().includes(kw) ||
+            String(p.name || '').includes(kw) ||
+            String(p.nameEn || '').toLowerCase().includes(kw) ||
+            String(p.countryCode || '').toLowerCase().includes(kw) ||
+            String(p.gb || '').includes(kw) ||
+            String(p.days || '').includes(kw) ||
+            JSON.stringify(p.coverageParams || '').toLowerCase().includes(kw)
+          )
+        : all;
+      res.json({ code: 0, data: { packages } });
+    } catch (e: any) {
+      res.status(502).json({ code: 1, message: 'Tiger 套餐拉取失败：' + e.message });
+    }
+  });
+
   /** 套餐详情（实时来源 TigerESIM，按 Tiger id/pid 查询） */
   router.get('/:id', async (req: Request, res: Response) => {
     if (!tigerClient.configured) {
