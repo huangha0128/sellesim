@@ -296,9 +296,9 @@ export default {
 }
 
 .sum-price {
-  font-size: 32rpx;
+  font-size: 34rpx;
   font-weight: 800;
-  color: $coral;
+  color: $ink;
 }
 
 .form-item {
@@ -505,7 +505,7 @@ export default {
   align-items: center;
   padding: 20rpx $page-pad;
   padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
-  box-shadow: 0 -6rpx 24rpx rgba(15, 84, 140, 0.08);
+  box-shadow: 0 -6rpx 24rpx rgba(10, 67, 104, 0.08);
   z-index: 10;
 }
 

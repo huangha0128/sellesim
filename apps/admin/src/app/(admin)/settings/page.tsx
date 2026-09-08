@@ -61,10 +61,10 @@ export default function SettingsPage() {
 
   return (
     <div className="animate-fade-up grid gap-5 lg:grid-cols-3">
-      <Card className="border-transparent bg-white/70 backdrop-blur-sm lg:col-span-2">
+      <Card className="panel-card lg:col-span-2">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
           <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#9cc4bf]/25 text-[#47706b]">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#8b5cf6]/15 text-[#6d5df0]">
               <Coins size={16} />
             </span>
             <CardTitle className="text-[15px] text-ink">汇率与展示货币</CardTitle>
@@ -126,7 +126,7 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card className="h-fit border-transparent bg-white/70 backdrop-blur-sm">
+      <Card className="h-fit panel-card">
         <CardHeader className="pb-2">
           <CardTitle className="text-[15px] text-ink">换算规则</CardTitle>
         </CardHeader>

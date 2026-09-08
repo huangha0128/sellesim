@@ -114,31 +114,31 @@ export default function CardsPage() {
   };
 
   const statDefs = [
-    { label: '卡片总数', value: stats.total, icon: <Layers size={22} />, color: '#6f8f8b' },
-    { label: '可用', value: stats.available, icon: <CircleCheckBig size={22} />, color: '#5f8f76' },
-    { label: '已使用', value: stats.used, icon: <Clock3 size={22} />, color: '#c58f6a' },
-    { label: '仅环境变量', value: stats.envOnly, icon: <ServerCog size={22} />, color: '#7a95a8' },
+    { label: '卡片总数', value: stats.total, icon: <Layers size={22} />, color: '#8b5cf6' },
+    { label: '可用', value: stats.available, icon: <CircleCheckBig size={22} />, color: '#14b8a6' },
+    { label: '已使用', value: stats.used, icon: <Clock3 size={22} />, color: '#f59e0b' },
+    { label: '仅环境变量', value: stats.envOnly, icon: <ServerCog size={22} />, color: '#38bdf8' },
   ];
 
   return (
     <div className="animate-fade-up space-y-5">
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         {statDefs.map((s, i) => (
-          <Card key={s.label} className="border-transparent bg-white/70 backdrop-blur-sm animate-fade-up" style={{ animationDelay: `${i * 50}ms` }}>
+          <Card key={s.label} className="panel-card animate-fade-up" style={{ animationDelay: `${i * 50}ms` }}>
             <CardContent className="flex items-center gap-4 p-5">
-              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl text-white shadow-sm" style={{ background: s.color }}>
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl" style={{ backgroundColor: `${s.color}1f`, color: s.color }}>
                 {s.icon}
               </div>
               <div>
-                <div className="text-[26px] font-bold leading-none tracking-tight text-ink">{s.value}</div>
-                <div className="mt-1.5 text-[13px] text-muted-foreground">{s.label}</div>
+                <div className="text-[24px] font-bold leading-none tracking-tight text-ink tabular-nums">{s.value}</div>
+                <div className="mt-2 text-[12px] font-medium text-muted-foreground">{s.label}</div>
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <Card className="border-transparent bg-white/70 backdrop-blur-sm">
+      <Card className="panel-card">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
           <div>
             <CardTitle className="text-[15px] text-ink">卡片池管理</CardTitle>

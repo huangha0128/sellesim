@@ -1,7 +1,7 @@
 import type { Config } from 'tailwindcss';
 import animate from 'tailwindcss-animate';
 
-// 莫兰迪低饱和配色 + 暖白渐变背景的精致后台主题
+// 蓝紫科技渐变 + 高对比白卡的精致后台主题（与小程序 YYeSim 品牌一致）
 export default {
   darkMode: ['class'],
   content: ['./index.html', './src/**/*.{ts,tsx}'],

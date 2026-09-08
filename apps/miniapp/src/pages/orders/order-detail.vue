@@ -245,7 +245,6 @@ export default {
     },
     typeText(order) {
       if (order.orderType === 'renew') return this.fmt('orders.typeRenew')
-      if (order.orderType === 'change') return this.fmt('orders.typeChange')
       return this.fmt('orders.typeNew')
     },
     getFlagImage(order) {
@@ -270,7 +269,7 @@ export default {
         title: this.fmt('orders.deleteTitle'),
         content: this.fmt('orders.deleteConfirm', { name: order.pkgName || order.countryName || '' }),
         confirmText: this.fmt('orders.delete'),
-        confirmColor: '#E05A4E',
+        confirmColor: '#EF4444',
         cancelText: this.fmt('orders.cancel'),
         success: async (r) => {
           if (!r.confirm) return
@@ -479,12 +478,12 @@ export default {
   border-radius: 999rpx;
 
   &.activated {
-    color: #0D9488;
+    color: $teal-deep;
     background: $teal-light;
   }
 
   &.pending {
-    color: #D97706;
+    color: $sun-deep;
     background: $sun-light;
   }
 }
@@ -597,10 +596,10 @@ export default {
 }
 
 .refund-banner--pending {
-  border-left: 6rpx solid #D97706;
+  border-left: 6rpx solid $warn;
 
   .refund-dot {
-    background: #D97706;
+    background: $warn;
   }
 }
 

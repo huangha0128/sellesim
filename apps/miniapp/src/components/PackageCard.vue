@@ -48,12 +48,12 @@ export default {
   },
   computed: {
     priceNum() {
-        const n = Number(this.pkg.price)
-        return Number(n).toFixed(2)
-      },
-      sym() {
-        return currencySymbol(this.pkg.currency)
-      }
+      const n = Number(this.pkg.price)
+      return Number(n).toFixed(2)
+    },
+    sym() {
+      return currencySymbol(this.pkg.currency)
+    }
   },
   emits: ['tap'],
   methods: {
@@ -75,7 +75,7 @@ export default {
   border-radius: $radius-lg;
   padding: 28rpx;
   box-shadow: $shadow-sm;
-  border: 1rpx solid rgba(227, 238, 247, 0.8);
+  border: 1rpx solid rgba(225, 232, 236, 0.8);
   transition: transform 0.15s ease;
 
   &--hover {
@@ -111,8 +111,8 @@ export default {
 }
 
 .pkg-country {
-  font-size: 30rpx;
-  font-weight: 700;
+  font-size: 32rpx;
+  font-weight: 800;
   color: $ink;
   margin-right: 12rpx;
 }
@@ -163,7 +163,7 @@ export default {
 .pkg-price {
   display: flex;
   align-items: baseline;
-  color: $coral;
+  color: $ink;
   font-weight: 700;
 
   &-symbol {
@@ -174,18 +174,20 @@ export default {
     font-size: 44rpx;
     line-height: 1;
   }
-}
 
-.pkg-buy {
-  display: flex;
-  align-items: center;
-  margin-top: 14rpx;
-  font-size: 22rpx;
-  color: $ink-3;
+  &-from {
+    margin-left: 6rpx;
+    font-size: 22rpx;
+    font-weight: 400;
+    color: $ink-3;
+  }
 }
 
 .pkg-arrow {
-  font-size: 28rpx;
-  margin-left: 4rpx;
+  margin-top: 10rpx;
+  font-size: 32rpx;
+  font-weight: 300;
+  line-height: 1;
+  color: $ink-3;
 }
 </style>

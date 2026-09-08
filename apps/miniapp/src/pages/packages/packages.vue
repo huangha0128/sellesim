@@ -102,7 +102,8 @@ export default {
     },
     fmtPrice(n) {
       const v = Number(n)
-      return Number(v).toFixed(2)
+      if (Number.isNaN(v)) return '--'
+      return v.toFixed(2).replace(/\.00$/, '')
     },
     sym(currency) {
       return currencySymbol(currency)
@@ -222,7 +223,7 @@ export default {
   padding: 28rpx;
   margin-bottom: 20rpx;
   box-shadow: $shadow-sm;
-  border: 1rpx solid rgba(227, 238, 247, 0.8);
+  border: 1rpx solid rgba(225, 232, 236, 0.8);
   transition: transform 0.15s ease;
 
   &--hover {
@@ -264,14 +265,6 @@ export default {
   font-weight: 700;
   color: $ink;
   margin-right: 12rpx;
-}
-
-.pkg-tag {
-  font-size: 20rpx;
-  font-weight: 600;
-  padding: 4rpx 14rpx;
-  border-radius: 999rpx;
-  line-height: 1.4;
 }
 
 .pkg-tag {
@@ -327,8 +320,8 @@ export default {
 .pkg-price {
   display: flex;
   align-items: baseline;
-  color: $coral;
-  font-weight: 700;
+  color: $ink;
+  font-weight: 800;
 
   &-symbol {
     font-size: 24rpx;
@@ -337,13 +330,14 @@ export default {
   &-num {
     font-size: 44rpx;
     line-height: 1;
+    font-variant-numeric: tabular-nums;
   }
 }
 
 .pkg-price-unit {
-  font-size: 24rpx;
+  font-size: 22rpx;
   font-weight: 400;
-  color: $coral;
+  color: $ink-3;
   margin-left: 6rpx;
 }
 
@@ -352,12 +346,18 @@ export default {
   align-items: center;
   margin-top: 14rpx;
   font-size: 22rpx;
-  color: $ink-3;
+  color: $brand-deep;
+  font-weight: 600;
 }
 
 .pkg-arrow {
-  font-size: 28rpx;
-  margin-left: 4rpx;
+  margin-left: 6rpx;
+  width: 24rpx;
+  height: 24rpx;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%230E5E8F' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='9 18 15 12 9 6'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
 .empty {
@@ -378,11 +378,10 @@ export default {
 }
 
 .tip-bar {
-  margin: 40rpx $page-pad 0;
-  background: $brand-lighter;
-  border: 1rpx solid $brand-light;
-  border-radius: $radius;
-  padding: 22rpx 26rpx;
+  margin: 44rpx $page-pad 0;
+  background: $bg-soft;
+  border-radius: $radius-lg;
+  padding: 24rpx 28rpx;
   display: flex;
   align-items: flex-start;
 }
@@ -397,8 +396,8 @@ export default {
 .tip-txt {
   flex: 1;
   font-size: 23rpx;
-  color: $brand-deep;
-  line-height: 1.6;
+  color: $ink-2;
+  line-height: 1.7;
 }
 
 .footer-safe {

@@ -181,7 +181,7 @@ export default {
         title: this.fmt('orders.deleteTitle'),
         content: this.fmt('orders.deleteConfirm', { name: order.countryName || order.pkgName || '' }),
         confirmText: this.fmt('orders.delete'),
-        confirmColor: '#E05A4E',
+        confirmColor: '#EF4444',
         cancelText: this.fmt('orders.cancel'),
         success: async (r) => {
           if (!r.confirm) return
@@ -405,13 +405,13 @@ export default {
   border-radius: 999rpx;
 
   &.done {
-    color: #0D9488;
+    color: $teal-deep;
     background: $teal-light;
   }
 
   &.pending,
   &.activate {
-    color: #D97706;
+    color: $sun-deep;
     background: $sun-light;
   }
 
@@ -432,7 +432,7 @@ export default {
   flex-shrink: 0;
   font-size: 32rpx;
   font-weight: 800;
-  color: $coral;
+  color: $ink;
   margin-left: 16rpx;
 }
 

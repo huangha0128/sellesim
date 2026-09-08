@@ -40,7 +40,7 @@ export default function EsimsPage() {
 
   return (
     <div className="animate-fade-up">
-      <Card className="border-transparent bg-white/70 backdrop-blur-sm">
+      <Card className="panel-card">
         <CardHeader className="pb-3">
           <CardTitle className="text-[15px] text-ink">eSIM 列表</CardTitle>
           <p className="text-[12px] font-normal text-muted-foreground">共 {esims.length} 张 eSIM</p>

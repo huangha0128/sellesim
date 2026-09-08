@@ -1,108 +1,131 @@
 <template>
   <view class="profile-page">
-    <view class="user-card" @click="goLogin">
-      <view class="uc-avatar">
-        <image v-if="store.isLoggedIn && store.user.avatar" class="uc-avatar-img" :src="store.user.avatar" mode="aspectFit" />
-        <image v-else class="uc-avatar-img" src="/static/icons/hero-avatar.png" mode="aspectFit" />
+    <!-- 顶部用户区 -->
+    <view class="user-header" @click="goLogin">
+      <view class="uh-avatar">
+        <image v-if="store.isLoggedIn && store.user.avatar" class="uh-avatar-img" :src="store.user.avatar" mode="aspectFit" />
+        <image v-else class="uh-avatar-img" src="/static/icons/hero-avatar.png" mode="aspectFit" />
       </view>
-      <view class="uc-info">
-        <text class="uc-name">{{ store.isLoggedIn ? (store.user.nickname || $t('profile.traveler')) : $t('profile.clickLogin') }}</text>
-        <text class="uc-email" v-if="store.isLoggedIn && store.user.email">{{ maskEmail(store.user.email) }}</text>
-        <text class="uc-email" v-else-if="!store.isLoggedIn">{{ $t('profile.loginBenefits') }}</text>
-        <text class="uc-email" v-else>{{ $t('profile.welcomeBack') }}</text>
-      </view>
-      <view class="uc-badge" v-if="store.isLoggedIn">{{ $t('profile.traveler') }}</view>
-    </view>
-
-    <view class="stat-row">
-      <view class="stat-item" @click="goEsims">
-        <text class="stat-num">{{ store.esims.length }}</text>
-        <text class="stat-label">{{ $t('profile.statEsims') }}</text>
-      </view>
-      <view class="stat-divider"></view>
-      <view class="stat-item" @click="goOrders()">
-        <text class="stat-num">{{ store.orders.length }}</text>
-        <text class="stat-label">{{ $t('profile.statOrders') }}</text>
-      </view>
-      <view class="stat-divider"></view>
-      <view class="stat-item" @click="goCountries">
-        <text class="stat-num">200+</text>
-        <text class="stat-label">{{ $t('profile.statRegions') }}</text>
+      <view class="uh-info">
+        <text class="uh-name">{{ store.isLoggedIn ? (store.user.nickname || store.user.email || $t('profile.traveler')) : $t('profile.clickLogin') }}</text>
+        <text class="uh-sub" v-if="store.isLoggedIn && store.user.email">{{ maskEmail(store.user.email) }}</text>
+        <text class="uh-sub" v-else-if="!store.isLoggedIn">{{ $t('profile.loginBenefits') }}</text>
       </view>
     </view>
 
-    <view class="status-bar">
-      <view class="sb-item" hover-class="sb-item--hover" @click="goOrdersByStatus('pending')">
-        <view class="sb-icon ic-amber"><image src="/static/icons/prof-order.png" mode="aspectFit" style="width: 40rpx; height: 40rpx;" /></view>
-        <text class="sb-label">{{ $t('profile.statusPending') }}</text>
-        <text class="sb-num" v-if="orderCountBy('pending') > 0">{{ orderCountBy('pending') }}</text>
+    <!-- 我的购买 -->
+    <view class="order-card">
+      <view class="oc-header">
+        <text class="oc-title">{{ $t('profile.myPurchases') }}</text>
+        <view class="oc-all" hover-class="oc-all--hover" @click="goOrders">
+          <text>{{ $t('profile.allOrders') }}</text>
+          <text class="oc-arrow">›</text>
+        </view>
       </view>
-      <view class="sb-item" hover-class="sb-item--hover" @click="goOrdersByStatus('activate')">
-        <view class="sb-icon ic-sky"><image src="/static/icons/prof-esim.png" mode="aspectFit" style="width: 40rpx; height: 40rpx;" /></view>
-        <text class="sb-label">{{ $t('profile.statusActivate') }}</text>
-        <text class="sb-num" v-if="orderCountBy('activate') > 0">{{ orderCountBy('activate') }}</text>
-      </view>
-      <view class="sb-item" hover-class="sb-item--hover" @click="goOrdersByStatus('done')">
-        <view class="sb-icon ic-teal"><image src="/static/icons/feat-signal.png" mode="aspectFit" style="width: 40rpx; height: 40rpx;" /></view>
-        <text class="sb-label">{{ $t('profile.statusDone') }}</text>
-        <text class="sb-num" v-if="orderCountBy('done') > 0">{{ orderCountBy('done') }}</text>
-      </view>
-      <view class="sb-item" hover-class="sb-item--hover" @click="goOrdersByStatus('refunded')">
-        <view class="sb-icon ic-coral"><image src="/static/icons/prof-help.png" mode="aspectFit" style="width: 40rpx; height: 40rpx;" /></view>
-        <text class="sb-label">{{ $t('profile.statusRefunded') }}</text>
-        <text class="sb-num" v-if="orderCountBy('refunded') > 0">{{ orderCountBy('refunded') }}</text>
+      <view class="oc-items">
+        <view class="oc-item" hover-class="oc-item--hover" @click="goOrdersByStatus('pending')">
+          <view class="oc-icon-wrap">
+            <image class="oc-icon" src="/static/icons/prof-order.png" mode="aspectFit" />
+          </view>
+          <text class="oc-label">{{ $t('profile.statusPending') }}</text>
+          <view class="oc-badge" v-if="orderCountBy('pending') > 0">{{ orderCountBy('pending') }}</view>
+        </view>
+        <view class="oc-item" hover-class="oc-item--hover" @click="goOrdersByStatus('activate')">
+          <view class="oc-icon-wrap">
+            <image class="oc-icon" src="/static/icons/prof-esim.png" mode="aspectFit" />
+          </view>
+          <text class="oc-label">{{ $t('profile.statusActivate') }}</text>
+          <view class="oc-badge" v-if="orderCountBy('activate') > 0">{{ orderCountBy('activate') }}</view>
+        </view>
+        <view class="oc-item" hover-class="oc-item--hover" @click="goOrdersByStatus('done')">
+          <view class="oc-icon-wrap">
+            <image class="oc-icon" src="/static/icons/feat-signal.png" mode="aspectFit" />
+          </view>
+          <text class="oc-label">{{ $t('profile.statusDone') }}</text>
+          <view class="oc-badge" v-if="orderCountBy('done') > 0">{{ orderCountBy('done') }}</view>
+        </view>
+        <view class="oc-item" hover-class="oc-item--hover" @click="goOrdersByStatus('refunded')">
+          <view class="oc-icon-wrap">
+            <image class="oc-icon" src="/static/icons/prof-help.png" mode="aspectFit" />
+          </view>
+          <text class="oc-label">{{ $t('profile.statusRefunded') }}</text>
+          <view class="oc-badge" v-if="orderCountBy('refunded') > 0">{{ orderCountBy('refunded') }}</view>
+        </view>
+        <view class="oc-item" hover-class="oc-item--hover" @click="goOrders">
+          <view class="oc-icon-wrap">
+            <image class="oc-icon" src="/static/icons/prof-help.png" mode="aspectFit" />
+          </view>
+          <text class="oc-label">{{ $t('profile.afterSales') }}</text>
+        </view>
       </view>
     </view>
 
+    <!-- 功能菜单 -->
     <view class="menu-card">
-      <view class="menu-item" hover-class="menu-item--hover" @click="goEsims">
-        <view class="menu-icon ic-blue"><image src="/static/icons/prof-esim.png" mode="aspectFit" style="width: 36rpx; height: 36rpx;" /></view>
-        <text class="menu-txt">{{ $t('profile.menuEsims') }}</text>
-        <text class="menu-arrow">›</text>
-      </view>
-      <view class="menu-item" hover-class="menu-item--hover" @click="goOrders">
-        <view class="menu-icon ic-coral"><image src="/static/icons/prof-order.png" mode="aspectFit" style="width: 36rpx; height: 36rpx;" /></view>
-        <text class="menu-txt">{{ $t('profile.menuOrders') }}</text>
+      <view class="menu-item" hover-class="menu-item--hover" @click="goEmail">
+        <view class="menu-icon-wrap ic-orange">
+          <image class="menu-icon" src="/static/icons/prof-order.png" mode="aspectFit" />
+        </view>
+        <text class="menu-txt">{{ $t('profile.menuEmail') }}</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" hover-class="menu-item--hover" @click="goGuide">
-        <view class="menu-icon ic-teal"><image src="/static/icons/feat-signal.png" mode="aspectFit" style="width: 36rpx; height: 36rpx;" /></view>
+        <view class="menu-icon-wrap ic-green">
+          <image class="menu-icon" src="/static/icons/feat-signal.png" mode="aspectFit" />
+        </view>
         <text class="menu-txt">{{ $t('profile.menuGuide') }}</text>
         <text class="menu-arrow">›</text>
       </view>
-      <view class="menu-item" hover-class="menu-item--hover" @click="about">
-        <view class="menu-icon ic-gray"><image src="/static/icons/prof-about.png" mode="aspectFit" style="width: 36rpx; height: 36rpx;" /></view>
-        <text class="menu-txt">{{ $t('profile.menuAbout') }}</text>
+      <view class="menu-item" hover-class="menu-item--hover" @click="goFaq">
+        <view class="menu-icon-wrap ic-red">
+          <image class="menu-icon" src="/static/icons/prof-help.png" mode="aspectFit" />
+        </view>
+        <text class="menu-txt">{{ $t('profile.menuFaq') }}</text>
         <text class="menu-arrow">›</text>
       </view>
       <view class="menu-item" hover-class="menu-item--hover" @click="switchLanguage">
-        <view class="menu-icon ic-teal"><image src="/static/icons/prof-settings.png" mode="aspectFit" style="width: 36rpx; height: 36rpx;" /></view>
+        <view class="menu-icon-wrap ic-purple">
+          <image class="menu-icon" src="/static/icons/prof-settings.png" mode="aspectFit" />
+        </view>
         <text class="menu-txt">{{ $t('profile.menuLanguage') }}</text>
         <text class="menu-value">{{ currentLocaleLabel }}</text>
         <text class="menu-arrow">›</text>
       </view>
-      <view class="menu-item" hover-class="menu-item--hover" @click="handleLogout" v-if="store.isLoggedIn">
-        <view class="menu-icon ic-red"><image src="/static/icons/prof-about.png" mode="aspectFit" style="width: 36rpx; height: 36rpx;" /></view>
-        <text class="menu-txt">{{ $t('profile.menuLogout') }}</text>
+      <view class="menu-item" hover-class="menu-item--hover" @click="about">
+        <view class="menu-icon-wrap ic-blue">
+          <image class="menu-icon" src="/static/icons/prof-about.png" mode="aspectFit" />
+        </view>
+        <text class="menu-txt">{{ $t('profile.menuAbout') }}</text>
         <text class="menu-arrow">›</text>
       </view>
     </view>
 
-    <view class="demo-badge">
-      <text class="demo-txt">
-        <image src="/static/icons/prof-demo.png" mode="aspectFit" style="width: 24rpx; height: 24rpx; margin-right: 8rpx; vertical-align: middle;" />
-        <text>{{ $t('profile.demo') }}</text>
-      </text>
+    <!-- 客服悬浮按钮 -->
+    <view class="float-cs" hover-class="float-cs--hover" @click="goCs">
+      <image class="float-cs-icon" src="/static/icons/prof-help.png" mode="aspectFit" />
     </view>
 
     <view class="footer-safe"></view>
 
-    <FloatingTabBar current="profile" />
+    <!-- 底部导航栏 -->
+    <view class="tab-bar">
+      <view class="tab-item" :class="{ active: currentTab === 'home' }" @click="switchTab('home')">
+        <image class="tab-icon" src="/static/icons/tab-home.png" mode="aspectFit" />
+        <text class="tab-label">首页</text>
+      </view>
+      <view class="tab-item" :class="{ active: currentTab === 'esim' }" @click="switchTab('esim')">
+        <image class="tab-icon" src="/static/icons/tab-esim.png" mode="aspectFit" />
+        <text class="tab-label">eSIM</text>
+      </view>
+      <view class="tab-item" :class="{ active: currentTab === 'profile' }" @click="switchTab('profile')">
+        <image class="tab-icon" src="/static/icons/tab-profile.png" mode="aspectFit" />
+        <text class="tab-label">我的</text>
+      </view>
+    </view>
   </view>
 </template>
 
 <script>
-import FloatingTabBar from '@/components/FloatingTabBar.vue'
 import { store } from '@/store'
 import { api } from '@/utils/api'
 import { maskEmail } from '@/utils/format'
@@ -116,9 +139,8 @@ function orderCategory(order) {
 }
 
 export default {
-  components: { FloatingTabBar },
   data() {
-    return { store, locale: getLocale() }
+    return { store, locale: getLocale(), currentTab: 'profile' }
   },
   computed: {
     currentLocaleLabel() {
@@ -146,9 +168,6 @@ export default {
         uni.navigateTo({ url: '/pages/login/login' })
       }
     },
-    goEsims() {
-      uni.reLaunch({ url: '/pages/esims/esims' })
-    },
     goOrders() {
       uni.navigateTo({ url: '/pages/orders/orders' })
     },
@@ -161,8 +180,14 @@ export default {
     goGuide() {
       uni.navigateTo({ url: '/pages/guide/guide' })
     },
-    goCountries() {
-      uni.navigateTo({ url: '/pages/countries/countries' })
+    goEmail() {
+      uni.navigateTo({ url: '/pages/profile/email' })
+    },
+    goFaq() {
+      uni.navigateTo({ url: '/pages/profile/faq' })
+    },
+    goCs() {
+      uni.showToast({ title: '客服功能开发中', icon: 'none' })
     },
     switchLanguage() {
       const items = LOCALES.map((l) => ({ name: l.label, value: l.value }))
@@ -184,23 +209,17 @@ export default {
         content: this.$t('profile.aboutContent'),
         showCancel: false,
         confirmText: this.$t('common.know'),
-        confirmColor: '#0EA5E9'
+        confirmColor: '#0E5E8F'
       })
     },
-    handleLogout() {
-      uni.showModal({
-        title: this.$t('profile.menuLogout'),
-        content: this.$t('profile.logoutConfirm'),
-        success: (res) => {
-          if (res.confirm) {
-            store.logout()
-            uni.showToast({
-              title: this.$t('profile.loggedOut'),
-              icon: 'success'
-            })
-          }
-        }
-      })
+    switchTab(tab) {
+      if (tab === this.currentTab) return
+      const tabMap = {
+        home: '/pages/index/index',
+        esim: '/pages/esims/esims',
+        profile: '/pages/profile/profile'
+      }
+      uni.reLaunch({ url: tabMap[tab] })
     }
   }
 }
@@ -209,113 +228,101 @@ export default {
 <style lang="scss" scoped>
 .profile-page {
   min-height: 100vh;
-  background: $bg-page;
-  padding: 0 $page-pad;
+  background: #f5f6fa;
 }
 
-.user-card {
-  background: $gradient-brand;
-  border-radius: 0 0 40rpx 40rpx;
-  margin: 0 (-$page-pad);
-  padding: 56rpx $page-pad 60rpx;
+/* ============ 顶部用户区 ============ */
+.user-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 60%, #a78bfa 100%);
+  padding: 80rpx 40rpx 60rpx;
   display: flex;
   align-items: center;
 }
 
-.uc-avatar {
+.uh-avatar {
   width: 120rpx;
   height: 120rpx;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
-  border: 4rpx solid rgba(255, 255, 255, 0.55);
+  background: rgba(255, 255, 255, 0.2);
+  border: 4rpx solid rgba(255, 255, 255, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
-.uc-avatar-emoji {
-  font-size: 62rpx;
+.uh-avatar-img {
+  width: 100%;
+  height: 100%;
 }
 
-.uc-info {
-  flex: 1;
+.uh-info {
   margin-left: 28rpx;
-  display: flex;
-  flex-direction: column;
+  flex: 1;
 }
 
-.uc-name {
-  font-size: 38rpx;
-  font-weight: 800;
+.uh-name {
+  font-size: 36rpx;
+  font-weight: 700;
   color: #ffffff;
+  display: block;
 }
 
-.uc-email {
-  margin-top: 8rpx;
-  font-size: 23rpx;
-  color: rgba(255, 255, 255, 0.8);
+.uh-sub {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: rgba(255, 255, 255, 0.75);
+  display: block;
 }
 
-.uc-badge {
-  background: rgba(255, 255, 255, 0.22);
-  border: 1rpx solid rgba(255, 255, 255, 0.4);
-  color: #ffffff;
-  font-size: 20rpx;
-  font-weight: 600;
-  padding: 8rpx 20rpx;
-  border-radius: 999rpx;
-  flex-shrink: 0;
-}
-
-.stat-row {
-  background: $bg-card;
-  border-radius: $radius-lg;
-  padding: 32rpx 0;
-  margin-top: -24rpx;
+/* ============ 我的购买卡片 ============ */
+.order-card {
+  background: #ffffff;
+  border-radius: 24rpx;
+  margin: -20rpx 24rpx 0;
+  padding: 32rpx 24rpx 16rpx;
   position: relative;
   z-index: 2;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.06);
+}
+
+.oc-header {
   display: flex;
   align-items: center;
-  box-shadow: $shadow-sm;
+  justify-content: space-between;
+  margin-bottom: 28rpx;
 }
 
-.stat-item {
-  flex: 1;
+.oc-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.oc-all {
   display: flex;
-  flex-direction: column;
   align-items: center;
+  font-size: 24rpx;
+  color: #9ca3af;
+  transition: opacity 0.15s;
+
+  &--hover {
+    opacity: 0.6;
+  }
 }
 
-.stat-num {
-  font-size: 40rpx;
-  font-weight: 800;
-  color: $brand-deep;
+.oc-arrow {
+  margin-left: 4rpx;
+  font-size: 28rpx;
 }
 
-.stat-label {
-  margin-top: 8rpx;
-  font-size: 22rpx;
-  color: $ink-2;
-}
-
-.stat-divider {
-  width: 1rpx;
-  height: 52rpx;
-  background: $line;
-}
-
-.status-bar {
-  background: $bg-card;
-  border-radius: $radius-lg;
-  margin-top: 24rpx;
-  padding: 28rpx 12rpx;
-  box-shadow: $shadow-sm;
+.oc-items {
   display: flex;
-  align-items: stretch;
+  align-items: flex-start;
 }
 
-.sb-item {
+.oc-item {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -324,50 +331,41 @@ export default {
   transition: transform 0.15s ease;
 
   &--hover {
-    transform: scale(0.94);
+    transform: scale(0.92);
   }
 }
 
-.sb-icon {
+.oc-icon-wrap {
   width: 72rpx;
   height: 72rpx;
-  border-radius: 22rpx;
+  border-radius: 20rpx;
+  background: #f3f4f6;
   display: flex;
   align-items: center;
   justify-content: center;
-
-  &.ic-amber {
-    background: $sun-light;
-  }
-
-  &.ic-sky {
-    background: $brand-light;
-  }
-
-  &.ic-teal {
-    background: $teal-light;
-  }
-
-  &.ic-coral {
-    background: $coral-light;
-  }
 }
 
-.sb-label {
+.oc-icon {
+  width: 40rpx;
+  height: 40rpx;
+}
+
+.oc-label {
   margin-top: 14rpx;
   font-size: 22rpx;
-  color: $ink-2;
+  color: #4b5563;
+  text-align: center;
 }
 
-.sb-num {
+.oc-badge {
   position: absolute;
   top: -6rpx;
-  right: 12rpx;
+  right: 8rpx;
   min-width: 32rpx;
   height: 32rpx;
   padding: 0 8rpx;
   border-radius: 999rpx;
-  background: $coral;
+  background: #ef4444;
   color: #ffffff;
   font-size: 20rpx;
   font-weight: 700;
@@ -377,97 +375,153 @@ export default {
   box-sizing: border-box;
 }
 
+/* ============ 功能菜单 ============ */
 .menu-card {
-  background: $bg-card;
-  border-radius: $radius-lg;
-  margin-top: 24rpx;
-  padding: 8rpx 28rpx;
-  box-shadow: $shadow-sm;
+  background: #ffffff;
+  border-radius: 24rpx;
+  margin: 24rpx 24rpx 0;
+  padding: 8rpx 0;
+  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.06);
 }
 
 .menu-item {
   display: flex;
   align-items: center;
-  padding: 30rpx 0;
-  border-bottom: 1rpx solid $line;
-  transition: transform 0.15s ease;
+  padding: 30rpx 28rpx;
+  border-bottom: 1rpx solid #f0f0f0;
+  transition: background 0.15s ease;
 
   &:last-child {
     border-bottom: none;
   }
 
   &--hover {
-    transform: translateX(6rpx);
+    background: #f9fafb;
+  }
+}
+
+.menu-icon-wrap {
+  width: 60rpx;
+  height: 60rpx;
+  border-radius: 16rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 24rpx;
+
+  &.ic-orange {
+    background: #fff3e0;
+  }
+
+  &.ic-green {
+    background: #e8f5e9;
+  }
+
+  &.ic-red {
+    background: #fce4ec;
+  }
+
+  &.ic-purple {
+    background: #f3e5f5;
+  }
+
+  &.ic-blue {
+    background: #e3f2fd;
   }
 }
 
 .menu-icon {
-  width: 64rpx;
-  height: 64rpx;
-  border-radius: 18rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32rpx;
-  margin-right: 24rpx;
-  flex-shrink: 0;
-
-  &.ic-blue {
-    background: $brand-light;
-  }
-
-  &.ic-coral {
-    background: $coral-light;
-  }
-
-  &.ic-teal {
-    background: $teal-light;
-  }
-
-  &.ic-gray {
-    background: $bg-soft;
-  }
+  width: 32rpx;
+  height: 32rpx;
 }
 
 .menu-txt {
   flex: 1;
   font-size: 28rpx;
-  color: $ink;
-  font-weight: 600;
+  color: #1f2937;
+  font-weight: 500;
 }
 
 .menu-value {
   font-size: 24rpx;
-  color: $ink-3;
+  color: #9ca3af;
   margin-right: 16rpx;
-}
-
-.menu-tag {
-  font-size: 20rpx;
-  color: $coral;
-  background: $coral-light;
-  padding: 4rpx 14rpx;
-  border-radius: 999rpx;
-  margin-right: 12rpx;
-  font-weight: 600;
 }
 
 .menu-arrow {
   font-size: 34rpx;
-  color: $ink-3;
+  color: #d1d5db;
 }
 
-.demo-badge {
-  margin-top: 32rpx;
-  text-align: center;
+/* ============ 客服悬浮按钮 ============ */
+.float-cs {
+  position: fixed;
+  right: 32rpx;
+  bottom: calc(160rpx + env(safe-area-inset-bottom));
+  width: 100rpx;
+  height: 100rpx;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8rpx 28rpx rgba(102, 126, 234, 0.4);
+  z-index: 50;
+  transition: transform 0.15s ease;
+
+  &--hover {
+    transform: scale(0.92);
+  }
 }
 
-.demo-txt {
-  font-size: 22rpx;
-  color: $ink-3;
+.float-cs-icon {
+  width: 48rpx;
+  height: 48rpx;
+  filter: brightness(0) invert(1);
 }
 
 .footer-safe {
-  height: calc(176rpx + env(safe-area-inset-bottom));
+  height: calc(140rpx + env(safe-area-inset-bottom));
+}
+
+/* ============ Tab Bar ============ */
+.tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: #ffffff;
+  padding: 12rpx 0 calc(12rpx + env(safe-area-inset-bottom));
+  box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.06);
+  z-index: 100;
+}
+
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8rpx 0;
+  flex: 1;
+}
+
+.tab-icon {
+  width: 48rpx;
+  height: 48rpx;
+  margin-bottom: 4rpx;
+}
+
+.tab-label {
+  font-size: 22rpx;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.tab-item.active .tab-label {
+  color: #667eea;
+  font-weight: 700;
 }
 </style>

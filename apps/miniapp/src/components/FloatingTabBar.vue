@@ -78,13 +78,10 @@ export default {
 .tabbar {
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.97);
-  border: 1rpx solid rgba(255, 255, 255, 0.75);
+  background: rgba(255, 255, 255, 0.96);
   border-radius: 999rpx;
-  padding: 14rpx 16rpx;
-  box-shadow:
-    0 16rpx 48rpx rgba(15, 84, 140, 0.18),
-    inset 0 2rpx 6rpx rgba(255, 255, 255, 0.9);
+  padding: 14rpx;
+  box-shadow: 0 16rpx 48rpx rgba(10, 67, 104, 0.14);
 }
 
 .tab-item {
@@ -92,9 +89,10 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 8rpx 0 6rpx;
-  border-radius: 40rpx;
-  transition: transform 0.15s ease;
+  padding: 10rpx 0 8rpx;
+  border-radius: 999rpx;
+  background: transparent;
+  transition: transform 0.15s ease, background 0.2s ease, box-shadow 0.2s ease;
 
   &--hover {
     transform: scale(0.94);
@@ -102,18 +100,18 @@ export default {
 }
 
 .tab-icon-box {
-  width: 72rpx;
+  width: 64rpx;
   height: 56rpx;
-  border-radius: 26rpx;
+  border-radius: 999rpx;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background 0.2s ease, box-shadow 0.2s ease;
+  transition: background 0.2s ease;
 }
 
 .tab-icon {
-  width: 44rpx;
-  height: 44rpx;
+  width: 42rpx;
+  height: 42rpx;
   display: block;
 }
 
@@ -121,20 +119,21 @@ export default {
   margin-top: 4rpx;
   font-size: 20rpx;
   font-weight: 600;
+  letter-spacing: 1rpx;
   color: $ink-3;
   line-height: 1.2;
 }
 
 .tab-item.active {
+  background: $gradient-brand;
+  box-shadow: $shadow-brand;
+
   .tab-icon-box {
-    background: $gradient-sky;
-    box-shadow:
-      inset 0 2rpx 6rpx rgba(14, 165, 233, 0.18),
-      0 4rpx 10rpx rgba(14, 165, 233, 0.14);
+    background: rgba(255, 255, 255, 0.92);
   }
 
   .tab-label {
-    color: $brand-deep;
+    color: #ffffff;
     font-weight: 700;
   }
 }

@@ -51,17 +51,9 @@ export function tigerToView(t: any): any {
   // 套餐名称：中文和英文版本
   const nameCn = t.name || `${regionNameCn} ${gb}GB ${days}天`;
   const nameEn = t.name || `${regionNameEn} ${gb}GB ${days} Days`;
-  // 描述：中文和英文版本
-  const descCn = Array.isArray(t.description)
-    ? t.description.join('、')
-    : t.description
-      ? String(t.description)
-      : `${gb}GB 流量，${days} 天有效`;
-  const descEn = Array.isArray(t.description)
-    ? t.description.join(', ')
-    : t.description
-      ? String(t.description)
-      : `${gb}GB Data, ${days} Days Valid`;
+  // 描述：中文和英文版本（处理数组、JSON 字符串、普通字符串）
+  const descCn = formatDescription(t.description, '、', `${gb}GB 流量，${days} 天有效`);
+  const descEn = formatDescription(t.description, ', ', `${gb}GB Data, ${days} Days Valid`);
   // coverage/type/tag 使用 i18n key，由前端翻译
   const coverageKey = isMulti ? 'package.coverageMulti' : 'package.coverageLocal';
   const typeKey = isMulti ? 'package.typeMulti' : 'package.typeLocal';
@@ -95,6 +87,50 @@ export function tigerToView(t: any): any {
     // installSteps 使用 i18n key 数组，由前端翻译
     installSteps: ['package.step1', 'package.step2', 'package.step3', 'package.step4'],
   };
+}
+
+// Tiger API description 数字代码映射
+const DESC_CODE_MAP: Record<number, string> = {
+  1: '3G/4G/5G',
+  2: 'pure traffic eSIM',
+  3: 'support Google/WhatsApp/ChatGPT',
+  4: 'no voice call',
+  5: 'no SMS',
+  6: 'data only',
+  7: 'instant activation'
+};
+
+function formatDescription(desc: any, separator: string, fallback: string): string {
+  if (!desc) return fallback;
+  
+  // 如果是数组
+  if (Array.isArray(desc)) {
+    return desc.map((code: number) => DESC_CODE_MAP[code] || String(code)).join(separator);
+  }
+  
+  // 如果是字符串
+  if (typeof desc === 'string') {
+    // JSON 数组字符串: "[1,2,3,4,5,6,7]"
+    if (desc.startsWith('[') && desc.endsWith(']')) {
+      try {
+        const arr = JSON.parse(desc);
+        if (Array.isArray(arr)) {
+          return arr.map((code: number) => DESC_CODE_MAP[code] || String(code)).join(separator);
+        }
+      } catch (e) { /* ignore */ }
+    }
+    
+    // 逗号分隔: "1,2,3,4,5,6,7" 或 "1、2、3、4、5、6、7"
+    if (/^[\d、\s,]+$/.test(desc)) {
+      const codes = desc.split(/[、,\s]+/).filter(Boolean).map(Number);
+      return codes.map(code => DESC_CODE_MAP[code] || String(code)).join(separator);
+    }
+    
+    // 已经是处理过的文本
+    return desc;
+  }
+  
+  return String(desc);
 }
 
 /** 拉取全部真实套餐（去重）并归一化 */

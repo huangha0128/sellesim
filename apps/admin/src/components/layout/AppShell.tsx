@@ -54,12 +54,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* 侧边栏 */}
       <aside className="sidebar-canvas sticky top-0 flex h-screen w-60 shrink-0 flex-col text-white">
         <div className="flex h-16 items-center gap-3 px-5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/10 backdrop-blur-sm">
-            <Zap className="h-5 w-5 text-[#9cc4bf]" />
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#6d5df0] to-[#8b5cf6] shadow-[0_4px_14px_-4px_rgba(109,93,240,0.55)]">
+            <Zap className="h-5 w-5 text-white" />
           </span>
           <div className="leading-tight">
-            <div className="text-[15px] font-semibold tracking-wide">YYeSim</div>
-            <div className="text-[11px] text-white/50">全球 eSIM 管理后台</div>
+            <div className="text-[15px] font-semibold tracking-[0.02em]">YYeSim</div>
+            <div className="text-[10.5px] uppercase tracking-[0.18em] text-white/45">Console</div>
           </div>
         </div>
 
@@ -72,15 +72,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'flex items-center gap-3 rounded-lg px-3 py-2.5 text-[13.5px] transition-colors',
+                  'group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13.5px] transition-colors',
                   active
-                    ? 'bg-[#9cc4bf]/20 text-white shadow-inner'
-                    : 'text-white/65 hover:bg-white/5 hover:text-white',
+                    ? 'bg-white/12 text-white'
+                    : 'text-white/60 hover:bg-white/5 hover:text-white/90',
                 )}
               >
-                <Icon className={cn('h-[18px] w-[18px]', active && 'text-[#9cc4bf]')} />
+                <Icon
+                  className={cn(
+                    'h-[18px] w-[18px] transition-colors',
+                    active ? 'text-white' : 'text-white/40 group-hover:text-white/70',
+                  )}
+                />
                 <span>{item.label}</span>
-                {active && <span className="ml-auto h-1.5 w-1.5 rounded-full bg-[#9cc4bf]" />}
+                {active && (
+                  <span className="absolute left-0 top-1/2 h-4 w-1 -translate-y-1/2 rounded-r-full bg-gradient-to-b from-[#6d5df0] to-[#a78bfa]" />
+                )}
               </Link>
             );
           })}
@@ -101,23 +108,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* 主区 */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/70 bg-background/80 px-6 backdrop-blur-md">
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/70 bg-background/85 px-8 backdrop-blur-md">
           <div>
-            <div className="text-[17px] font-semibold text-ink">{current}</div>
-            <div className="text-[12px] text-muted-foreground">YYeSim 运营中台</div>
+            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6d5df0]">
+              YYeSim Console
+            </div>
+            <div className="mt-0.5 text-[19px] font-bold leading-none tracking-tight text-ink">
+              {current}
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <button className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-border/70 bg-card text-muted-foreground transition-colors hover:bg-accent">
               <Bell className="h-4 w-4" />
-              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-primary" />
+              <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#6d5df0]" />
             </button>
-            <span className="rounded-full bg-[#9cc4bf]/25 px-3 py-1 text-[12px] font-medium text-[#47706b]">
+            <span className="rounded-full border border-[#6d5df0]/20 bg-[#6d5df0]/10 px-3 py-1 text-[12px] font-medium text-[#5b4be4]">
               生产环境
             </span>
           </div>
         </header>
 
-        <main className="flex-1 px-6 py-6">{children}</main>
+        <main className="flex-1 px-8 py-8">{children}</main>
       </div>
     </div>
   );

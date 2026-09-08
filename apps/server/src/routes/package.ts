@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { tigerClient } from '../tiger';
-import { listAllPackagesView, listPackagesByRegion, getPackageView } from '../tiger/view';
+import { listAllPackagesView, listPackagesByRegion, getPackageView, invalidatePackageCache, refreshPackageCache } from '../tiger/view';
 
 export default (prisma: PrismaClient) => {
   const router = Router();
@@ -43,6 +43,22 @@ export default (prisma: PrismaClient) => {
       const countries = await prisma.country.findMany({ select: { code: true } });
       const minPrices = countries.map((c) => ({ code: c.code, currency, minPrice: byRegion.get(c.code) || 0 }));
       res.json({ code: 0, data: { minPrices } });
+    } catch (e: any) {
+      res.status(502).json({ code: 1, message: 'Tiger 套餐拉取失败：' + e.message });
+    }
+  });
+
+  /** 全量套餐列表（用于抽屉选择器，含全部国家/地区）——必须放在 /:id 之前 */
+  router.get('/catalog/all', async (_req: Request, res: Response) => {
+    if (!tigerClient.configured) {
+      return res.json({ code: 1, message: '未配置 TIGER_CLIENT_ID / TIGER_CLIENT_SECRET' });
+    }
+    try {
+      // 强制刷新缓存以确保使用最新的 tigerToView 逻辑
+      invalidatePackageCache();
+      await refreshPackageCache();
+      const all = await listAllPackagesView();
+      res.json({ code: 0, data: { packages: all } });
     } catch (e: any) {
       res.status(502).json({ code: 1, message: 'Tiger 套餐拉取失败：' + e.message });
     }

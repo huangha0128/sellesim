@@ -177,8 +177,8 @@ export default {
 
 .compat-card {
   margin-top: 24rpx;
-  background: $sun-light;
-  border: 1rpx solid #FDE7BD;
+  background: $warn-bg;
+  border: 1rpx solid $warn-line;
   border-radius: $radius;
   padding: 26rpx 28rpx;
 }
@@ -186,14 +186,14 @@ export default {
 .compat-title {
   font-size: 26rpx;
   font-weight: 700;
-  color: #B45309;
+  color: $warn-deep;
 }
 
 .compat-txt {
   display: block;
   margin-top: 12rpx;
   font-size: 23rpx;
-  color: #92600A;
+  color: $warn-deep;
   line-height: 1.7;
 }
 
@@ -227,7 +227,7 @@ export default {
   align-items: center;
   justify-content: center;
   margin-right: 20rpx;
-  box-shadow: 0 6rpx 16rpx rgba(14, 165, 233, 0.35);
+  box-shadow: 0 6rpx 16rpx rgba(10, 67, 104, 0.3);
   flex-shrink: 0;
 }
 

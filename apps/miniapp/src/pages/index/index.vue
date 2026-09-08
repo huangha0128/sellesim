@@ -1,211 +1,128 @@
 <template>
   <view class="home">
+    <!-- Hero Banner -->
     <view class="hero" :style="{ paddingTop: statusBarHeight + 'px' }">
-      <view class="hero-deco deco-1"></view>
-      <view class="hero-deco deco-2"></view>
-      <view class="hero-deco deco-3"></view>
-
-      <view class="hero-inner">
-        <view class="hero-top">
-          <view class="hero-brand">
-            <view class="brand-logo">
-              <image class="brand-logo-img" src="/static/icons/hero-logo.png" mode="aspectFit" />
+      <view class="hero-content">
+        <view class="hero-left">
+          <text class="hero-title">全球通 eSIM</text>
+          <view class="hero-features">
+            <view class="feature-item">
+              <text class="feature-dot">•</text>
+              <text class="feature-text">中国旅行首选</text>
             </view>
-            <view class="brand-txt">
-              <text class="brand-name">YYeSim</text>
-              <text class="brand-slogan">{{ fmt('index.slogan') }}</text>
+            <view class="feature-item">
+              <text class="feature-dot">•</text>
+              <text class="feature-text">覆盖190+目的地</text>
             </view>
           </view>
-          <view class="hero-avatar" hover-class="hero-avatar--hover" @click="goProfile">
-            <image class="avatar-img" src="/static/icons/hero-avatar.png" mode="aspectFit" />
-          </view>
         </view>
-
-        <view class="hero-title">
-          <text class="hero-title-main">{{ fmt('index.titleMain') }}</text>
-          <text class="hero-title-sub">{{ fmt('index.titleSub') }}</text>
-        </view>
-
-        <view class="search-bar" hover-class="search-bar--hover" @click="goCountries">
-          <view class="search-icon">
-            <image src="/static/icons/search-icon.png" mode="aspectFit" />
-          </view>
-          <text class="search-ph">{{ fmt('index.searchPlaceholder') }}</text>
+        <view class="hero-right">
+          <image class="hero-phone" src="/static/icons/hero-airplane.png" mode="aspectFit" />
         </view>
       </view>
     </view>
 
-    <view class="content">
-      <view class="quick-card">
-        <view
-          v-for="r in regions"
-          :key="r.code"
-          class="quick-item"
-          hover-class="quick-item--hover"
-          @click="goPackages(r.code)"
-        >
-          <view class="quick-icon">
-            <image class="quick-flag" :src="getFlagImage(r.code)" mode="aspectFit" />
-          </view>
-          <text class="quick-name">{{ r.name }}</text>
+    <!-- Search Bar -->
+    <view class="search-section">
+      <view class="search-bar" hover-class="search-bar--hover" @click="goCountries">
+        <view class="search-icon">
+          <image src="/static/icons/search-icon.png" mode="aspectFit" />
         </view>
+        <text class="search-placeholder">搜索您想去的目的地</text>
       </view>
-
-      <view class="section">
-        <view class="section-head">
-          <text class="section-title">{{ fmt('index.hotCountries') }}</text>
-          <view class="section-more" @click="goCountries">
-            <text>{{ fmt('index.allCountries') }}</text>
-          </view>
-        </view>
-        <scroll-view scroll-x class="hot-scroll" :show-scrollbar="false">
-          <view
-            v-for="c in hotCountries"
-            :key="c.code"
-            class="hot-item"
-            hover-class="hot-item--hover"
-            @click="goPackages(c.code)"
-          >
-            <view class="hot-flag">
-              <image v-if="hasFlag(c.code)" class="hot-flag-img" :src="getFlagImage(c.code)" mode="aspectFit" />
-              <text v-else class="hot-flag-letter">{{ flagLetter(c.name) }}</text>
-            </view>
-            <text class="hot-name">{{ c.name }}</text>
-            <text class="hot-price">{{ startPriceText(c.code) }}</text>
-          </view>
-        </scroll-view>
+      <view class="search-btn" hover-class="search-btn--hover">
+        <text>搜索</text>
       </view>
-
-      <view class="section">
-        <view class="section-head">
-          <text class="section-title">{{ fmt('index.hotPackages') }}</text>
-          <view class="section-more" @click="goCountries">
-            <text>{{ fmt('index.viewMore') }}</text>
-          </view>
-        </view>
-        <view
-          v-for="p in hotPackages"
-          :key="p.id"
-          class="pkg-card"
-          hover-class="pkg-card--hover"
-          @click="goDetail(p.id)"
-        >
-          <view class="pkg-flag">
-            <image v-if="hasFlag(p.countryCode)" class="pkg-flag-img" :src="getFlagImage(p.countryCode)" mode="aspectFit" />
-            <text v-else class="pkg-flag-letter">{{ flagLetter(p.countryName) }}</text>
-          </view>
-          <view class="pkg-main">
-            <view class="pkg-head">
-              <text class="pkg-country">{{ p.countryName }}</text>
-              <text v-if="p.tag" class="pkg-tag" :style="{ color: p.tagColor, background: p.tagColor + '1A' }">{{ fmt(p.tag) }}</text>
-            </view>
-            <view class="pkg-meta">
-              <text class="pkg-meta-item">{{ fmt('index.gbTraffic', { gb: p.gb }) }}</text>
-              <text class="pkg-dot">·</text>
-              <text class="pkg-meta-item">{{ fmt('index.daysValid', { days: p.days }) }}</text>
-              <text class="pkg-dot">·</text>
-              <text class="pkg-meta-item">{{ p.network }}</text>
-            </view>
-          </view>
-          <view class="pkg-right">
-            <view class="pkg-price">
-              <text class="pkg-price-symbol">{{ sym(p.currency) }}</text>
-              <text class="pkg-price-num">{{ fmtPrice(p.price) }}</text>
-            </view>
-            <view class="pkg-arrow">
-              <text>›</text>
-            </view>
-          </view>
-        </view>
-      </view>
-
-      <view class="guide-banner" hover-class="guide-banner--hover" @click="goGuide">
-        <view class="guide-deco"><image src="/static/icons/feat-signal.png" mode="aspectFit" style="width: 44rpx; height: 44rpx;" /></view>
-        <view class="guide-text">
-          <text class="guide-title">{{ fmt('index.guideTitle') }}</text>
-          <text class="guide-sub">{{ fmt('index.guideSub') }}</text>
-        </view>
-        <view class="guide-btn">{{ fmt('index.guideBtn') }}</view>
-      </view>
-
-      <view class="footer-safe"></view>
     </view>
 
-    <FloatingTabBar current="home" />
+    <!-- Package Cards -->
+    <view class="package-list">
+      <view
+        v-for="(p, idx) in hotPackages"
+        :key="p.id"
+        class="package-card"
+        hover-class="package-card--hover"
+        @click="goDetail(p.id)"
+      >
+        <!-- Left: Cover Image -->
+        <view class="card-cover" :style="{ background: getCoverGradient(idx) }">
+          <view class="cover-content">
+            <text class="cover-title">{{ p.countryName }}</text>
+            <text class="cover-subtitle">流量套餐</text>
+            <view class="cover-specs">
+              <text class="spec-tag">1-365天</text>
+              <text class="spec-tag">1-100GB</text>
+            </view>
+            <view class="cover-icons">
+              <text class="cover-icon-item">f</text>
+              <text class="cover-icon-item">in</text>
+              <text class="cover-icon-item">w</text>
+              <text class="cover-icon-item">M</text>
+              <text class="cover-icon-item">▶</text>
+            </view>
+          </view>
+          <view class="esim-badge">eSIM</view>
+        </view>
+
+        <!-- Right: Info -->
+        <view class="card-info">
+          <text class="card-title">{{ p.countryName }}流量套餐</text>
+          <view class="card-tags">
+            <text class="tag tag-primary">即时激活</text>
+            <text class="tag tag-secondary">无需实名</text>
+          </view>
+          <view class="card-footer">
+            <text class="sales-count">已售 {{ formatSales(idx) }}</text>
+            <view class="price-block">
+              <text class="price-currency">RMB</text>
+              <text class="price-value">{{ fmtPrice(p.price) }}</text>
+              <text class="price-unit">起</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
+
+    <view class="footer-safe"></view>
+
+    <!-- 底部导航栏 -->
+    <view class="tab-bar">
+      <view class="tab-item" :class="{ active: currentTab === 'home' }" @click="switchTab('home')">
+        <image class="tab-icon" src="/static/icons/tab-home.png" mode="aspectFit" />
+        <text class="tab-label">首页</text>
+      </view>
+      <view class="tab-item" :class="{ active: currentTab === 'esim' }" @click="switchTab('esim')">
+        <image class="tab-icon" src="/static/icons/tab-esim.png" mode="aspectFit" />
+        <text class="tab-label">eSIM</text>
+      </view>
+      <view class="tab-item" :class="{ active: currentTab === 'profile' }" @click="switchTab('profile')">
+        <image class="tab-icon" src="/static/icons/tab-profile.png" mode="aspectFit" />
+        <text class="tab-label">我的</text>
+      </view>
+    </view>
   </view>
 </template>
 
 <script>
-import FloatingTabBar from '@/components/FloatingTabBar.vue'
 import { api } from '@/utils/api'
-import { store } from '@/store'
-import { currencySymbol } from '@/utils/format'
-import { t as translate } from '@/locales'
 
-// 命名占位符兜底替换（如 {gb}、{days}、{price}）
-function fmtNamed(str, p) {
-  return String(str).replace(/\{(\w+)\}/g, (m, k) =>
-    p && p[k] !== undefined && p[k] !== null ? p[k] : m
-  )
-}
-
-// 国家/地区国旗图标映射（模块级常量，避免写入 methods 导致实例未绑定）
-const FLAG_MAP = {
-  'GLOBAL': '/static/icons/region-global.png',
-  'ASIA': '/static/icons/region-asia.png',
-  'EUROPE': '/static/icons/region-europe.png',
-  'AMERICAS': '/static/icons/region-americas.png',
-  'OCEANIA': '/static/icons/region-oceania.png',
-  'AE': '/static/icons/flag-ae.png',
-  'AR': '/static/icons/flag-ar.png',
-  'AU': '/static/icons/flag-au.png',
-  'BR': '/static/icons/flag-br.png',
-  'CA': '/static/icons/flag-ca.png',
-  'CH': '/static/icons/flag-ch.png',
-  'CN': '/static/icons/flag-cn.png',
-  'DE': '/static/icons/flag-de.png',
-  'EG': '/static/icons/flag-eg.png',
-  'ES': '/static/icons/flag-es.png',
-  'FR': '/static/icons/flag-fr.png',
-  'GB': '/static/icons/flag-gb.png',
-  'GR': '/static/icons/flag-gr.png',
-  'HK': '/static/icons/flag-hk.png',
-  'ID': '/static/icons/flag-id.png',
-  'IN': '/static/icons/flag-in.png',
-  'IT': '/static/icons/flag-it.png',
-  'JP': '/static/icons/flag-jp.png',
-  'KR': '/static/icons/flag-kr.png',
-  'LK': '/static/icons/flag-lk.png',
-  'MA': '/static/icons/flag-ma.png',
-  'MO': '/static/icons/flag-mo.png',
-  'MV': '/static/icons/flag-mv.png',
-  'MX': '/static/icons/flag-mx.png',
-  'MY': '/static/icons/flag-my.png',
-  'NL': '/static/icons/flag-nl.png',
-  'NZ': '/static/icons/flag-nz.png',
-  'PH': '/static/icons/flag-ph.png',
-  'PT': '/static/icons/flag-pt.png',
-  'RU': '/static/icons/flag-ru.png',
-  'SG': '/static/icons/flag-sg.png',
-  'TH': '/static/icons/flag-th.png',
-  'TR': '/static/icons/flag-tr.png',
-  'TW': '/static/icons/flag-tw.png',
-  'US': '/static/icons/flag-us.png',
-  'VN': '/static/icons/flag-vn.png',
-  'ZA': '/static/icons/flag-za.png'
-}
+// 封面渐变配色方案
+const COVER_GRADIENTS = [
+  'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+  'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+  'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+  'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
+  'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+  'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
+]
 
 export default {
-  components: { FloatingTabBar },
   data() {
     return {
       statusBarHeight: 44,
-      regions: [],
-      hotCountries: [],
       hotPackages: [],
-      priceMap: {},
       displayCurrency: 'CNY',
-      store
+      currentTab: 'home'
     }
   },
   onLoad() {
@@ -216,62 +133,41 @@ export default {
     this.loadData()
   },
   methods: {
-    fmt(key, params) {
-      return fmtNamed(translate(key, params), params)
-    },
     fmtPrice(n) {
       const v = Number(n)
       return Number(v).toFixed(2)
     },
-    sym(currency) {
-      return currencySymbol(currency)
+    getCoverGradient(idx) {
+      return COVER_GRADIENTS[idx % COVER_GRADIENTS.length]
+    },
+    formatSales(idx) {
+      const salesList = ['9999+', '6590', '3447', '2890', '1560', '980']
+      return salesList[idx] || '1000+'
     },
     async loadData() {
-      uni.showLoading({ title: this.fmt('common.loading'), mask: true })
+      uni.showLoading({ title: '加载中...', mask: true })
       try {
         const res = await api.getHomeData()
-        this.regions = res.data.regions.slice(0, 4)
-        this.hotCountries = res.data.hotCountries
-        this.hotPackages = res.data.hotPackages
-        this.priceMap = res.data.priceMap || {}
+        this.hotPackages = res.data.hotPackages || []
         this.displayCurrency = res.data.displayCurrency || 'CNY'
       } finally {
         uni.hideLoading()
       }
     },
-    getFlagImage(code) {
-      return FLAG_MAP[code] || '/static/icons/region-global.png'
-    },
-    hasFlag(code) {
-      const v = FLAG_MAP[code]
-      return !!v && v.includes('/flag-')
-    },
-    flagLetter(name) {
-      return name ? String(name).slice(0, 1) : '·'
-    },
-    minPrice(code) {
-      const v = this.priceMap[code]
-      return v === undefined || v === null ? '--' : v
-    },
-    startPriceText(code) {
-      const v = this.priceMap[code]
-      if (v === undefined || v === null) return '--'
-      return `${currencySymbol(this.displayCurrency)}${v} 起`
-    },
     goCountries() {
       uni.navigateTo({ url: '/pages/countries/countries' })
-    },
-    goPackages(code) {
-      uni.navigateTo({ url: `/pages/packages/packages?code=${code}` })
     },
     goDetail(id) {
       uni.navigateTo({ url: `/pages/detail/detail?id=${id}` })
     },
-    goGuide() {
-      uni.navigateTo({ url: '/pages/guide/guide' })
-    },
-    goProfile() {
-      uni.reLaunch({ url: '/pages/profile/profile' })
+    switchTab(tab) {
+      if (tab === this.currentTab) return
+      const tabMap = {
+        home: '/pages/index/index',
+        esim: '/pages/esims/esims',
+        profile: '/pages/profile/profile'
+      }
+      uni.reLaunch({ url: tabMap[tab] })
     }
   }
 }
@@ -280,164 +176,96 @@ export default {
 <style lang="scss" scoped>
 .home {
   min-height: 100vh;
-  background: $bg-page;
+  background: #f0f2f5;
 }
 
-/* ============ Hero ============ */
+/* ============ Hero Banner ============ */
 .hero {
   position: relative;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 84% 8%, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0) 40%),
-    radial-gradient(circle at 12% 92%, rgba(56, 189, 248, 0.55) 0%, rgba(56, 189, 248, 0) 46%),
-    linear-gradient(160deg, #3bb8f5 0%, #0ea5e9 52%, #0369a1 100%);
-  padding-bottom: 132rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #a78bfa 100%);
+  padding-bottom: 120rpx;
 }
 
-.hero-deco {
-  position: absolute;
-  border-radius: 50%;
-  border: 2rpx solid rgba(255, 255, 255, 0.14);
-}
-
-.deco-1 {
-  width: 360rpx;
-  height: 360rpx;
-  right: -140rpx;
-  top: -120rpx;
-  background: rgba(255, 255, 255, 0.09);
-}
-
-.deco-2 {
-  width: 220rpx;
-  height: 220rpx;
-  left: -90rpx;
-  top: 320rpx;
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.deco-3 {
-  width: 96rpx;
-  height: 96rpx;
-  right: 48rpx;
-  bottom: 40rpx;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.hero-inner {
+.hero-content {
   position: relative;
-  padding: 20rpx 40rpx 0;
-}
-
-.hero-top {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  padding: 40rpx 40rpx 0;
 }
 
-.hero-brand {
-  display: flex;
-  align-items: center;
-}
-
-.brand-logo {
-  width: 60rpx;
-  height: 60rpx;
-  border-radius: 18rpx;
-  background: rgba(255, 255, 255, 0.22);
-  border: 1rpx solid rgba(255, 255, 255, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 16rpx;
-  box-shadow: inset 0 2rpx 6rpx rgba(255, 255, 255, 0.35);
-}
-
-.brand-logo-img {
-  width: 40rpx;
-  height: 40rpx;
-}
-
-.brand-txt {
-  display: flex;
-  flex-direction: column;
-}
-
-.brand-name {
-  font-size: 34rpx;
-  font-weight: 800;
-  color: #ffffff;
-  letter-spacing: 1rpx;
-  line-height: 1.15;
-}
-
-.brand-slogan {
-  font-size: 20rpx;
-  color: rgba(255, 255, 255, 0.8);
-  margin-top: 4rpx;
-  letter-spacing: 1rpx;
-}
-
-.hero-avatar {
-  width: 72rpx;
-  height: 72rpx;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.24);
-  border: 2rpx solid rgba(255, 255, 255, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow:
-    inset 0 2rpx 6rpx rgba(255, 255, 255, 0.35),
-    0 6rpx 18rpx rgba(3, 105, 161, 0.22);
-  transition: transform 0.15s ease;
-
-  &--hover {
-    transform: scale(0.94);
-  }
-}
-
-.avatar-img {
-  width: 46rpx;
-  height: 46rpx;
-  border-radius: 50%;
+.hero-left {
+  flex: 1;
+  z-index: 2;
 }
 
 .hero-title {
-  margin-top: 52rpx;
-  display: flex;
-  flex-direction: column;
-  text-shadow: 0 4rpx 18rpx rgba(3, 105, 161, 0.3);
-}
-
-.hero-title-main {
-  font-size: 64rpx;
+  font-size: 56rpx;
   font-weight: 800;
   color: #ffffff;
-  letter-spacing: 4rpx;
-  line-height: 1.12;
-}
-
-.hero-title-sub {
-  margin-top: 14rpx;
-  font-size: 30rpx;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.86);
   letter-spacing: 2rpx;
   line-height: 1.2;
+  text-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.15);
+}
+
+.hero-features {
+  margin-top: 24rpx;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 12rpx;
+}
+
+.feature-dot {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.9);
+  margin-right: 12rpx;
+}
+
+.feature-text {
+  font-size: 28rpx;
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 500;
+}
+
+.hero-right {
+  position: absolute;
+  right: 20rpx;
+  top: 20rpx;
+  width: 280rpx;
+  height: 280rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.9;
+}
+
+.hero-phone {
+  width: 240rpx;
+  height: 240rpx;
+}
+
+/* ============ Search Bar ============ */
+.search-section {
+  display: flex;
+  align-items: center;
+  padding: 0 32rpx;
+  margin-top: -48rpx;
+  position: relative;
+  z-index: 10;
 }
 
 .search-bar {
-  margin-top: 40rpx;
-  height: 96rpx;
-  background: rgba(255, 255, 255, 0.97);
-  border-radius: 999rpx;
+  flex: 1;
+  height: 88rpx;
+  background: #ffffff;
+  border-radius: 44rpx;
   display: flex;
   align-items: center;
-  padding: 0 20rpx 0 24rpx;
-  box-shadow:
-    0 18rpx 40rpx rgba(3, 105, 161, 0.28),
-    inset 0 2rpx 6rpx rgba(255, 255, 255, 0.95);
+  padding: 0 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.08);
 
   &--hover {
     transform: scale(0.99);
@@ -445,403 +273,275 @@ export default {
 }
 
 .search-icon {
-  width: 60rpx;
-  height: 60rpx;
-  border-radius: 50%;
-  background: $brand-lighter;
-  border: 1rpx solid rgba(14, 165, 233, 0.14);
+  width: 48rpx;
+  height: 48rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-right: 16rpx;
   flex-shrink: 0;
-  box-shadow: inset 0 2rpx 4rpx rgba(14, 165, 233, 0.08);
 
   image {
-    width: 30rpx;
-    height: 30rpx;
+    width: 36rpx;
+    height: 36rpx;
     display: block;
   }
 }
 
-.search-ph {
-  font-size: 26rpx;
-  color: $ink-3;
-  font-weight: 500;
+.search-placeholder {
+  font-size: 28rpx;
+  color: #9ca3af;
+  font-weight: 400;
 }
 
-/* ============ 内容区 ============ */
-.content {
-  padding: 0 $page-pad;
-  margin-top: -88rpx;
-  position: relative;
+.search-btn {
+  margin-left: 16rpx;
+  height: 88rpx;
+  padding: 0 36rpx;
+  border-radius: 44rpx;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.08);
+
+  text {
+    font-size: 28rpx;
+    font-weight: 600;
+    color: #667eea;
+  }
+
+  &--hover {
+    transform: scale(0.96);
+  }
 }
 
-/* --- 悬浮快捷入口卡 --- */
-.quick-card {
+/* ============ Package List ============ */
+.package-list {
+  padding: 32rpx 24rpx;
+}
+
+.package-card {
   display: flex;
   background: #ffffff;
-  border-radius: $radius-xl;
-  padding: 30rpx 10rpx;
-  border: 1rpx solid rgba(227, 238, 247, 0.9);
-  box-shadow:
-    0 24rpx 56rpx rgba(15, 84, 140, 0.14),
-    inset 0 2rpx 4rpx rgba(255, 255, 255, 0.95);
-}
-
-.quick-item {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  transition: transform 0.15s ease;
+  border-radius: 24rpx;
+  margin-bottom: 24rpx;
+  overflow: hidden;
+  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 
   &--hover {
     transform: translateY(-4rpx);
+    box-shadow: 0 8rpx 28rpx rgba(0, 0, 0, 0.12);
   }
 }
 
-.quick-icon {
-  width: 88rpx;
-  height: 88rpx;
-  border-radius: 30rpx;
-  background: linear-gradient(160deg, #e6f6fe 0%, #d3eefe 100%);
-  border: 1rpx solid rgba(14, 165, 233, 0.14);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: inset 0 2rpx 6rpx rgba(255, 255, 255, 0.9);
-}
-
-.quick-flag {
-  width: 52rpx;
-  height: 52rpx;
-}
-
-.quick-name {
-  margin-top: 14rpx;
-  font-size: 24rpx;
-  font-weight: 700;
-  color: $ink-2;
-}
-
-/* --- 区块 --- */
-.section {
-  margin-top: 44rpx;
-}
-
-.section-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 26rpx;
-}
-
-.section-title {
-  font-size: 36rpx;
-  font-weight: 800;
-  color: $ink;
+/* Left: Cover */
+.card-cover {
   position: relative;
-  padding-left: 24rpx;
-  line-height: 1.3;
-
-  &::before {
-    content: '';
-    position: absolute;
-    left: 0;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 8rpx;
-    height: 34rpx;
-    border-radius: 4rpx;
-    background: $gradient-brand;
-    box-shadow: 0 4rpx 10rpx rgba(14, 165, 233, 0.3);
-  }
-}
-
-.section-more {
+  width: 280rpx;
+  min-height: 280rpx;
   display: flex;
-  align-items: center;
-  font-size: 23rpx;
-  font-weight: 600;
-  color: $brand-deep;
-
-  text {
-    color: $brand-deep;
-  }
-}
-
-/* --- 热门目的地 --- */
-.hot-scroll {
-  white-space: nowrap;
-  width: 100%;
-}
-
-.hot-item {
-  display: inline-flex;
   flex-direction: column;
-  align-items: center;
-  background: linear-gradient(165deg, #ffffff 0%, #f7fcff 100%);
-  border-radius: 30rpx;
-  padding: 34rpx 18rpx 30rpx;
-  margin-right: 22rpx;
-  width: 176rpx;
-  border: 1rpx solid rgba(227, 238, 247, 0.9);
-  box-shadow:
-    0 10rpx 28rpx rgba(15, 84, 140, 0.08),
-    inset 0 2rpx 3rpx rgba(255, 255, 255, 0.95);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-
-  &--hover {
-    transform: translateY(-8rpx);
-    box-shadow:
-      0 18rpx 40rpx rgba(15, 84, 140, 0.14),
-      inset 0 2rpx 3rpx rgba(255, 255, 255, 0.95);
-  }
-}
-
-.hot-flag {
-  width: 104rpx;
-  height: 104rpx;
-  border-radius: 36rpx;
-  background: linear-gradient(160deg, #e6f6fe 0%, #d3eefe 100%);
-  border: 1rpx solid rgba(14, 165, 233, 0.14);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: inset 0 2rpx 6rpx rgba(255, 255, 255, 0.9);
-}
-
-.hot-flag-img {
-  width: 66rpx;
-  height: 66rpx;
-}
-
-.hot-flag-letter {
-  font-size: 44rpx;
-  font-weight: 800;
-  color: $brand-deep;
-  line-height: 1;
-}
-
-.hot-name {
-  margin-top: 20rpx;
-  font-size: 27rpx;
-  font-weight: 700;
-  color: $ink;
+  justify-content: flex-end;
+  padding: 20rpx;
+  flex-shrink: 0;
   overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 146rpx;
-  white-space: nowrap;
 }
 
-.hot-price {
-  margin-top: 8rpx;
-  font-size: 23rpx;
+.cover-content {
+  position: relative;
+  z-index: 2;
+}
+
+.cover-title {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #ffffff;
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.3);
+  display: block;
+  line-height: 1.2;
+}
+
+.cover-subtitle {
+  font-size: 28rpx;
   font-weight: 700;
-  color: $brand-deep;
-  font-variant-numeric: tabular-nums;
+  color: #ffffff;
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.3);
+  display: block;
+  margin-top: 4rpx;
 }
 
-/* --- 热销套餐 --- */
-.pkg-card {
+.cover-specs {
   display: flex;
-  align-items: center;
-  background: linear-gradient(165deg, #ffffff 0%, #fbfeff 100%);
-  border-radius: $radius-lg;
-  padding: 28rpx 26rpx;
-  margin-bottom: 22rpx;
-  border: 1rpx solid rgba(227, 238, 247, 0.9);
-  box-shadow:
-    0 8rpx 24rpx rgba(15, 84, 140, 0.06),
-    inset 0 2rpx 4rpx rgba(255, 255, 255, 0.95);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-
-  &--hover {
-    transform: translateY(-3rpx);
-    box-shadow:
-      0 16rpx 36rpx rgba(15, 84, 140, 0.12),
-      inset 0 2rpx 4rpx rgba(255, 255, 255, 0.95);
-  }
-}
-
-.pkg-flag {
-  width: 96rpx;
-  height: 96rpx;
-  border-radius: 30rpx;
-  background: linear-gradient(160deg, #e6f6fe 0%, #d3eefe 100%);
-  border: 1rpx solid rgba(14, 165, 233, 0.14);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  box-shadow: inset 0 2rpx 6rpx rgba(255, 255, 255, 0.9);
-}
-
-.pkg-flag-img {
-  width: 60rpx;
-  height: 60rpx;
-}
-
-.pkg-flag-letter {
-  font-size: 40rpx;
-  font-weight: 800;
-  color: $brand-deep;
-  line-height: 1;
-}
-
-.pkg-main {
-  flex: 1;
-  min-width: 0;
-  margin-left: 26rpx;
-}
-
-.pkg-head {
-  display: flex;
-  align-items: center;
-}
-
-.pkg-country {
-  font-size: 31rpx;
-  font-weight: 800;
-  color: $ink;
-  margin-right: 12rpx;
-}
-
-.pkg-tag {
-  font-size: 20rpx;
-  font-weight: 600;
-  padding: 4rpx 14rpx;
-  border-radius: 999rpx;
-  line-height: 1.4;
-  flex-shrink: 0;
-}
-
-.pkg-meta {
-  display: flex;
-  align-items: center;
   margin-top: 12rpx;
 }
 
-.pkg-meta-item {
-  font-size: 24rpx;
-  color: $ink-2;
-  font-variant-numeric: tabular-nums;
+.spec-tag {
+  font-size: 18rpx;
+  color: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.2);
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  margin-right: 8rpx;
 }
 
-.pkg-dot {
-  margin: 0 10rpx;
-  color: $ink-3;
+.cover-icons {
+  display: flex;
+  margin-top: 12rpx;
 }
 
-.pkg-right {
+.cover-icon-item {
+  font-size: 16rpx;
+  color: rgba(255, 255, 255, 0.8);
+  margin-right: 8rpx;
+  width: 28rpx;
+  height: 28rpx;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 6rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.esim-badge {
+  position: absolute;
+  right: 16rpx;
+  bottom: 16rpx;
+  background: rgba(0, 0, 0, 0.6);
+  color: #ffffff;
+  font-size: 18rpx;
+  font-weight: 700;
+  padding: 6rpx 12rpx;
+  border-radius: 8rpx;
+  z-index: 2;
+}
+
+/* Right: Info */
+.card-info {
+  flex: 1;
+  padding: 24rpx;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  margin-left: 16rpx;
-  flex-shrink: 0;
+  justify-content: space-between;
+  min-width: 0;
 }
 
-.pkg-price {
+.card-title {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: #1f2937;
+  display: block;
+  margin-bottom: 16rpx;
+  line-height: 1.3;
+}
+
+.card-tags {
+  display: flex;
+  flex-wrap: wrap;
+  margin-bottom: auto;
+}
+
+.tag {
+  font-size: 22rpx;
+  font-weight: 600;
+  padding: 6rpx 16rpx;
+  border-radius: 8rpx;
+  margin-right: 12rpx;
+  margin-bottom: 8rpx;
+}
+
+.tag-primary {
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.tag-secondary {
+  color: #6b7280;
+  background: rgba(107, 114, 128, 0.1);
+}
+
+.card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16rpx;
+}
+
+.sales-count {
+  font-size: 24rpx;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.price-block {
   display: flex;
   align-items: baseline;
-  color: $brand-deep;
-  font-weight: 800;
-
-  &-symbol {
-    font-size: 24rpx;
-  }
-
-  &-num {
-    font-size: 46rpx;
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-  }
 }
 
-.pkg-arrow {
-  margin-top: 16rpx;
-  width: 48rpx;
-  height: 48rpx;
-  border-radius: 50%;
-  background: $brand-lighter;
-  border: 1rpx solid rgba(14, 165, 233, 0.14);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: inset 0 2rpx 4rpx rgba(255, 255, 255, 0.9);
-
-  text {
-    font-size: 30rpx;
-    font-weight: 700;
-    color: $brand;
-    line-height: 1;
-    margin-top: -2rpx;
-  }
-}
-
-/* --- 新手引导 --- */
-.guide-banner {
-  margin-top: 44rpx;
-  background:
-    radial-gradient(circle at 92% 16%, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0) 44%),
-    linear-gradient(135deg, #38bdf8 0%, #0ea5e9 60%, #0369a1 100%);
-  border-radius: $radius-lg;
-  padding: 32rpx 30rpx;
-  display: flex;
-  align-items: center;
-  box-shadow: 0 14rpx 36rpx rgba(14, 165, 233, 0.3);
-  transition: transform 0.18s ease;
-
-  &--hover {
-    transform: scale(0.985);
-  }
-}
-
-.guide-deco {
-  width: 84rpx;
-  height: 84rpx;
-  border-radius: 24rpx;
-  background: rgba(255, 255, 255, 0.2);
-  border: 1rpx solid rgba(255, 255, 255, 0.32);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  box-shadow: inset 0 2rpx 6rpx rgba(255, 255, 255, 0.25);
-}
-
-.guide-text {
-  flex: 1;
-  margin-left: 26rpx;
-  display: flex;
-  flex-direction: column;
-}
-
-.guide-title {
-  font-size: 30rpx;
-  font-weight: 800;
-  color: #ffffff;
-}
-
-.guide-sub {
-  margin-top: 6rpx;
-  font-size: 23rpx;
-  color: rgba(255, 255, 255, 0.85);
-}
-
-.guide-btn {
-  background: #ffffff;
-  color: $brand-deep;
+.price-currency {
   font-size: 24rpx;
-  font-weight: 700;
-  padding: 14rpx 28rpx;
-  border-radius: 999rpx;
-  flex-shrink: 0;
-  box-shadow: 0 6rpx 16rpx rgba(3, 105, 161, 0.22);
+  color: #6b7280;
+  font-weight: 600;
+  margin-right: 4rpx;
+}
+
+.price-value {
+  font-size: 48rpx;
+  font-weight: 800;
+  color: #1f2937;
+  line-height: 1;
+}
+
+.price-unit {
+  font-size: 24rpx;
+  color: #9ca3af;
+  font-weight: 400;
+  margin-left: 4rpx;
 }
 
 .footer-safe {
-  height: calc(176rpx + env(safe-area-inset-bottom));
+  height: calc(140rpx + env(safe-area-inset-bottom));
+}
+
+/* ============ Tab Bar ============ */
+.tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: #ffffff;
+  padding: 12rpx 0 calc(12rpx + env(safe-area-inset-bottom));
+  box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.06);
+  z-index: 100;
+}
+
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8rpx 0;
+  flex: 1;
+}
+
+.tab-icon {
+  width: 48rpx;
+  height: 48rpx;
+  margin-bottom: 4rpx;
+}
+
+.tab-label {
+  font-size: 22rpx;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.tab-item.active .tab-label {
+  color: #667eea;
+  font-weight: 700;
 }
 </style>

@@ -103,7 +103,9 @@ export default {
 }
 
 .cc-arrow {
-  font-size: 36rpx;
+  font-size: 34rpx;
+  font-weight: 300;
+  line-height: 1;
   color: $ink-3;
 }
 </style>

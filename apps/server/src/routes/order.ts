@@ -4,8 +4,8 @@ import { alipay } from '../utils/alipay';
 import { tigerClient } from '../tiger';
 import { getPackageView } from '../tiger/view';
 import { provisionEsim } from '../services/provision';
-import { renewEsim, changeEsim } from '../services/topup';
-import { sendEsimEmail, sendRenewEmail, sendChangeEmail } from '../services/email';
+import { renewEsim } from '../services/topup';
+import { sendEsimEmail, sendRenewEmail } from '../services/email';
 import { applyRefundRequest } from '../services/refund';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { config } from '../config';
@@ -18,11 +18,11 @@ export default (prisma: PrismaClient) => {
     if (!pkgId || !email) {
       return res.json({ code: 1, message: '缺少必要参数' });
     }
-    if (orderType !== 'new' && orderType !== 'renew' && orderType !== 'change') {
+    if (orderType !== 'new' && orderType !== 'renew') {
       return res.json({ code: 1, message: '非法订单类型' });
     }
-    // 续费/变更必须指定属于当前用户的目标 eSIM
-    if (orderType !== 'new') {
+    // 续费必须指定属于当前用户的目标 eSIM，且其当前套餐必须已到期
+    if (orderType === 'renew') {
       if (!targetEsimId) {
         return res.json({ code: 1, message: '缺少目标 eSIM' });
       }
@@ -31,6 +31,9 @@ export default (prisma: PrismaClient) => {
       });
       if (!target) {
         return res.json({ code: 1, message: '目标 eSIM 不存在' });
+      }
+      if (target.expireAt && new Date(target.expireAt).getTime() > Date.now()) {
+        return res.json({ code: 1, message: '当前套餐尚未到期，到期后才能为该卡续费购买新套餐' });
       }
     }
     if (!tigerClient.configured) {
@@ -130,27 +133,19 @@ export default (prisma: PrismaClient) => {
       data: { status: 'paid', paidAt: new Date() },
     });
     try {
-      if (updated.orderType === 'renew' || updated.orderType === 'change') {
+      if (updated.orderType === 'renew') {
         const target = await prisma.esim.findFirst({
           where: { id: updated.targetEsimId || '', userId: req.userId },
         });
         if (!target) {
           throw new Error('目标 eSIM 不存在');
         }
-        const esim =
-          updated.orderType === 'renew'
-            ? await renewEsim(prisma, updated, target)
-            : await changeEsim(prisma, updated, target);
+        // renewEsim 内部会再次校验该卡当前套餐已到期
+        const esim = await renewEsim(prisma, updated, target);
 
-        if (updated.orderType === 'renew') {
-          sendRenewEmailSafe(updated, target, esim).catch((e) =>
-            console.error(`[email] 订单 ${updated.orderNo} 续费通知发送失败：`, e.message),
-          );
-        } else {
-          sendChangeEmailSafe(updated, target, esim).catch((e) =>
-            console.error(`[email] 订单 ${updated.orderNo} 变更通知发送失败：`, e.message),
-          );
-        }
+        sendRenewEmailSafe(updated, target, esim).catch((e) =>
+          console.error(`[email] 订单 ${updated.orderNo} 续费通知发送失败：`, e.message),
+        );
         res.json({ code: 0, data: { order: updated, esim } });
       } else {
         const esimData = await provisionEsim(prisma, updated);
@@ -274,25 +269,8 @@ async function sendRenewEmailSafe(order: any, targetEsim: any, updatedEsim: any)
     to: order.email,
     orderNo: order.orderNo,
     countryName: order.pkgName || order.countryCode || '',
-    addedGb: order.gb || 0,
-    addedDays: order.days || 0,
-    totalGb: updatedEsim.gb ?? targetEsim.gb ?? order.gb ?? 0,
-    totalDays: updatedEsim.days ?? targetEsim.days ?? order.days ?? 0,
-    expireAt: updatedEsim.expireAt,
-  });
-}
-
-/** 发送套餐变更成功通知邮件（安全包装，失败只打日志） */
-async function sendChangeEmailSafe(order: any, targetEsim: any, updatedEsim: any) {
-  if (!order.email) return;
-  await sendChangeEmail({
-    to: order.email,
-    orderNo: order.orderNo,
-    countryName: order.pkgName || order.countryCode || '',
     gb: updatedEsim.gb ?? order.gb ?? 0,
     days: updatedEsim.days ?? order.days ?? 0,
     expireAt: updatedEsim.expireAt,
-    activationCode: updatedEsim.activationCode || targetEsim.activationCode,
-    iccid: updatedEsim.iccid || targetEsim.iccid,
   });
 }

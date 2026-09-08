@@ -4,41 +4,41 @@
 
 @layer base {
   :root {
-    /* 莫兰迪暖底色系 */
-    --background: 42 33% 96%;
-    --foreground: 218 24% 19%;
+    /* 蓝紫科技渐变底（与小程序 YYeSim 品牌一致） */
+    --background: 247 79% 98%;
+    --foreground: 244 46% 20%;
 
-    --card: 44 40% 99%;
-    --card-foreground: 218 24% 19%;
+    --card: 0 0% 100%;
+    --card-foreground: 244 46% 20%;
 
-    --popover: 44 40% 99%;
-    --popover-foreground: 218 24% 19%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 244 46% 20%;
 
-    /* 主色：灰绿莫兰迪 teal */
-    --primary: 178 22% 42%;
-    --primary-foreground: 40 30% 98%;
+    /* 主色：亮紫蓝 brand #6D5DF0 */
+    --primary: 247 83% 65%;
+    --primary-foreground: 0 0% 100%;
 
-    --secondary: 40 18% 91%;
-    --secondary-foreground: 218 20% 24%;
+    --secondary: 248 55% 94%;
+    --secondary-foreground: 248 48% 32%;
 
-    --muted: 42 18% 92%;
-    --muted-foreground: 217 10% 46%;
+    --muted: 247 60% 95%;
+    --muted-foreground: 245 21% 46%;
 
-    --accent: 178 24% 88%;
-    --accent-foreground: 178 30% 22%;
+    --accent: 249 66% 93%;
+    --accent-foreground: 247 55% 30%;
 
-    --destructive: 4 60% 58%;
-    --destructive-foreground: 40 30% 98%;
+    --destructive: 4 80% 60%;
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 40 16% 87%;
-    --input: 40 16% 83%;
-    --ring: 178 22% 55%;
+    --border: 244 44% 90%;
+    --input: 244 42% 86%;
+    --ring: 247 75% 65%;
 
     /* 自定义墨色与柔和色 */
-    --ink: 218 26% 16%;
-    --soft: 42 26% 92%;
+    --ink: 244 46% 20%;
+    --soft: 247 65% 96%;
 
-    --radius: 0.9rem;
+    --radius: 1.25rem;
   }
 
   * {
@@ -51,18 +51,28 @@
   }
 }
 
-/* 全局渐变氛围背景点缀 */
+/* 全局渐变氛围背景点缀（蓝紫科技感） */
 .app-canvas {
   min-height: 100vh;
   background:
-    radial-gradient(1100px 520px at 88% -10%, rgba(143, 170, 166, 0.18), transparent 60%),
-    radial-gradient(900px 480px at -8% 0%, rgba(202, 178, 141, 0.16), transparent 55%),
+    radial-gradient(1100px 520px at 88% -10%, rgba(139, 92, 246, 0.13), transparent 60%),
+    radial-gradient(900px 480px at -8% 0%, rgba(99, 102, 241, 0.09), transparent 55%),
     hsl(var(--background));
 }
 
-/* 侧边栏渐变墨绿背景 */
+/* 扁平白卡 + 单一柔和投影（替代半透明白玻璃卡） */
+.panel-card {
+  border-radius: 1.25rem;
+  border: 1px solid hsl(var(--border));
+  background: hsl(var(--card));
+  box-shadow:
+    0 1px 2px rgba(23, 18, 63, 0.04),
+    0 20px 50px -24px rgba(98, 78, 240, 0.2);
+}
+
+/* 侧边栏渐变深紫背景 */
 .sidebar-canvas {
   background:
-    radial-gradient(600px 320px at 0% 0%, rgba(120, 160, 156, 0.22), transparent 55%),
-    linear-gradient(180deg, hsl(var(--ink)) 0%, #16232f 100%);
+    radial-gradient(600px 320px at 0% 0%, rgba(139, 92, 246, 0.32), transparent 55%),
+    linear-gradient(180deg, #3e2fa8 0%, #1e1b4b 100%);
 }

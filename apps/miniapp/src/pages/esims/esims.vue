@@ -20,81 +20,65 @@
         v-for="esim in store.esims"
         :key="esim.id"
         class="esim-card"
-        :class="{ expanded: expandedId === esim.id }"
+        :class="esim.status"
+        hover-class="esim-card--hover"
+        @click="goEsimDetail(esim.id)"
       >
-        <view class="ec-head" @click="toggle(esim.id)">
-          <view class="ec-flag">
-            <image class="ec-flag-img" :src="getFlagImage(esim.pkg.countryCode)" mode="aspectFit" />
-          </view>
-          <view class="ec-main">
-            <view class="ec-title-row">
-              <text class="ec-name">{{ esim.pkg.countryName }} eSIM</text>
-              <text class="ec-status" :class="esim.status">{{ statusText(esim) }}</text>
-            </view>
-            <text class="ec-meta">{{ fmt('esims.meta', { gb: esim.pkg.gb, days: esim.pkg.days }) }}</text>
-          </view>
-          <text class="ec-arrow">{{ expandedId === esim.id ? '⌃' : '⌄' }}</text>
+        <!-- 卡片背景装饰 -->
+        <view class="card-deco">
+          <view class="card-deco-circle c1"></view>
+          <view class="card-deco-circle c2"></view>
         </view>
 
-        <view v-if="esim.status === 'activated'" class="ec-usage">
-          <view class="usage-bar">
-            <view class="usage-fill" :style="{ width: usagePercent(esim) + '%' }"></view>
+        <!-- 顶部：国旗 + 国家名 + 状态 -->
+        <view class="card-top">
+          <view class="card-flag-wrap">
+            <image class="card-flag-img" :src="getFlagImage(esim.pkg.countryCode)" mode="aspectFit" />
           </view>
-          <text class="usage-txt">{{ fmt('esims.usage', { used: Number(esim.used || 0).toFixed(1), total: esim.pkg.gb }) }}</text>
+          <text class="card-status-tag" :class="esim.status">{{ statusText(esim) }}</text>
         </view>
 
-        <view class="ec-info">
-          <view class="ec-info-row">
-            <text class="eci-label">{{ fmt('esims.expireLabel') }}</text>
-            <text class="eci-value">{{ formatDate(esim.expireAt) }}</text>
-          </view>
-          <view class="ec-info-row">
-            <text class="eci-label">ICCID</text>
-            <text class="eci-value">{{ esim.iccid }}</text>
-          </view>
+        <!-- 中部：套餐信息 -->
+        <view class="card-body">
+          <text class="card-country">{{ esim.pkg.countryName }} eSIM</text>
+          <text class="card-spec">{{ esim.pkg.gb }}GB · {{ esim.pkg.days }}天</text>
         </view>
 
-        <view v-if="expandedId === esim.id" class="ec-detail">
-          <view class="qr-box">
-            <EsimQr :text="esim.activationCode" :size="230" />
-          </view>
-          <text class="qr-tip">{{ fmt('esims.qrTip') }}</text>
-          <view class="code-row">
-            <text class="code-txt">{{ esim.activationCode }}</text>
-            <view class="copy-btn" hover-class="copy-btn--hover" @click.stop="copy(esim.activationCode)">{{ fmt('esims.copy') }}</view>
-          </view>
-        </view>
-
-        <view v-if="esim.status === 'activated'" class="ec-topup">
-          <view class="topup-btn primary" hover-class="topup-btn--hover" @click="goTopup(esim, 'renew')">{{ fmt('esims.renew') }}</view>
-          <view class="topup-btn" hover-class="topup-btn--hover" @click="goTopup(esim, 'change')">{{ fmt('esims.change') }}</view>
-        </view>
-
-        <view class="ec-actions">
-          <view v-if="esim.status === 'pending'" class="act-btn primary" @click="activate(esim.id)">{{ fmt('esims.markActivated') }}</view>
-          <view class="act-btn" @click="toggle(esim.id)">
-            {{ expandedId === esim.id ? fmt('esims.collapse') : fmt('esims.viewCode') }}
-          </view>
-          <view class="act-btn danger" @click="remove(esim.id)">{{ fmt('esims.delete') }}</view>
+        <!-- 底部：ICCID + 到期时间 -->
+        <view class="card-bottom">
+          <text class="card-iccid">{{ esim.iccid }}</text>
+          <text class="card-expire">{{ formatDate(esim.expireAt) }}</text>
         </view>
       </view>
     </view>
 
     <view class="footer-safe"></view>
 
-    <FloatingTabBar current="esims" />
+    <!-- 底部导航栏 -->
+    <view class="tab-bar">
+      <view class="tab-item" :class="{ active: currentTab === 'home' }" @click="switchTab('home')">
+        <image class="tab-icon" src="/static/icons/tab-home.png" mode="aspectFit" />
+        <text class="tab-label">首页</text>
+      </view>
+      <view class="tab-item" :class="{ active: currentTab === 'esim' }" @click="switchTab('esim')">
+        <image class="tab-icon" src="/static/icons/tab-esim.png" mode="aspectFit" />
+        <text class="tab-label">eSIM</text>
+      </view>
+      <view class="tab-item" :class="{ active: currentTab === 'profile' }" @click="switchTab('profile')">
+        <image class="tab-icon" src="/static/icons/tab-profile.png" mode="aspectFit" />
+        <text class="tab-label">我的</text>
+      </view>
+    </view>
   </view>
 </template>
 
 <script>
-import FloatingTabBar from '@/components/FloatingTabBar.vue'
-import EsimQr from '@/components/EsimQr.vue'
 import { api } from '@/utils/api'
 import { store } from '@/store'
 import { formatDate } from '@/utils/format'
 import { setNavTitle, t as translate } from '@/locales'
 
-// 命名占位符兜底替换（如 {n}、{gb}、{days}、{used}、{total}）
+// 命名占位符兜底替换
 function fmtNamed(str, p) {
   return String(str).replace(/\{(\w+)\}/g, (m, k) =>
     p && p[k] !== undefined && p[k] !== null ? p[k] : m
@@ -102,11 +86,10 @@ function fmtNamed(str, p) {
 }
 
 export default {
-  components: { FloatingTabBar, EsimQr },
   data() {
     return {
       store,
-      expandedId: null
+      currentTab: 'esim'
     }
   },
   onShow() {
@@ -135,46 +118,6 @@ export default {
       if (esim.status === 'activated') return this.fmt('esims.activated')
       return this.fmt('esims.pending')
     },
-    usagePercent(esim) {
-      const p = (Number(esim.used || 0) / Number(esim.pkg.gb)) * 100
-      return Math.min(100, Math.max(4, p))
-    },
-    toggle(id) {
-      this.expandedId = this.expandedId === id ? null : id
-    },
-    async activate(id) {
-      try {
-        await api.activateEsim(id)
-        uni.showToast({ title: this.fmt('esims.activateSuccess'), icon: 'success' })
-        this.refresh()
-      } catch (e) {
-        uni.showToast({ title: this.fmt('common.opFailed'), icon: 'none' })
-      }
-    },
-    copy(text) {
-      uni.setClipboardData({
-        data: text,
-        success: () => uni.showToast({ title: this.fmt('esims.copied'), icon: 'none' })
-      })
-    },
-    remove(id) {
-      uni.showModal({
-        title: this.fmt('esims.deleteTitle'),
-        content: this.fmt('esims.deleteConfirm'),
-        confirmColor: '#FF7A59',
-        success: async (res) => {
-          if (res.confirm) {
-            try {
-              await api.deleteEsim(id)
-              uni.showToast({ title: this.fmt('esims.deleted'), icon: 'none' })
-              this.refresh()
-            } catch (e) {
-              uni.showToast({ title: this.fmt('esims.deleteFailed'), icon: 'none' })
-            }
-          }
-        }
-      })
-    },
     getFlagImage(code) {
       if (!code) return '/static/icons/flag-unknown.png'
       return `/static/icons/flag-${code.toLowerCase()}.png`
@@ -182,10 +125,17 @@ export default {
     goBuy() {
       uni.reLaunch({ url: '/pages/index/index' })
     },
-    goTopup(esim, mode) {
-      uni.navigateTo({
-        url: `/pages/detail/detail?country=${esim.pkg.countryCode}&mode=${mode}&esimId=${esim.id}`
-      })
+    goEsimDetail(id) {
+      uni.navigateTo({ url: `/pages/esim-detail/esim-detail?id=${id}` })
+    },
+    switchTab(tab) {
+      if (tab === this.currentTab) return
+      const tabMap = {
+        home: '/pages/index/index',
+        esim: '/pages/esims/esims',
+        profile: '/pages/profile/profile'
+      }
+      uni.reLaunch({ url: tabMap[tab] })
     }
   }
 }
@@ -194,12 +144,12 @@ export default {
 <style lang="scss" scoped>
 .esims-page {
   min-height: 100vh;
-  background: $bg-page;
+  background: #f0f2f5;
 }
 
 .head-banner {
-  background: $gradient-brand;
-  padding: 36rpx $page-pad 44rpx;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #a78bfa 100%);
+  padding: 36rpx 40rpx 44rpx;
   border-radius: 0 0 40rpx 40rpx;
   display: flex;
   align-items: center;
@@ -225,12 +175,12 @@ export default {
 
 .hb-btn {
   background: #ffffff;
-  color: $brand-deep;
+  color: #667eea;
   font-size: 26rpx;
   font-weight: 700;
   padding: 16rpx 32rpx;
   border-radius: 999rpx;
-  box-shadow: 0 8rpx 20rpx rgba(3, 105, 161, 0.25);
+  box-shadow: 0 8rpx 20rpx rgba(102, 126, 234, 0.25);
   transition: transform 0.15s ease;
 
   &--hover {
@@ -253,24 +203,24 @@ export default {
   margin-top: 32rpx;
   font-size: 34rpx;
   font-weight: 800;
-  color: $ink;
+  color: #1f2937;
 }
 
 .empty-sub {
   margin-top: 12rpx;
   font-size: 25rpx;
-  color: $ink-3;
+  color: #9ca3af;
 }
 
 .empty-btn {
   margin-top: 44rpx;
-  background: $gradient-brand;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: #ffffff;
   font-size: 28rpx;
   font-weight: 700;
   padding: 22rpx 72rpx;
   border-radius: 999rpx;
-  box-shadow: $shadow-brand;
+  box-shadow: 0 12rpx 32rpx rgba(102, 126, 234, 0.35);
   transition: transform 0.15s ease;
 
   &--hover {
@@ -279,264 +229,194 @@ export default {
 }
 
 .esim-list {
-  padding: 28rpx $page-pad 0;
+  padding: 28rpx 24rpx 0;
 }
 
 .esim-card {
-  background: $bg-card;
-  border-radius: $radius-lg;
-  padding: 28rpx;
+  position: relative;
+  border-radius: 28rpx;
+  padding: 32rpx;
   margin-bottom: 24rpx;
-  box-shadow: $shadow-sm;
-  transition: all 0.25s ease;
+  overflow: hidden;
+  min-height: 280rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 
-  &.expanded {
-    box-shadow: $shadow;
+  // 已激活：蓝紫渐变
+  &.activated {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  }
+
+  // 待激活：暖橙渐变
+  &.pending {
+    background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+  }
+
+  &--hover {
+    transform: scale(0.98);
+    box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.18);
   }
 }
 
-.ec-head {
-  display: flex;
-  align-items: center;
+/* 背景装饰圆 */
+.card-deco {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
 }
 
-.ec-flag {
-  width: 84rpx;
-  height: 84rpx;
-  border-radius: 22rpx;
-  background: $brand-light;
+.card-deco-circle {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.card-deco-circle.c1 {
+  width: 280rpx;
+  height: 280rpx;
+  top: -80rpx;
+  right: -60rpx;
+}
+
+.card-deco-circle.c2 {
+  width: 180rpx;
+  height: 180rpx;
+  bottom: -40rpx;
+  left: -30rpx;
+}
+
+/* 顶部：国旗 + 状态标签 */
+.card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  z-index: 1;
+}
+
+.card-flag-wrap {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-shrink: 0;
   overflow: hidden;
 }
 
-.ec-flag-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.card-flag-img {
+  width: 52rpx;
+  height: 52rpx;
 }
 
-.ec-main {
-  flex: 1;
-  margin-left: 22rpx;
-  min-width: 0;
-}
-
-.ec-title-row {
-  display: flex;
-  align-items: center;
-}
-
-.ec-name {
-  font-size: 29rpx;
-  font-weight: 700;
-  color: $ink;
-  margin-right: 14rpx;
-}
-
-.ec-status {
-  font-size: 19rpx;
-  font-weight: 700;
-  padding: 4rpx 14rpx;
+.card-status-tag {
+  font-size: 22rpx;
+  font-weight: 600;
+  padding: 6rpx 18rpx;
   border-radius: 999rpx;
 
   &.activated {
-    color: #0D9488;
-    background: $teal-light;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.2);
   }
 
   &.pending {
-    color: #D97706;
-    background: $sun-light;
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.2);
   }
 }
 
-.ec-meta {
-  display: block;
-  margin-top: 8rpx;
-  font-size: 23rpx;
-  color: $ink-2;
-}
-
-.ec-arrow {
-  font-size: 32rpx;
-  color: $ink-3;
-  margin-left: 12rpx;
-}
-
-.ec-usage {
-  margin-top: 22rpx;
-  background: $bg-soft;
-  border-radius: $radius-sm;
-  padding: 18rpx 22rpx;
-}
-
-.usage-bar {
-  height: 12rpx;
-  border-radius: 6rpx;
-  background: #D6E7F5;
-  overflow: hidden;
-}
-
-.usage-fill {
-  height: 100%;
-  border-radius: 6rpx;
-  background: $gradient-brand;
-  transition: width 0.4s ease;
-}
-
-.usage-txt {
-  display: block;
-  margin-top: 10rpx;
-  font-size: 21rpx;
-  color: $ink-2;
-}
-
-.ec-info {
-  margin-top: 22rpx;
-  border-top: 1rpx solid $line;
-  padding-top: 20rpx;
-}
-
-.ec-info-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 6rpx 0;
-}
-
-.eci-label {
-  font-size: 23rpx;
-  color: $ink-3;
-}
-
-.eci-value {
-  font-size: 23rpx;
-  color: $ink-2;
-  max-width: 65%;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.ec-detail {
-  margin-top: 24rpx;
-  background: $bg-soft;
-  border-radius: $radius;
-  padding: 30rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-
-.qr-box {
-  background: #ffffff;
-  border-radius: 20rpx;
-  padding: 20rpx;
-  box-shadow: $shadow-sm;
-}
-
-.qr-tip {
-  margin-top: 22rpx;
-  font-size: 21rpx;
-  color: $ink-2;
-  text-align: center;
-  line-height: 1.6;
-}
-
-.code-row {
+/* 中部：国家名 + 规格 */
+.card-body {
+  position: relative;
+  z-index: 1;
   margin-top: 20rpx;
-  width: 100%;
-  background: #ffffff;
-  border-radius: $radius-sm;
-  padding: 16rpx 20rpx;
+}
+
+.card-country {
+  display: block;
+  font-size: 34rpx;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 8rpx;
+}
+
+.card-spec {
+  display: block;
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.8);
+  font-weight: 500;
+}
+
+/* 底部：ICCID + 到期时间 */
+.card-bottom {
   display: flex;
   align-items: center;
-  border: 1rpx dashed $brand;
-}
-
-.code-txt {
-  flex: 1;
-  font-size: 22rpx;
-  color: $brand-deep;
-  word-break: break-all;
-  line-height: 1.5;
-}
-
-.copy-btn {
-  flex-shrink: 0;
-  margin-left: 16rpx;
-  background: $brand;
-  color: #ffffff;
-  font-size: 22rpx;
-  font-weight: 700;
-  padding: 10rpx 26rpx;
-  border-radius: 999rpx;
-  transition: transform 0.15s ease;
-
-  &--hover {
-    transform: scale(0.94);
-  }
-}
-
-.ec-topup {
-  display: flex;
-  gap: 16rpx;
+  justify-content: space-between;
+  position: relative;
+  z-index: 1;
   margin-top: 24rpx;
 }
 
-.topup-btn {
-  flex: 1;
-  text-align: center;
+.card-iccid {
   font-size: 24rpx;
-  color: $ink-2;
-  background: $bg-soft;
-  border-radius: 999rpx;
-  padding: 16rpx 0;
-  transition: transform 0.15s ease;
-
-  &.primary {
-    background: $gradient-brand;
-    color: #ffffff;
-    font-weight: 700;
-    box-shadow: $shadow-brand;
-  }
-
-  &--hover {
-    transform: scale(0.97);
-  }
+  color: rgba(255, 255, 255, 0.7);
+  font-family: monospace;
+  letter-spacing: 1rpx;
 }
 
-.ec-actions {
-  display: flex;
-  margin-top: 24rpx;
-  gap: 16rpx;
-}
-
-.act-btn {
-  flex: 1;
-  text-align: center;
-  font-size: 24rpx;
-  color: $ink-2;
-  background: $bg-soft;
-  border-radius: 999rpx;
-  padding: 16rpx 0;
-
-  &.primary {
-    background: $gradient-brand;
-    color: #ffffff;
-    font-weight: 700;
-    box-shadow: $shadow-brand;
-  }
-
-  &.danger {
-    color: #DC2626;
-    background: #FEF2F2;
-  }
+.card-expire {
+  font-size: 22rpx;
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .footer-safe {
-  height: calc(176rpx + env(safe-area-inset-bottom));
+  height: calc(140rpx + env(safe-area-inset-bottom));
+}
+
+/* ============ Tab Bar ============ */
+.tab-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: #ffffff;
+  padding: 12rpx 0 calc(12rpx + env(safe-area-inset-bottom));
+  box-shadow: 0 -2rpx 12rpx rgba(0, 0, 0, 0.06);
+  z-index: 100;
+}
+
+.tab-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8rpx 0;
+  flex: 1;
+}
+
+.tab-icon {
+  width: 48rpx;
+  height: 48rpx;
+  margin-bottom: 4rpx;
+}
+
+.tab-label {
+  font-size: 22rpx;
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.tab-item.active .tab-label {
+  color: #667eea;
+  font-weight: 700;
 }
 </style>

@@ -391,14 +391,14 @@ export default {
 
 .pay-btn {
   margin-top: 48rpx;
-  background: #1677FF;
+  background: $gradient-brand;
   color: #ffffff;
   font-size: 32rpx;
   font-weight: 700;
   text-align: center;
   padding: 28rpx 0;
   border-radius: 999rpx;
-  box-shadow: 0 12rpx 32rpx rgba(22, 119, 255, 0.4);
+  box-shadow: $shadow-brand;
   transition: transform 0.15s ease;
 
   &--hover {
@@ -433,11 +433,11 @@ export default {
   width: 160rpx;
   height: 160rpx;
   border-radius: 50%;
-  background: #10B981;
+  background: $teal;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 16rpx 40rpx rgba(16, 185, 129, 0.4);
+  box-shadow: 0 16rpx 40rpx rgba(20, 184, 166, 0.4);
   animation: pop-in 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
 }
 
@@ -542,7 +542,7 @@ export default {
 .mask {
   position: fixed;
   inset: 0;
-  background: rgba(15, 42, 67, 0.5);
+  background: rgba(30, 27, 75, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;

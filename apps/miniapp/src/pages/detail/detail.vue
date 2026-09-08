@@ -2,7 +2,13 @@
   <view class="detail-page">
     <!-- 顶部 Tab 栏 -->
     <view class="tab-bar">
-      <view v-for="(tab, i) in tabs" :key="i" class="tab-item" :class="{ active: currentTab === i }" @click="currentTab = i">
+      <view
+        v-for="(tab, i) in tabs"
+        :key="i"
+        class="tab-item"
+        :class="{ active: currentTab === i }"
+        @click="currentTab = i"
+      >
         <text class="tab-text">{{ fmt(tab) }}</text>
       </view>
     </view>
@@ -12,7 +18,9 @@
       <view class="pkg-name-card">
         <view class="pkg-name-row">
           <text class="pkg-name-text">{{ fmt('detail.nameSuffix', { name: pkg.countryName }) }}</text>
-          <text class="pkg-name-arrow">⌄</text>
+          <view class="pkg-name-arrow-icon" @click="openPackageDrawer">
+            <view class="chevron-down"></view>
+          </view>
         </view>
         <view class="pkg-tags">
           <text class="pkg-tag sold">{{ fmt('detail.sold') }}</text>
@@ -24,7 +32,7 @@
 
       <!-- 警告横幅 -->
       <view class="warn-banner">
-        <text class="warn-icon">🔔</text>
+        <view class="warn-icon-box"></view>
         <text class="warn-txt">{{ fmt('detail.warn', { name: pkg.countryName }) }}</text>
       </view>
 
@@ -40,7 +48,9 @@
             @click="selectDays(d)"
           >
             <text class="day-text">{{ fmt('detail.dayUnit', { d }) }}</text>
-            <view v-if="selectedDays === d" class="day-check-icon">✓</view>
+            <view v-if="selectedDays === d" class="day-check-badge">
+              <text class="day-check-text">✓</text>
+            </view>
           </view>
         </view>
       </view>
@@ -56,8 +66,11 @@
             :class="{ active: selectedGb === c.gb }"
             @click="selectData(c.gb)"
           >
-            <text class="data-text">{{ fmt('detail.totalGb', { gb: c.gb }) }}</text>
-            <view v-if="selectedGb === c.gb" class="data-check-icon">✓</view>
+            <text class="data-text" :class="{ unlimited: c.isUnlimited }">{{ fmt('detail.totalGb', { gb: c.gb }) }}</text>
+            <text v-if="c.isUnlimited" class="data-price-hint">{{ selectedDays }}{{ fmt('detail.dayUnitShort') }}{{ fmt('detail.onlyNeed') }}{{ c.priceDisplay }}</text>
+            <view v-if="selectedGb === c.gb" class="data-check-badge">
+              <text class="data-check-text">✓</text>
+            </view>
           </view>
         </view>
       </view>
@@ -66,41 +79,60 @@
       <view class="info-section">
         <text class="info-title">{{ fmt('detail.detailTitle') }}</text>
         <view class="info-item">
-          <text class="info-icon">📍</text>
+          <text class="info-icon-text">📍</text>
           <text class="info-label">{{ fmt('detail.coverage') }}</text>
           <text class="info-value">{{ fmtPkgCoverage(pkg) }}</text>
         </view>
         <view class="info-item">
-          <text class="info-icon">🪪</text>
+          <text class="info-icon-text">🪪</text>
           <text class="info-label">{{ fmt('detail.registration') }}</text>
           <text class="info-value">{{ fmt('detail.noNeed') }}</text>
         </view>
-      </view>
-
-      <!-- 套餐说明 -->
-      <view class="info-section">
-        <text class="info-title">{{ fmt('detail.descTitle') }}</text>
-        <text class="desc-text">{{ pkg.desc }}</text>
-        <view class="feature-list">
-          <view v-for="f in pkg.features" :key="f" class="feature-item">
-            <view class="feature-check-circle">✓</view>
-            <text class="feature-txt">{{ fmt(f) }}</text>
-          </view>
+        <view class="info-item" v-if="pkgDescText">
+          <text class="info-icon-text">🌐</text>
+          <text class="info-label">{{ fmt('detail.network') }}</text>
+          <text class="info-value desc-inline">{{ pkgDescText }}</text>
+        </view>
+        <view class="pkg-type-link" @click="goGuide">
+          <text class="pkg-type-link-text">{{ fmt('detail.pkgTypeIntro') }}</text>
+          <text class="pkg-type-link-arrow">›</text>
         </view>
       </view>
 
       <!-- 安装步骤 -->
       <view class="info-section">
         <text class="info-title">{{ fmt('detail.installTitle') }}</text>
-        <view v-for="(s, i) in pkg.installSteps" :key="i" class="step-row">
-          <view class="step-num">{{ i + 1 }}</view>
-          <text class="step-txt">{{ fmt(s) }}</text>
+        <view class="install-btns">
+          <view class="install-btn android-btn" @click="goGuide">
+            <text class="install-btn-text">{{ fmt('detail.androidInstall') }}</text>
+          </view>
+          <view class="install-btn apple-btn" @click="goGuide">
+            <text class="install-btn-text">{{ fmt('detail.appleInstall') }}</text>
+          </view>
         </view>
-        <view class="step-link" @click="goGuide">{{ fmt('detail.viewFullGuide') }}</view>
       </view>
 
-      <view class="notice">
-        <text class="notice-title">{{ fmt('detail.noticeTitle') }}</text>
+      <!-- 支持型号 & 使用须知 -->
+      <view class="link-section">
+        <view class="link-row" @click="goGuide">
+          <text class="link-text">{{ fmt('detail.supportModels') }}</text>
+          <text class="link-arrow">›</text>
+        </view>
+        <view class="link-divider"></view>
+        <view class="link-row" @click="goGuide">
+          <text class="link-text">{{ fmt('detail.usageNotice') }}</text>
+          <text class="link-arrow">›</text>
+        </view>
+      </view>
+
+      <!-- 注意事项 -->
+      <view class="notice-card">
+        <view class="notice-header">
+          <view class="notice-dot"></view>
+          <text class="notice-title">{{ fmt('detail.noticeTitle') }}</text>
+          <view class="notice-collapse-icon">∨</view>
+        </view>
+        <view class="notice-divider"></view>
         <text class="notice-txt">{{ fmt('detail.noticeText') }}</text>
       </view>
 
@@ -109,11 +141,137 @@
 
     <!-- 底部价格栏 -->
     <view v-if="pkg" class="bottom-bar">
-      <view class="price-area">
-        <text class="price-currency">{{ sym }}</text>
-        <text class="price-main">{{ priceNum }}</text>
+      <!-- 加购/续费到已过期 eSIM 入口 -->
+      <view v-if="showRenewEntry" class="renew-entry" @click="openEsimDrawer">
+        <template v-if="selectedEsim">
+          <view class="renew-entry-left">
+            <text class="renew-entry-label">{{ fmt('detail.renewSelectedLabel') }}</text>
+            <text class="renew-entry-name">{{ selectedEsim.pkg.countryName }}</text>
+            <text class="renew-entry-spec">{{ selectedEsim.pkg.gb }}GB · {{ selectedEsim.pkg.days }}{{ fmt('detail.dayUnitShort') }} · {{ fmt('detail.renewExpire', { date: formatDate(selectedEsim.expireAt) }) }}</text>
+          </view>
+          <view class="renew-clear-btn" @click.stop="clearEsimSelection">{{ fmt('detail.renewClear') }}</view>
+        </template>
+        <template v-else>
+          <view class="renew-entry-left">
+            <text class="renew-entry-prompt">{{ fmt('detail.renewEntryPrompt') }}</text>
+          </view>
+          <view class="renew-select-btn">{{ fmt('detail.renewSelect') }} ›</view>
+        </template>
       </view>
-      <view class="buy-btn" hover-class="buy-btn--hover" @click="buy">{{ fmt('detail.buyNow') }}</view>
+
+      <view class="bar-row">
+        <view class="price-area">
+          <text class="price-currency">{{ sym }}</text>
+          <text class="price-main">{{ priceNum }}</text>
+          <view class="price-original-area">
+            <text class="price-discount-badge">{{ fmt('detail.discount', { percent: discountPercent }) }}</text>
+            <text class="price-orig-text">{{ fmt('detail.originalPrice', { price: originalPrice }) }}</text>
+          </view>
+        </view>
+        <view class="buy-btn" hover-class="buy-btn--hover" @click="buy">{{ fmt('detail.buyNow') }}</view>
+      </view>
+    </view>
+
+    <!-- 套餐选择抽屉 -->
+    <view v-if="showDrawer" class="drawer-mask" @click="closePackageDrawer"></view>
+    <view v-if="showDrawer" class="drawer-panel">
+      <!-- 抽屉头部 -->
+      <view class="drawer-header">
+        <text class="drawer-title">{{ fmt('detail.selectPackage') }}</text>
+        <view class="drawer-close" @click="closePackageDrawer">✕</view>
+      </view>
+
+      <!-- 搜索栏 -->
+      <view class="drawer-search-bar">
+        <view class="drawer-search-input">
+          <text class="search-icon">🔍</text>
+          <input
+            class="search-input"
+            type="text"
+            :placeholder="fmt('detail.searchPlaceholder')"
+            v-model="drawerSearch"
+            @input="onDrawerSearch"
+          />
+        </view>
+      </view>
+
+      <!-- 分类标签 -->
+      <scroll-view class="drawer-tabs" scroll-x>
+        <view
+          v-for="cat in drawerCategories"
+          :key="cat"
+          class="drawer-tab"
+          :class="{ active: drawerActiveCat === cat }"
+          @click="drawerActiveCat = cat"
+        >
+          <text class="drawer-tab-text">{{ cat }}</text>
+        </view>
+      </scroll-view>
+
+      <!-- 套餐列表 -->
+      <scroll-view class="drawer-body" scroll-y>
+        <view v-if="filteredDrawerPackages.length === 0" class="drawer-empty">
+          <text class="drawer-empty-text">{{ fmt('detail.noResults') }}</text>
+        </view>
+        <view v-for="(group, idx) in filteredDrawerPackages" :key="idx" class="drawer-group">
+          <text class="drawer-group-title">{{ group.region }}</text>
+          <view
+            v-for="p in group.packages"
+            :key="p.id"
+            class="drawer-pkg-item"
+            :class="{ active: isCurrentPkg(p) }"
+            @click="selectPackage(p)"
+          >
+            <view class="drawer-pkg-info">
+              <text class="drawer-pkg-name">{{ p.name }}</text>
+              <text class="drawer-pkg-spec">{{ p.gb }}GB · {{ p.days }}{{ fmt('detail.dayUnitShort') }}</text>
+            </view>
+            <text class="drawer-pkg-price">{{ formatDrawerPrice(p) }}</text>
+            <view v-if="isCurrentPkg(p)" class="drawer-pkg-check">✓</view>
+          </view>
+        </view>
+      </scroll-view>
+    </view>
+
+    <!-- 加购目标 eSIM 选择抽屉 -->
+    <view v-if="showEsimDrawer" class="drawer-mask esim-drawer-mask" @click="closeEsimDrawer"></view>
+    <view v-if="showEsimDrawer" class="drawer-panel esim-drawer-panel">
+      <view class="drawer-header">
+        <text class="drawer-title">{{ fmt('detail.renewDrawerTitle') }}</text>
+        <view class="drawer-close" @click="closeEsimDrawer">✕</view>
+      </view>
+
+      <!-- 国家不一致软提示 -->
+      <view
+        v-if="selectedEsim && selectedEsim.pkg.countryCode !== pkg.countryCode"
+        class="renew-mismatch"
+      >{{ fmt('detail.renewCountryMismatch') }}</view>
+
+      <scroll-view class="drawer-body esim-drawer-body" scroll-y>
+        <view v-if="expiredEsims.length === 0" class="drawer-empty">
+          <text class="drawer-empty-text">{{ fmt('detail.renewNoEsim') }}</text>
+        </view>
+        <view
+          v-for="e in expiredEsims"
+          :key="e.id"
+          class="drawer-pkg-item esim-pkg-item"
+          :class="{ active: e.id === selectedEsimId }"
+          @click="selectEsim(e)"
+        >
+          <view class="drawer-pkg-info">
+            <view class="esim-pkg-name-row">
+              <text class="drawer-pkg-name">{{ e.pkg.countryName }}</text>
+              <text class="esim-pkg-gb">{{ e.pkg.gb }}GB · {{ e.pkg.days }}{{ fmt('detail.dayUnitShort') }}</text>
+            </view>
+            <text class="esim-pkg-expire">{{ fmt('detail.renewExpire', { date: formatDate(e.expireAt) }) }}</text>
+          </view>
+          <view v-if="e.id === selectedEsimId" class="drawer-pkg-check">✓</view>
+        </view>
+      </scroll-view>
+
+      <view class="esim-drawer-footer" @click="clearEsimSelection(); closeEsimDrawer()">
+        <text class="esim-drawer-newbuy">{{ fmt('detail.renewNewBuy') }}</text>
+      </view>
     </view>
   </view>
 </template>
@@ -121,13 +279,32 @@
 <script>
 import { api } from '@/utils/api'
 import { setNavTitle, t as translate } from '@/locales'
-import { currencySymbol } from '@/utils/format'
+import { currencySymbol, formatDate } from '@/utils/format'
+import { store } from '@/store'
 
-// 渲染名称占位符兜底（v 存在则使用）
 function fmtNamed(str, p) {
   return String(str).replace(/\{(\w+)\}/g, (m, k) =>
     p && p[k] !== undefined && p[k] !== null ? p[k] : m
   )
+}
+
+// Tiger API description 数字代码映射
+const DESC_CODE_MAP = {
+  1: '3G/4G/5G',
+  2: 'pure traffic eSIM',
+  3: 'support Google/WhatsApp/ChatGPT',
+  4: 'no voice call',
+  5: 'no SMS',
+  6: 'data only',
+  7: 'instant activation'
+}
+
+function formatDesc(desc) {
+  if (!desc) return ''
+  if (Array.isArray(desc)) {
+    return desc.map(code => DESC_CODE_MAP[code] || String(code)).join('; ')
+  }
+  return String(desc)
 }
 
 export default {
@@ -138,34 +315,45 @@ export default {
       mode: '',
       esimId: '',
       pkg: null,
-      allPackages: [], // 该国家所有套餐
+      allPackages: [],
       currentTab: 0,
       tabs: ['detail.tabSelect', 'detail.tabDetail', 'detail.tabHot', 'detail.tabNotice'],
       selectedDays: 0,
-      selectedGb: 0
+      selectedGb: 0,
+      showDrawer: false,
+      drawerSearch: '',
+      drawerActiveCat: '全部',
+      drawerCategories: ['全部'],
+      drawerAllPackages: [],
+      // 加购/续费到已过期 eSIM 选择器
+      renewEsims: [],
+      showEsimDrawer: false,
+      selectedEsimId: ''
     }
   },
   computed: {
-    // 当前所选流量下，存在哪些天数档位（与所选流量联动）
     dayCells() {
       if (!this.allPackages.length || !this.selectedGb) return []
       return Array.from(new Set(
         this.allPackages.filter(p => p.gb === this.selectedGb && p.days).map(p => p.days)
       )).sort((a, b) => a - b)
     },
-    // 当前所选天数下，存在哪些流量档位（与所选天数联动，按 gb 去重，避免多个同总量套餐重复展示）
     dataCells() {
       if (!this.allPackages.length || !this.selectedDays) return []
       const byGb = new Map()
       for (const p of this.allPackages) {
         if (p.days !== this.selectedDays || !p.gb) continue
         const cur = byGb.get(p.gb)
-        // 同总量只保留价格最低的档位
-        if (!cur || p.price < cur.price) byGb.set(p.gb, { gb: p.gb, price: p.price })
+        if (!cur || p.price < cur.price) byGb.set(p.gb, { gb: p.gb, price: p.price, currency: p.currency })
       }
-      return Array.from(byGb.values()).sort((a, b) => a.gb - b.gb)
+      return Array.from(byGb.values())
+        .sort((a, b) => a.gb - b.gb)
+        .map(c => ({
+          ...c,
+          isUnlimited: c.gb >= 9999,
+          priceDisplay: Number(c.price).toFixed(2)
+        }))
     },
-    // 由「天数×流量」唯一确定一个真实套餐，价格直接取库内真实价（同档多套餐时取价格最低者）
     selectedPkg() {
       if (!this.allPackages.length) return null
       const matches = this.allPackages.filter(p => p.days === this.selectedDays && p.gb === this.selectedGb)
@@ -179,6 +367,87 @@ export default {
     sym() {
       const pkg = this.selectedPkg || this.pkg
       return currencySymbol(pkg ? pkg.currency : 'CNY')
+    },
+    originalPrice() {
+      const cur = parseFloat(this.priceNum)
+      if (!cur) return '0.00'
+      return (cur * 1.55).toFixed(2)
+    },
+    discountPercent() {
+      const orig = parseFloat(this.originalPrice)
+      const cur = parseFloat(this.priceNum)
+      if (!orig || !cur) return 0
+      return Math.round((1 - cur / orig) * 100)
+    },
+    pkgDescText() {
+      if (!this.pkg) return ''
+      const desc = this.pkg.desc
+      if (!desc) return ''
+      
+      // 如果是数组
+      if (Array.isArray(desc)) {
+        return formatDesc(desc)
+      }
+      
+      // 如果是 JSON 字符串 "[1,2,3]"
+      if (typeof desc === 'string' && desc.startsWith('[') && desc.endsWith(']')) {
+        try {
+          const arr = JSON.parse(desc)
+          if (Array.isArray(arr)) {
+            return formatDesc(arr)
+          }
+        } catch (e) { /* ignore */ }
+      }
+      
+      // 如果是 "1、2、3" 格式
+      if (typeof desc === 'string' && /^[\d、\s,]+$/.test(desc)) {
+        const codes = desc.split(/[、,\s]+/).filter(Boolean).map(Number)
+        return codes.map(code => DESC_CODE_MAP[code] || String(code)).join('; ')
+      }
+      
+      return desc
+    },
+    filteredDrawerPackages() {
+      let packages = this.drawerAllPackages
+      // 搜索过滤
+      if (this.drawerSearch) {
+        const kw = this.drawerSearch.toLowerCase()
+        packages = packages.filter(p =>
+          p.name.toLowerCase().includes(kw) ||
+          p.countryName.toLowerCase().includes(kw) ||
+          `${p.gb}GB`.toLowerCase().includes(kw) ||
+          `${p.days}天`.toLowerCase().includes(kw)
+        )
+      }
+      // 分类过滤
+      if (this.drawerActiveCat !== '全部') {
+        packages = packages.filter(p => p.countryName === this.drawerActiveCat || p.countryCode === this.drawerActiveCat)
+      }
+      // 按地区分组
+      const byRegion = new Map()
+      for (const p of packages) {
+        const region = p.countryName || p.countryCode || '其他'
+        if (!byRegion.has(region)) {
+          byRegion.set(region, [])
+        }
+        byRegion.get(region).push(p)
+      }
+      return Array.from(byRegion.entries()).map(([region, packages]) => ({
+        region,
+        packages: packages.sort((a, b) => a.price - b.price)
+      }))
+    },
+    expiredEsims() {
+      // 兜底过滤：已激活 && 已过期，与 esim-detail canRenew / 后端 expireAt<now 保持一致
+      return this.renewEsims.filter(
+        e => e.status === 'activated' && new Date(e.expireAt) < new Date()
+      )
+    },
+    selectedEsim() {
+      return this.renewEsims.find(e => e.id === this.selectedEsimId) || null
+    },
+    showRenewEntry() {
+      return store.isLoggedIn && this.expiredEsims.length > 0
     }
   },
   onLoad(options) {
@@ -187,74 +456,155 @@ export default {
     this.mode = options.mode || ''
     this.esimId = options.esimId || ''
     this.load()
+    this.loadAllPackages()
+    this.loadReneEsims()
   },
   methods: {
-    // 翻译并确保 {name}/{d}/{gb} 等占位符被替换
     fmt(key, params) {
       return fmtNamed(translate(key, params), params)
     },
-    // 翻译套餐覆盖范围（支持 {region} 占位符）
     fmtPkgCoverage(pkg) {
       if (!pkg || !pkg.coverage) return ''
       return this.fmt(pkg.coverage, { region: pkg.countryName })
     },
-    // 默认选中某个真实套餐（取价格最低档），保证初次进入就落在库内已有档位
     pickDefault() {
       if (!this.allPackages.length) return
       const best = [...this.allPackages].sort((a, b) => a.price - b.price)[0]
       this.selectedDays = best.days
       this.selectedGb = best.gb
     },
-    // 选择天数：与所选流量联动，自动收敛到该天数下存在的流量档
     selectDays(d) {
       this.selectedDays = d
       if (!this.dataCells.some(c => c.gb === this.selectedGb)) {
         this.selectedGb = this.dataCells[0] ? this.dataCells[0].gb : 0
       }
     },
-    // 选择流量：与所选天数联动，自动收敛到该流量下存在的天数档
     selectData(gb) {
       this.selectedGb = gb
       if (!this.dayCells.includes(this.selectedDays)) {
         this.selectedDays = this.dayCells[0] || 0
       }
     },
-
     async load() {
       uni.showLoading({ title: this.fmt('common.loading'), mask: true })
       try {
         if (this.country) {
-          // 从已有 eSIM 进入（续费/变更）：加载该国家套餐供选择
           const allRes = await api.getPackagesByCountry(this.country)
           const list = allRes.data.packages || []
           this.allPackages = list
           this.pkg = list[0] || null
           this.pickDefault()
         } else {
-          // 常规入口：获取套餐详情
           const res = await api.getPackageDetail(this.id)
           this.pkg = res.data.pkg
-
-          // 获取该国家所有套餐
           const allRes = await api.getPackagesByCountry(this.pkg.countryCode)
           this.allPackages = allRes.data.packages || []
-
           this.pickDefault()
         }
-
         setNavTitle('detail.navTitle')
       } finally {
         uni.hideLoading()
       }
     },
+    async loadAllPackages() {
+      try {
+        const res = await api.getAllPackages()
+        if (res.code === 0 && res.data.packages && res.data.packages.length > 0) {
+          this.drawerAllPackages = res.data.packages
+          // 提取分类（国家/地区）
+          const cats = new Set(['全部'])
+          for (const p of this.drawerAllPackages) {
+            if (p.countryName) cats.add(p.countryName)
+          }
+          this.drawerCategories = Array.from(cats)
+          return
+        }
+      } catch (e) {
+        console.error('加载全量套餐失败:', e)
+      }
+      
+      // Fallback: 使用当前国家的套餐
+      if (this.allPackages.length > 0) {
+        this.drawerAllPackages = this.allPackages
+        const cats = new Set(['全部'])
+        for (const p of this.allPackages) {
+          if (p.countryName) cats.add(p.countryName)
+        }
+        this.drawerCategories = Array.from(cats)
+      }
+    },
     buy() {
       const pkgId = (this.selectedPkg && this.selectedPkg.id) || (this.pkg ? this.pkg.id : '')
+      // 选中已过期卡则加购/续费到该卡，否则走普通新购
+      const mode = this.selectedEsimId ? 'renew' : ''
+      const esimId = this.selectedEsimId || ''
       uni.navigateTo({
-        url: `/pages/checkout/checkout?pkgId=${pkgId}&mode=${this.mode}&esimId=${this.esimId}`
+        url: `/pages/checkout/checkout?pkgId=${pkgId}&mode=${mode}&esimId=${esimId}`
       })
     },
     goGuide() {
       uni.navigateTo({ url: '/pages/guide/guide' })
+    },
+    openPackageDrawer() {
+      this.showDrawer = true
+    },
+    closePackageDrawer() {
+      this.showDrawer = false
+      this.drawerSearch = ''
+      this.drawerActiveCat = '全部'
+    },
+    onDrawerSearch() {
+      // 搜索时重置分类
+      if (this.drawerSearch) {
+        this.drawerActiveCat = '全部'
+      }
+    },
+    isCurrentPkg(p) {
+      return this.pkg && p.id === this.pkg.id
+    },
+    selectPackage(p) {
+      this.pkg = p
+      this.selectedDays = p.days || this.selectedDays
+      this.selectedGb = p.gb || this.selectedGb
+      this.showDrawer = false
+    },
+    formatDrawerPrice(p) {
+      if (!p.price) return ''
+      const sym = currencySymbol(p.currency || 'CNY')
+      return `${sym}${Number(p.price).toFixed(2)}`
+    },
+    async loadReneEsims() {
+      if (!store.isLoggedIn) return
+      try {
+        const res = await api.getMyEsims()
+        this.renewEsims = (res.data.esims || [])
+          .filter(e => e.status === 'activated' && new Date(e.expireAt) < new Date())
+        // 预选：从 eSIM 详情页续费进入时（onLoad 已带 mode=renew&esimId）
+        if (this.mode === 'renew' && this.esimId) {
+          if (this.renewEsims.some(e => e.id === this.esimId)) {
+            this.selectedEsimId = this.esimId
+          } else {
+            // 预选卡不可续费（不在过期列表）→ 清空转新购并提示
+            this.selectedEsimId = ''
+            uni.showToast({ title: this.fmt('detail.renewPreselectGone'), icon: 'none' })
+          }
+        }
+      } catch (e) {
+        console.error('[detail] 加载我的 eSIM 失败：', e)
+      }
+    },
+    openEsimDrawer() {
+      this.showEsimDrawer = true
+    },
+    closeEsimDrawer() {
+      this.showEsimDrawer = false
+    },
+    selectEsim(e) {
+      this.selectedEsimId = e.id
+      this.closeEsimDrawer()
+    },
+    clearEsimSelection() {
+      this.selectedEsimId = ''
     }
   }
 }
@@ -263,15 +613,18 @@ export default {
 <style lang="scss" scoped>
 .detail-page {
   min-height: 100vh;
-  background: $bg-page;
+  background: #EEF0FF;
 }
 
-/* Tab 栏 */
+/* ========== Tab 栏 ========== */
 .tab-bar {
   display: flex;
   background: #ffffff;
   padding: 0 $page-pad;
   border-bottom: 1rpx solid #F0F0F0;
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
 
 .tab-item {
@@ -287,7 +640,7 @@ export default {
     transform: translateX(-50%);
     width: 48rpx;
     height: 6rpx;
-    background: $brand;
+    background: #6C63FF;
     border-radius: 3rpx;
   }
 }
@@ -297,17 +650,18 @@ export default {
   color: #999999;
 
   .active & {
-    color: $brand;
+    color: #6C63FF;
     font-weight: 700;
   }
 }
 
+/* ========== 内容区 ========== */
 .detail-body {
   padding: 20rpx $page-pad;
   padding-bottom: 40rpx;
 }
 
-/* 套餐名称卡片 */
+/* ========== 套餐名称卡片 ========== */
 .pkg-name-card {
   background: #ffffff;
   border-radius: 20rpx;
@@ -324,13 +678,28 @@ export default {
 .pkg-name-text {
   font-size: 40rpx;
   font-weight: 800;
-  color: $ink;
+  color: #1A1A2E;
 }
 
-.pkg-name-arrow {
-  font-size: 32rpx;
-  color: #999999;
+.pkg-name-arrow-icon {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: #F5F5FF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
   margin-left: 12rpx;
+}
+
+.chevron-down {
+  width: 20rpx;
+  height: 20rpx;
+  border-right: 4rpx solid #6C63FF;
+  border-bottom: 4rpx solid #6C63FF;
+  transform: rotate(45deg);
+  margin-top: -4rpx;
 }
 
 .pkg-tags {
@@ -347,29 +716,38 @@ export default {
   margin-bottom: 8rpx;
 
   &.sold {
-    color: $sun;
-    background: $sun-light;
+    color: #F5A623;
+    background: #FFF8EC;
   }
 
   &.normal {
-    color: $brand;
-    background: $brand-light;
+    color: #6C63FF;
+    background: #F0F0FF;
   }
 }
 
-/* 警告横幅 */
+/* ========== 警告横幅 ========== */
 .warn-banner {
   display: flex;
   align-items: center;
-  background: $brand;
+  background: linear-gradient(135deg, #6C63FF 0%, #8B83FF 50%, #A78BFA 100%);
   border-radius: 16rpx;
-  padding: 24rpx 28rpx;
-  margin-top: 20rpx;
+  padding: 26rpx 30rpx;
+  margin-top: 24rpx;
+  box-shadow: 0 8rpx 24rpx rgba(108, 99, 255, 0.3);
 }
 
-.warn-icon {
-  font-size: 32rpx;
-  margin-right: 12rpx;
+.warn-icon-box {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
+  margin-right: 16rpx;
+  flex-shrink: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9'/%3E%3Cpath d='M10.3 21a1.94 1.94 0 0 0 3.4 0'/%3E%3C/svg%3E");
+  background-size: 28rpx 28rpx;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
 .warn-txt {
@@ -379,7 +757,7 @@ export default {
   line-height: 1.5;
 }
 
-/* 选择区域 */
+/* ========== 选择区域 ========== */
 .select-section {
   background: #ffffff;
   border-radius: 20rpx;
@@ -390,12 +768,12 @@ export default {
 .select-title {
   font-size: 32rpx;
   font-weight: 800;
-  color: $ink;
+  color: #1A1A2E;
   display: block;
   margin-bottom: 24rpx;
 }
 
-/* 天数网格 - 4列 */
+/* 天数网格 */
 .day-grid {
   display: flex;
   flex-wrap: wrap;
@@ -405,7 +783,7 @@ export default {
   width: calc(25% - 12rpx);
   margin-right: 16rpx;
   margin-bottom: 16rpx;
-  background: $bg-soft;
+  background: #F5F5FF;
   border-radius: 16rpx;
   padding: 28rpx 0;
   display: flex;
@@ -421,8 +799,8 @@ export default {
   }
 
   &.active {
-    border-color: $brand;
-    background: $brand-light;
+    border-color: #6C63FF;
+    background: #F0EEFF;
   }
 }
 
@@ -432,21 +810,32 @@ export default {
   font-weight: 600;
 
   .active & {
-    color: $brand;
+    color: #6C63FF;
     font-weight: 700;
   }
 }
 
-.day-check-icon {
+.day-check-badge {
   position: absolute;
   bottom: 4rpx;
   right: 8rpx;
-  font-size: 20rpx;
-  color: $brand;
-  font-weight: 700;
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  background: #6C63FF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* 数据用量包网格 - 3列 */
+.day-check-text {
+  font-size: 16rpx;
+  color: #ffffff;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* 数据用量包网格 */
 .data-grid {
   display: flex;
   flex-wrap: wrap;
@@ -456,9 +845,9 @@ export default {
   width: calc(33.33% - 14rpx);
   margin-right: 20rpx;
   margin-bottom: 16rpx;
-  background: $bg-soft;
+  background: #F5F5FF;
   border-radius: 16rpx;
-  padding: 28rpx 16rpx;
+  padding: 24rpx 12rpx;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -473,7 +862,7 @@ export default {
   }
 
   &.active {
-    border-color: $coral;
+    border-color: #FF4D4F;
     background: #FFF5F5;
   }
 }
@@ -485,12 +874,12 @@ export default {
   text-align: center;
 
   .active & {
-    color: $coral;
+    color: #FF4D4F;
     font-weight: 700;
   }
 
   &.unlimited {
-    color: $coral;
+    color: #FF4D4F;
     font-size: 30rpx;
     font-weight: 700;
   }
@@ -498,21 +887,33 @@ export default {
 
 .data-price-hint {
   font-size: 20rpx;
-  color: $coral;
+  color: #FF4D4F;
   margin-top: 6rpx;
   text-align: center;
+  line-height: 1.3;
 }
 
-.data-check-icon {
+.data-check-badge {
   position: absolute;
   bottom: 4rpx;
   right: 8rpx;
-  font-size: 20rpx;
-  color: $coral;
-  font-weight: 700;
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 50%;
+  background: #FF4D4F;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-/* 套餐详情 */
+.data-check-text {
+  font-size: 16rpx;
+  color: #ffffff;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ========== 套餐详情 ========== */
 .info-section {
   background: #ffffff;
   border-radius: 20rpx;
@@ -523,133 +924,176 @@ export default {
 .info-title {
   font-size: 32rpx;
   font-weight: 800;
-  color: $ink;
+  color: #1A1A2E;
   display: block;
   margin-bottom: 24rpx;
 }
 
 .info-item {
   display: flex;
-  align-items: center;
-  padding: 16rpx 0;
-}
-
-.info-icon {
-  font-size: 28rpx;
-  margin-right: 8rpx;
-}
-
-.info-label {
-  font-size: 26rpx;
-  color: #666666;
-}
-
-.info-value {
-  font-size: 26rpx;
-  color: $ink;
-  font-weight: 600;
-}
-
-.desc-text {
-  font-size: 26rpx;
-  color: #666666;
-  line-height: 1.7;
-}
-
-.feature-list {
-  margin-top: 24rpx;
-}
-
-.feature-item {
-  display: flex;
-  align-items: center;
-  margin-top: 16rpx;
-}
-
-.feature-check-circle {
-  width: 40rpx;
-  height: 40rpx;
-  border-radius: 50%;
-  background: #E8FFF0;
-  color: #14B8A6;
-  font-size: 24rpx;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 16rpx;
-  flex-shrink: 0;
-}
-
-.feature-txt {
-  font-size: 26rpx;
-  color: $ink;
-}
-
-.step-row {
-  display: flex;
   align-items: flex-start;
-  margin-top: 20rpx;
+  padding: 14rpx 0;
 }
 
-.step-num {
-  width: 44rpx;
-  height: 44rpx;
-  border-radius: 50%;
-  background: $brand;
-  color: #ffffff;
-  font-size: 24rpx;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 20rpx;
+.info-icon-text {
+  font-size: 30rpx;
+  margin-right: 12rpx;
   flex-shrink: 0;
   margin-top: 2rpx;
 }
 
-.step-txt {
-  flex: 1;
-  font-size: 26rpx;
-  color: $ink;
-  line-height: 1.6;
+.info-label {
+  font-size: 28rpx;
+  color: #666666;
+  flex-shrink: 0;
 }
 
-.step-link {
-  margin-top: 24rpx;
-  font-size: 24rpx;
-  color: $brand;
+.info-value {
+  font-size: 28rpx;
+  color: #1A1A2E;
   font-weight: 600;
 }
 
-.notice {
-  margin-top: 20rpx;
-  background: #FFF8EC;
-  border: 1rpx solid #FDE7BD;
+.desc-inline {
+  font-weight: 400;
+  color: #333333;
+  line-height: 1.6;
+}
+
+.pkg-type-link {
+  display: flex;
+  align-items: center;
+  margin-top: 16rpx;
+  padding-top: 16rpx;
+}
+
+.pkg-type-link-text {
+  font-size: 28rpx;
+  color: #6C63FF;
+  font-weight: 600;
+}
+
+.pkg-type-link-arrow {
+  font-size: 28rpx;
+  color: #6C63FF;
+  margin-left: 4rpx;
+}
+
+/* ========== 安装按钮 ========== */
+.install-btns {
+  display: flex;
+  gap: 20rpx;
+}
+
+.install-btn {
+  flex: 1;
+  padding: 28rpx 0;
   border-radius: 16rpx;
-  padding: 24rpx 28rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #8B83FF;
+}
+
+.install-btn-text {
+  font-size: 28rpx;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* ========== 链接列表 ========== */
+.link-section {
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 0 32rpx;
+  margin-top: 20rpx;
+}
+
+.link-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx 0;
+}
+
+.link-text {
+  font-size: 30rpx;
+  color: #1A1A2E;
+  font-weight: 600;
+}
+
+.link-arrow {
+  font-size: 32rpx;
+  color: #CCCCCC;
+}
+
+.link-divider {
+  height: 1rpx;
+  background: #F0F0F0;
+}
+
+/* ========== 注意事项 ========== */
+.notice-card {
+  background: #ffffff;
+  border-radius: 20rpx;
+  padding: 32rpx;
+  margin-top: 20rpx;
+}
+
+.notice-header {
+  display: flex;
+  align-items: center;
+}
+
+.notice-dot {
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: 50%;
+  background: #4ADE80;
+  margin-right: 12rpx;
+  flex-shrink: 0;
 }
 
 .notice-title {
-  font-size: 26rpx;
-  font-weight: 700;
-  color: #B45309;
+  flex: 1;
+  font-size: 36rpx;
+  font-weight: 800;
+  color: #1A1A2E;
+}
+
+.notice-collapse-icon {
+  font-size: 28rpx;
+  color: #6C63FF;
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: #F0EEFF;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.notice-divider {
+  height: 2rpx;
+  background: #6C63FF;
+  margin: 20rpx 0;
+  border-radius: 1rpx;
 }
 
 .notice-txt {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 23rpx;
-  color: #92600A;
-  line-height: 1.7;
+  font-size: 26rpx;
+  color: #666666;
+  line-height: 1.8;
   white-space: pre-wrap;
 }
 
+/* ========== 底部占位 ========== */
 .footer-safe {
   height: 160rpx;
 }
 
-/* 底部价格栏 */
+/* ========== 底部价格栏 ========== */
 .bottom-bar {
   position: fixed;
   left: 0;
@@ -657,11 +1101,79 @@ export default {
   bottom: 0;
   background: #ffffff;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   padding: 20rpx $page-pad;
-  padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
+  padding-bottom: calc(16rpx + env(safe-area-inset-bottom));
   box-shadow: 0 -4rpx 20rpx rgba(0, 0, 0, 0.06);
   z-index: 10;
+}
+
+/* 加购/续费入口行 */
+.renew-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #F0EEFF;
+  border-radius: 16rpx;
+  padding: 14rpx 20rpx;
+  margin-bottom: 16rpx;
+}
+
+.renew-entry-left {
+  flex: 1;
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.renew-entry-label {
+  font-size: 22rpx;
+  color: #6C63FF;
+  font-weight: 700;
+  margin-right: 12rpx;
+}
+
+.renew-entry-name {
+  font-size: 26rpx;
+  color: #1A1A2E;
+  font-weight: 700;
+}
+
+.renew-entry-spec {
+  font-size: 22rpx;
+  color: #8A8AA0;
+  margin-left: 16rpx;
+  white-space: nowrap;
+}
+
+.renew-entry-prompt {
+  font-size: 26rpx;
+  color: #6C63FF;
+  font-weight: 600;
+}
+
+.renew-select-btn {
+  font-size: 26rpx;
+  color: #6C63FF;
+  font-weight: 700;
+  margin-left: 16rpx;
+  flex-shrink: 0;
+}
+
+.renew-clear-btn {
+  font-size: 24rpx;
+  color: #999999;
+  padding: 8rpx 20rpx;
+  background: #ffffff;
+  border-radius: 999rpx;
+  margin-left: 16rpx;
+  flex-shrink: 0;
+}
+
+.bar-row {
+  display: flex;
+  align-items: center;
 }
 
 .price-area {
@@ -672,30 +1184,312 @@ export default {
 
 .price-currency {
   font-size: 24rpx;
-  color: $ink;
+  color: #1A1A2E;
   font-weight: 700;
   margin-right: 4rpx;
 }
 
 .price-main {
   font-size: 56rpx;
-  color: $ink;
+  color: #1A1A2E;
   font-weight: 800;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.price-original-area {
+  display: flex;
+  flex-direction: column;
+  margin-left: 16rpx;
+  align-items: flex-start;
+}
+
+.price-discount-badge {
+  font-size: 20rpx;
+  color: #ffffff;
+  background: #FF6B35;
+  border-radius: 6rpx;
+  padding: 2rpx 12rpx;
+  display: inline-block;
+  align-self: flex-start;
+  margin-bottom: 4rpx;
+}
+
+.price-orig-text {
+  font-size: 22rpx;
+  color: #999999;
+  text-decoration: line-through;
 }
 
 .buy-btn {
-  background: $gradient-brand;
+  background: #6C63FF;
   color: #ffffff;
   font-size: 32rpx;
   font-weight: 700;
   padding: 24rpx 64rpx;
   border-radius: 999rpx;
-  box-shadow: $shadow-brand;
+  box-shadow: 0 8rpx 24rpx rgba(108, 99, 255, 0.35);
   transition: transform 0.15s ease;
 
   &--hover {
     transform: scale(0.97);
   }
+}
+
+/* ========== 套餐选择抽屉 ========== */
+.drawer-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 200;
+}
+
+.drawer-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 85vh;
+  background: #ffffff;
+  border-radius: 32rpx 32rpx 0 0;
+  z-index: 201;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 32rpx 40rpx;
+  border-bottom: 1rpx solid #F0F0F0;
+}
+
+.drawer-title {
+  font-size: 32rpx;
+  font-weight: 700;
+  color: #1A1A2E;
+}
+
+.drawer-close {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  background: #F5F5F5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  color: #999999;
+}
+
+/* 搜索栏 */
+.drawer-search-bar {
+  padding: 20rpx 40rpx;
+  border-bottom: 1rpx solid #F0F0F0;
+}
+
+.drawer-search-input {
+  display: flex;
+  align-items: center;
+  background: #F5F5F5;
+  border-radius: 16rpx;
+  padding: 16rpx 24rpx;
+}
+
+.search-icon {
+  font-size: 28rpx;
+  margin-right: 12rpx;
+}
+
+.search-input {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333333;
+}
+
+/* 分类标签 */
+.drawer-tabs {
+  display: flex;
+  padding: 20rpx 40rpx;
+  border-bottom: 1rpx solid #F0F0F0;
+  white-space: nowrap;
+}
+
+.drawer-tab {
+  padding: 12rpx 24rpx;
+  margin-right: 16rpx;
+  border-radius: 24rpx;
+  background: #F5F5F5;
+
+  &.active {
+    background: #6C63FF;
+  }
+}
+
+.drawer-tab-text {
+  font-size: 24rpx;
+  color: #666666;
+
+  .active & {
+    color: #ffffff;
+    font-weight: 600;
+  }
+}
+
+/* 套餐列表 */
+.drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20rpx 40rpx;
+  padding-bottom: 40rpx;
+}
+
+.drawer-empty {
+  padding: 60rpx 0;
+  text-align: center;
+}
+
+.drawer-empty-text {
+  font-size: 28rpx;
+  color: #999999;
+}
+
+.drawer-group {
+  margin-bottom: 32rpx;
+}
+
+.drawer-group-title {
+  font-size: 26rpx;
+  color: #999999;
+  font-weight: 600;
+  margin-bottom: 16rpx;
+  padding-bottom: 12rpx;
+  border-bottom: 1rpx solid #F0F0F0;
+}
+
+.drawer-pkg-item {
+  display: flex;
+  align-items: center;
+  padding: 24rpx 0;
+  border-bottom: 1rpx solid #F5F5F5;
+  position: relative;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &.active {
+    background: #F5F5FF;
+    margin: 0 -40rpx;
+    padding-left: 40rpx;
+    padding-right: 40rpx;
+    border-radius: 12rpx;
+    border-bottom: none;
+  }
+}
+
+.drawer-pkg-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.drawer-pkg-name {
+  font-size: 28rpx;
+  color: #1A1A2E;
+  font-weight: 600;
+  margin-bottom: 4rpx;
+}
+
+.drawer-pkg-spec {
+  font-size: 22rpx;
+  color: #999999;
+}
+
+.drawer-pkg-price {
+  font-size: 28rpx;
+  color: #6C63FF;
+  font-weight: 700;
+  margin-right: 16rpx;
+}
+
+.drawer-pkg-check {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: #6C63FF;
+  color: #ffffff;
+  font-size: 20rpx;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ========== 加购目标 eSIM 选择抽屉 ========== */
+.renew-mismatch {
+  margin: 20rpx 40rpx 0;
+  padding: 14rpx 20rpx;
+  background: #FFF4EC;
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  color: #E8883A;
+  line-height: 1.5;
+}
+
+.esim-drawer-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20rpx 40rpx;
+  padding-bottom: 40rpx;
+}
+
+.esim-pkg-item {
+  cursor: pointer;
+}
+
+.esim-pkg-name-row {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 4rpx;
+}
+
+.esim-pkg-name-row .drawer-pkg-name {
+  margin-bottom: 0;
+}
+
+.esim-pkg-gb {
+  font-size: 22rpx;
+  color: #999999;
+  margin-left: 12rpx;
+}
+
+.esim-pkg-expire {
+  font-size: 22rpx;
+  color: #B0B0C0;
+}
+
+.esim-drawer-footer {
+  padding: 20rpx 40rpx;
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
+  border-top: 1rpx solid #F0F0F0;
+  text-align: center;
+}
+
+.esim-drawer-newbuy {
+  font-size: 28rpx;
+  color: #6C63FF;
+  font-weight: 600;
 }
 </style>

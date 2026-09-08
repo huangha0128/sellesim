@@ -54,7 +54,7 @@ export const BASE_PLANS = [
   { gb: 3, days: 7, base: 22.9, tag: '热销', tagColor: '#FF7A59' },
   { gb: 5, days: 15, base: 34.9, tag: '', tagColor: '' },
   { gb: 10, days: 30, base: 59.9, tag: '热销', tagColor: '#FF7A59' },
-  { gb: 20, days: 30, base: 94.9, tag: '大流量', tagColor: '#0EA5E9' }
+  { gb: 20, days: 30, base: 94.9, tag: '大流量', tagColor: '#38BDF8' }
 ]
 
 const REGION_PLAN_PRICES = {

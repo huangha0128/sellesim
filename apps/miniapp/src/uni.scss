@@ -1,45 +1,77 @@
-/* YYeSim 设计变量 - 清新旅行风 */
+/* YYeSim 设计变量 - 深海蓝 × 青绿（海洋出行风） */
 
-/* 品牌色 */
-$brand: #0EA5E9;
-$brand-deep: #0369A1;
-$brand-darker: #075985;
-$brand-light: #E0F2FE;
-$brand-lighter: #F0F9FF;
+/* 品牌色：深海蓝体系（主）+ 青绿（唯一点缀色） */
+$brand: #0E5E8F;
+$brand-deep: #0A4368;
+$brand-darker: #062C45;
+$brand-royal: #0A3550;
+$brand-sky: #35A7DC;
+$brand-blue-light: #DCEFF7;
+$brand-light: #E4F1F8;
+$brand-lighter: #F2F9FC;
+$brand-mist: #BCDBEB;
 
-/* 强调色 */
+/* 点缀色（语义）— 青绿为唯一强调色 */
 $coral: #FF7A59;
 $coral-light: #FFEFE9;
-$teal: #14B8A6;
-$teal-light: #E6F7F5;
-$sun: #FBBF24;
-$sun-light: #FEF5E0;
+$teal: #0EA593;
+$teal-light: #E0F4F0;
+$teal-deep: #0A7B6F;
+$sun: #F0B429;
+$sun-light: #FCF3DC;
+$sun-deep: #9A6A0C;
+$danger: #DE4B5B;
+$danger-light: #FDE7EA;
 
-/* 文字色 */
-$ink: #0F2A43;
-$ink-2: #5B7A95;
-$ink-3: #93AFC8;
+/* 琥珀警示（兼容提示 / 退款状态） */
+$warn: #D97706;
+$warn-deep: #9A5B0F;
+$warn-bg: #FDF5E4;
+$warn-line: #F6E3BC;
 
-/* 背景 / 卡片 */
-$bg-page: #F4FAFF;
+/* 文字色：价格用深色加粗，"起" 用灰弱化 */
+$ink: #16252E;
+$ink-2: #4A5B68;
+$ink-3: #8A98A3;
+
+/* 背景 / 卡片：中性暖白底，去紫 */
+$bg-page: #F5F7F8;
 $bg-card: #FFFFFF;
-$bg-soft: #EAF4FC;
-$line: #E3EEF7;
+$bg-soft: #E9F1F5;
+$line: #E1E8EC;
 
-/* 圆角 / 阴影 */
-$radius-sm: 12rpx;
-$radius: 20rpx;
-$radius-lg: 28rpx;
-$radius-xl: 40rpx;
-$shadow-sm: 0 4rpx 16rpx rgba(15, 84, 140, 0.06);
-$shadow: 0 10rpx 36rpx rgba(15, 84, 140, 0.1);
-$shadow-brand: 0 12rpx 32rpx rgba(14, 165, 233, 0.35);
+/* 圆角 / 阴影（弧形更柔，阴影贴合深海蓝） */
+$radius-sm: 16rpx;
+$radius: 24rpx;
+$radius-lg: 32rpx;
+$radius-xl: 44rpx;
+$shadow-sm: 0 4rpx 16rpx rgba(10, 67, 104, 0.08);
+$shadow: 0 12rpx 40rpx rgba(10, 67, 104, 0.12);
+$shadow-brand: 0 12rpx 32rpx rgba(6, 44, 69, 0.35);
+
+/* 字体层级：大标题收紧字距、加粗；标签加宽字距，制造编辑感 */
+$fs-display: 72rpx;
+$fs-h1: 44rpx;
+$fs-h2: 34rpx;
+$fs-h3: 30rpx;
+$fs-body: 26rpx;
+$fs-sm: 23rpx;
+$fs-xs: 20rpx;
+$fs-2xs: 18rpx;
+$tracking-display: -3rpx;
+$tracking-title: 1rpx;
+$tracking-label: 5rpx;
+$line-display: 1.06;
+$line-title: 1.24;
 
 /* 间距 */
 $gap: 24rpx;
-$page-pad: 32rpx;
+$page-pad: 40rpx;
+$section-gap: 68rpx;
 
-/* 渐变 */
-$gradient-brand: linear-gradient(135deg, #38BDF8 0%, #0EA5E9 55%, #0284C7 100%);
-$gradient-sky: linear-gradient(160deg, #E0F2FE 0%, #F4FAFF 60%, #FFFFFF 100%);
+/* 渐变：深海 → 海面，尾部浸入一抹青绿 */
+$gradient-brand: linear-gradient(135deg, #0E6E9E 0%, #0B4A74 55%, #073149 100%);
+$gradient-hero: linear-gradient(168deg, #04273B 0%, #0A4670 48%, #0E6E9E 78%, #149AA0 120%);
+$gradient-card: linear-gradient(165deg, #FFFFFF 0%, #F2F9FC 100%);
+$gradient-sky: linear-gradient(160deg, #E4F1F8 0%, #F2F9FC 60%, #FFFFFF 100%);
 $gradient-coral: linear-gradient(135deg, #FF9A76 0%, #FF7A59 100%);

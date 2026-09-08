@@ -224,11 +224,14 @@ export default {
 }
 
 .block-title {
-  font-size: 26rpx;
+  display: flex;
+  align-items: center;
+  font-size: $fs-sm;
   font-weight: 700;
+  letter-spacing: 2rpx;
   color: $ink-2;
-  margin: 8rpx 0 20rpx;
-  padding-left: 8rpx;
+  margin: 28rpx 0 22rpx;
+  padding-left: 12rpx;
 }
 
 .empty {

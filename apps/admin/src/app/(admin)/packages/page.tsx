@@ -346,7 +346,7 @@ export default function PackagesPage() {
   return (
     <div className="animate-fade-up space-y-5">
       {/* 筛选条件卡片 */}
-      <Card className="border-transparent bg-white/70 backdrop-blur-sm">
+      <Card className="panel-card">
         <CardContent className="flex flex-wrap items-end gap-3 pt-5">
           <Field label="关键词">
             <Input
@@ -397,7 +397,7 @@ export default function PackagesPage() {
         </CardContent>
       </Card>
 
-      <Card className="border-transparent bg-white/70 backdrop-blur-sm">
+      <Card className="panel-card">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-baseline justify-between text-[15px] text-ink">
             <span>套餐列表（仅展示已添加的套餐）</span>
@@ -507,7 +507,7 @@ export default function PackagesPage() {
                           {p.tag ? (
                             <span
                               className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium text-white"
-                              style={{ background: p.tagColor || '#6f8f8b' }}
+                              style={{ background: p.tagColor || '#8b5cf6' }}
                             >
                               {p.tag}
                             </span>

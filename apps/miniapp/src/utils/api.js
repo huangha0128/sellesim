@@ -9,11 +9,65 @@ function getCurrentLang() {
   }
 }
 
+// Tiger API description 数字代码映射
+const DESC_CODE_MAP = {
+  1: '3G/4G/5G',
+  2: 'pure traffic eSIM',
+  3: 'support Google/WhatsApp/ChatGPT',
+  4: 'no voice call',
+  5: 'no SMS',
+  6: 'data only',
+  7: 'instant activation'
+}
+
+function formatDescArray(arr) {
+  if (!Array.isArray(arr)) return String(arr)
+  return arr.map(code => DESC_CODE_MAP[code] || String(code)).join('; ')
+}
+
+function processDesc(desc) {
+  if (!desc) return ''
+  
+  // 如果是数组
+  if (Array.isArray(desc)) {
+    return formatDescArray(desc)
+  }
+  
+  // 如果是字符串
+  if (typeof desc === 'string') {
+    // JSON 数组字符串: "[1,2,3,4,5,6,7]"
+    if (desc.startsWith('[') && desc.endsWith(']')) {
+      try {
+        const arr = JSON.parse(desc)
+        if (Array.isArray(arr)) return formatDescArray(arr)
+      } catch (e) { /* ignore */ }
+    }
+    
+    // 逗号分隔: "1,2,3,4,5,6,7" 或 "1、2、3、4、5、6、7"
+    if (/^[\d、\s,]+$/.test(desc)) {
+      const codes = desc.split(/[、,\s]+/).filter(Boolean).map(Number)
+      return codes.map(code => DESC_CODE_MAP[code] || String(code)).join('; ')
+    }
+    
+    // 已经是处理过的文本
+    return desc
+  }
+  
+  return String(desc)
+}
+
 // 将后端嵌套的 package.country 扁平化为前端所需字段
 function flattenPkg(p) {
   if (!p) return p;
   const c = p.country || {};
   const isEn = getCurrentLang() === 'en';
+
+  // 处理 desc
+  const rawDesc = isEn ? (p.descEn || p.desc) : p.desc;
+  const desc = processDesc(rawDesc);
+  
+  const rawDescEn = p.descEn || p.desc;
+  const descEn = processDesc(rawDescEn);
 
   return {
     ...p,
@@ -21,8 +75,9 @@ function flattenPkg(p) {
     countryName: isEn ? (p.countryNameEn || p.countryName || c.name) : (p.countryName || c.name),
     // 根据语言选择套餐名称
     name: isEn ? (p.nameEn || p.name) : p.name,
-    // 根据语言选择描述
-    desc: isEn ? (p.descEn || p.desc) : p.desc,
+    // 根据语言选择描述（已处理）
+    desc: desc,
+    descEn: descEn,
     // 根据语言选择速度描述
     speed: isEn ? (p.speedEn || p.speed) : p.speed,
     // 根据语言选择覆盖范围参数
@@ -137,6 +192,13 @@ export const api = {
   async getPackageDetail(id) {
     const res = await request('GET', `/packages/${id}`);
     res.data.pkg = flattenPkg(res.data.pkg);
+    return res;
+  },
+
+  // 获取全量套餐（用于抽屉选择器）
+  async getAllPackages() {
+    const res = await request('GET', '/packages/catalog/all');
+    res.data.packages = (res.data.packages || []).map(flattenPkg);
     return res;
   },
 
