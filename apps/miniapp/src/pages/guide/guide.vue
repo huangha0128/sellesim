@@ -109,7 +109,7 @@ export default {
 }
 
 .guide-hero {
-  background: $gradient-brand;
+  background: $gradient-canvas;
   padding: 56rpx $page-pad 64rpx;
   border-radius: 0 0 40rpx 40rpx;
   display: flex;
@@ -120,13 +120,17 @@ export default {
 .gh-title {
   font-size: 42rpx;
   font-weight: 800;
-  color: #ffffff;
+  color: $brand;
+  background-image: $gradient-text;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .gh-sub {
   margin-top: 12rpx;
   font-size: 25rpx;
-  color: rgba(255, 255, 255, 0.85);
+  color: $ink-3;
 }
 
 .guide-body {

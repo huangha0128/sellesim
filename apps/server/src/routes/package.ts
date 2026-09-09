@@ -3,6 +3,22 @@ import { PrismaClient } from '@prisma/client';
 import { tigerClient } from '../tiger';
 import { listAllPackagesView, listPackagesByRegion, getPackageView, invalidatePackageCache, refreshPackageCache } from '../tiger/view';
 
+/** 按 tigerPkgId 统计已售数量（status='paid' 的订单数），并挂到套餐视图上 */
+async function attachSoldCounts(packages: any[], prisma: PrismaClient): Promise<any[]> {
+  if (!packages.length) return packages;
+  const ids = Array.from(new Set(packages.map((p) => p.tigerPkgId).filter((n) => n != null))) as number[];
+  if (!ids.length) return packages;
+  // 统计每个套餐的已支付订单数（status='paid'），退款单 status='refunded' 不计数
+  const rows = await prisma.order.groupBy({
+    by: ['tigerPkgId'],
+    where: { tigerPkgId: { in: ids }, status: 'paid' },
+    _count: { _all: true },
+  });
+  const countMap = new Map<number, number>();
+  for (const r of rows) countMap.set(r.tigerPkgId as number, r._count._all);
+  return packages.map((p) => ({ ...p, soldCount: countMap.get(p.tigerPkgId) || 0 }));
+}
+
 export default (prisma: PrismaClient) => {
   const router = Router();
 
@@ -17,8 +33,9 @@ export default (prisma: PrismaClient) => {
     }
     const onlyFeatured = req.query.all !== '1';
     try {
-      const packages = await listPackagesByRegion(countryCode, onlyFeatured);
+      let packages = await listPackagesByRegion(countryCode, onlyFeatured);
       packages.sort((a, b) => a.gb - b.gb || a.days - b.days);
+      packages = await attachSoldCounts(packages, prisma);
       res.json({ code: 0, data: { packages } });
     } catch (e: any) {
       res.status(502).json({ code: 1, message: 'Tiger 套餐拉取失败：' + e.message });
@@ -93,7 +110,7 @@ export default (prisma: PrismaClient) => {
         if (!cur || p.price < cur.price) byRegion.set(key, p);
       }
       const packages = Array.from(byRegion.values()).sort((a: any, b: any) => a.price - b.price);
-      res.json({ code: 0, data: { packages } });
+      res.json({ code: 0, data: { packages: await attachSoldCounts(packages, prisma) } });
     } catch (e: any) {
       res.status(502).json({ code: 1, message: 'Tiger 套餐拉取失败：' + e.message });
     }

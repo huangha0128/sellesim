@@ -21,6 +21,3 @@ export const COVER_GRADIENTS = [
   'linear-gradient(160deg, #D6DEFF 0%, #4050C0 60%, #203090 100%)',
   'linear-gradient(160deg, #6CD5FA 15%, #3030A0 70%, #102070 100%)',
 ]
-
-/* eSIM 详情页头部渐变（左上深蓝紫承托白字，右下渐入浅蓝） */
-export const HEADER_GRADIENT = 'linear-gradient(135deg, #3030A0 0%, #4050C0 50%, #6CD5FA 100%)'

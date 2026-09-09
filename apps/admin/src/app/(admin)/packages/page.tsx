@@ -507,7 +507,7 @@ export default function PackagesPage() {
                           {p.tag ? (
                             <span
                               className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium text-white"
-                              style={{ background: p.tagColor || '#8b5cf6' }}
+                              style={{ background: p.tagColor || 'hsl(var(--primary))' }}
                             >
                               {p.tag}
                             </span>

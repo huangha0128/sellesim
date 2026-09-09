@@ -1,24 +1,27 @@
 <template>
   <view class="detail-page">
-    <!-- 顶部状态栏 -->
-    <view class="status-header" :style="{ background: getHeaderGradient() }">
-      <view class="status-content">
-        <view class="status-flag">
-          <image class="status-flag-img" :src="getFlagImage(esim?.pkg?.countryCode)" mode="aspectFit" />
+    <!-- 顶部浅色 Hero（与首页视觉语言一致：眉题 → 大标题 → 白色 chip） -->
+    <view class="hero">
+      <view class="hero-content">
+        <text class="hero-overline">{{ fmt('esimDetail.eyebrow') }}</text>
+        <text class="hero-title">{{ esim?.pkg?.countryName || 'eSIM' }}</text>
+        <view class="hero-chips">
+          <view class="hero-chip" :class="esim?.status">
+            <view class="chip-dot"></view>
+            <text class="chip-text">{{ statusText }}</text>
+          </view>
+          <view class="hero-chip">
+            <text class="chip-text">{{ specText }}</text>
+          </view>
         </view>
-        <view class="status-info">
-          <text class="status-name">{{ esim?.pkg?.countryName }} eSIM</text>
-          <text class="status-badge" :class="esim?.status">{{ statusText }}</text>
-        </view>
+      </view>
+      <view class="hero-flag-card">
+        <image class="hero-flag-img" :src="getFlagImage(esim?.pkg?.countryCode)" mode="aspectFit" />
       </view>
     </view>
 
-    <!-- 卡片信息 -->
+    <!-- 卡片信息（上浮叠压 Hero 底部） -->
     <view class="info-card">
-      <view class="info-row">
-        <text class="info-label">{{ fmt('esimDetail.specTitle') }}</text>
-        <text class="info-value">{{ specText }}</text>
-      </view>
       <view class="info-row">
         <text class="info-label">{{ fmt('esims.expireLabel') }}</text>
         <text class="info-value">{{ formatDate(esim?.expireAt) }}</text>
@@ -83,7 +86,6 @@ import { api } from '@/utils/api'
 import { store } from '@/store'
 import { formatDate } from '@/utils/format'
 import { setNavTitle, t as translate } from '@/locales'
-import { HEADER_GRADIENT } from '@/theme'
 
 // 命名占位符兜底替换（如 {gb}、{used}）
 function fmtNamed(str, p) {
@@ -140,9 +142,6 @@ export default {
     getFlagImage(code) {
       if (!code) return '/static/icons/flag-unknown.png'
       return `/static/icons/flag-${code.toLowerCase()}.png`
-    },
-    getHeaderGradient() {
-      return HEADER_GRADIENT
     },
     async loadEsim() {
       try {
@@ -209,70 +208,119 @@ export default {
   background: $bg-page;
 }
 
-.status-header {
-  padding: 40rpx 40rpx 60rpx;
-  border-radius: 0 0 40rpx 40rpx;
-}
-
-.status-content {
+/* ============ 顶部浅色 Hero（首页同款：浅蓝紫渐变 + 编辑排版） ============ */
+.hero {
+  position: relative;
+  background: $gradient-canvas;
+  padding: 44rpx 40rpx 120rpx;
+  border-radius: 0 0 48rpx 48rpx;
   display: flex;
   align-items: center;
+  justify-content: space-between;
 }
 
-.status-flag {
-  width: 120rpx;
-  height: 120rpx;
-  border-radius: 32rpx;
-  background: rgba(255, 255, 255, 0.25);
-  border: 2rpx solid rgba(255, 255, 255, 0.4);
+.hero-content {
+  flex: 1;
+  min-width: 0;
+  padding-right: 24rpx;
+}
+
+/* 眉题：品牌蓝小字，字距拉开 */
+.hero-overline {
+  display: block;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: $brand;
+  letter-spacing: 8rpx;
+  margin-bottom: 16rpx;
+}
+
+/* 主标题：深墨色大字 */
+.hero-title {
+  display: block;
+  font-size: 56rpx;
+  font-weight: 800;
+  color: $brand;
+  background-image: $gradient-text;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.22;
+  letter-spacing: 2rpx;
+}
+
+/* 状态 / 规格 chip：白色小卡片 */
+.hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 28rpx;
+}
+
+.hero-chip {
+  display: flex;
+  align-items: center;
+  height: 56rpx;
+  padding: 0 24rpx;
+  border-radius: 28rpx;
+  background: #ffffff;
+  box-shadow: 0 4rpx 16rpx rgba(64, 80, 192, 0.08);
+  margin-right: 14rpx;
+}
+
+.chip-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  margin-right: 10rpx;
+  background: $ink-3;
+}
+
+.hero-chip.activated .chip-dot {
+  background: $teal;
+}
+
+.hero-chip.pending .chip-dot {
+  background: $sun;
+}
+
+.chip-text {
+  font-size: 22rpx;
+  font-weight: 600;
+  color: $ink-2;
+}
+
+.hero-chip.activated .chip-text {
+  color: $teal-deep;
+}
+
+.hero-chip.pending .chip-text {
+  color: $sun-deep;
+}
+
+/* 国旗卡：白色浮雕小卡（呼应首页 3D 插画卡） */
+.hero-flag-card {
+  width: 168rpx;
+  height: 168rpx;
+  border-radius: 40rpx;
+  background: #ffffff;
+  box-shadow: 0 12rpx 32rpx rgba(64, 80, 192, 0.14);
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
   flex-shrink: 0;
+  overflow: hidden;
 }
 
-.status-flag-img {
-  width: 90rpx;
-  height: 90rpx;
-}
-
-.status-info {
-  margin-left: 28rpx;
-  flex: 1;
-}
-
-.status-name {
-  font-size: 36rpx;
-  font-weight: 800;
-  color: #ffffff;
-  display: block;
-  margin-bottom: 12rpx;
-}
-
-.status-badge {
-  font-size: 22rpx;
-  font-weight: 600;
-  padding: 6rpx 18rpx;
-  border-radius: 999rpx;
-  display: inline-block;
-
-  &.activated {
-    color: $teal-deep;
-    background: rgba(255, 255, 255, 0.9);
-  }
-
-  &.pending {
-    color: $warn;
-    background: rgba(255, 255, 255, 0.9);
-  }
+.hero-flag-img {
+  width: 116rpx;
+  height: 116rpx;
 }
 
 .info-card {
   background: #ffffff;
   border-radius: 24rpx;
-  margin: -30rpx 24rpx 24rpx;
-  padding: 28rpx;
+  margin: -56rpx 24rpx 24rpx;
+  padding: 8rpx 28rpx;
   box-shadow: $shadow-sm;
   position: relative;
   z-index: 2;

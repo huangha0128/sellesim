@@ -4,39 +4,39 @@
 
 @layer base {
   :root {
-    /* 蓝紫科技渐变底（与小程序 YYeSim 品牌一致） */
-    --background: 247 79% 98%;
-    --foreground: 244 46% 20%;
+    /* 浅色高级感主题：白底墨字 + 低饱和品牌蓝紫点缀（Apple/Stripe 风格） */
+    --background: 228 28% 97%;
+    --foreground: 231 26% 17%;
 
     --card: 0 0% 100%;
-    --card-foreground: 244 46% 20%;
+    --card-foreground: 231 26% 17%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 244 46% 20%;
+    --popover-foreground: 231 26% 17%;
 
-    /* 主色：亮紫蓝 brand #6D5DF0 */
-    --primary: 247 83% 65%;
+    /* 品牌主色：低饱和蓝紫 #5A53E0（去高亮霓虹感） */
+    --primary: 244 56% 56%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 248 55% 94%;
-    --secondary-foreground: 248 48% 32%;
+    --secondary: 240 30% 95%;
+    --secondary-foreground: 244 24% 36%;
 
-    --muted: 247 60% 95%;
-    --muted-foreground: 245 21% 46%;
+    --muted: 228 28% 96%;
+    --muted-foreground: 228 13% 43%;
 
-    --accent: 249 66% 93%;
-    --accent-foreground: 247 55% 30%;
+    --accent: 244 55% 96%;
+    --accent-foreground: 244 40% 34%;
 
-    --destructive: 4 80% 60%;
+    --destructive: 4 68% 56%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 244 44% 90%;
-    --input: 244 42% 86%;
-    --ring: 247 75% 65%;
+    --border: 228 22% 91%;
+    --input: 228 20% 87%;
+    --ring: 244 62% 58%;
 
-    /* 自定义墨色与柔和色 */
-    --ink: 244 46% 20%;
-    --soft: 247 65% 96%;
+    /* 自定义墨色与柔和信息色 */
+    --ink: 231 26% 17%;
+    --soft: 240 32% 96%;
 
     --radius: 1.25rem;
   }
@@ -51,28 +51,29 @@
   }
 }
 
-/* 全局渐变氛围背景点缀（蓝紫科技感） */
+/* 全局画布：近乎纯净的浅底，仅保留极淡的品牌水洗（去掉光晕堆砌） */
 .app-canvas {
   min-height: 100vh;
   background:
-    radial-gradient(1100px 520px at 88% -10%, rgba(139, 92, 246, 0.13), transparent 60%),
-    radial-gradient(900px 480px at -8% 0%, rgba(99, 102, 241, 0.09), transparent 55%),
+    radial-gradient(1200px 560px at 100% -10%, hsla(244, 60%, 66%, 0.06), transparent 60%),
+    radial-gradient(900px 480px at -10% 0%, hsla(228, 40%, 66%, 0.05), transparent 55%),
     hsl(var(--background));
 }
 
-/* 扁平白卡 + 单一柔和投影（替代半透明白玻璃卡） */
+/* 扁平白卡 + 中性柔和投影（去紫色投影） */
 .panel-card {
   border-radius: 1.25rem;
   border: 1px solid hsl(var(--border));
   background: hsl(var(--card));
   box-shadow:
-    0 1px 2px rgba(23, 18, 63, 0.04),
-    0 20px 50px -24px rgba(98, 78, 240, 0.2);
+    0 1px 2px rgba(15, 23, 42, 0.04),
+    0 18px 44px -26px rgba(24, 32, 64, 0.16);
 }
 
-/* 侧边栏渐变深紫背景 */
+/* 浅色侧栏：白底 + 细分隔线，墨色导航 */
 .sidebar-canvas {
+  border-right: 1px solid hsl(var(--border));
   background:
-    radial-gradient(600px 320px at 0% 0%, rgba(139, 92, 246, 0.32), transparent 55%),
-    linear-gradient(180deg, #3e2fa8 0%, #1e1b4b 100%);
+    radial-gradient(420px 300px at 0% 0%, hsla(244, 55%, 72%, 0.07), transparent 55%),
+    linear-gradient(180deg, hsl(var(--card)) 0%, hsl(var(--soft)) 100%);
 }

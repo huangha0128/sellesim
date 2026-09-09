@@ -86,7 +86,7 @@ export default function TigerSyncPage() {
       <Card className="panel-card lg:col-span-2">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
           <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#8b5cf6]/15 text-[#6d5df0]">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Database size={16} />
             </span>
             <CardTitle className="text-[15px] text-ink">Tiger 同步状态</CardTitle>

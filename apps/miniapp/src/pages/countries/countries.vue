@@ -2,7 +2,6 @@
   <view class="countries-page">
     <!-- Search Hero -->
     <view class="hero-header">
-      <view class="hero-bg"></view>
       <view class="hero-search-wrap">
         <view class="search-bar">
           <view class="search-icon">
@@ -32,38 +31,38 @@
       <view v-if="keyword" class="search-results">
         <view v-if="searchPackages.length" class="pkg-list">
           <view
-            v-for="(p, idx) in searchPackages"
-            :key="p.id"
+            v-for="(pkg, idx) in searchPackages"
+            :key="pkg.id"
             class="package-card"
             hover-class="package-card--hover"
-            @tap="goDetail(p.id)"
+            @tap="goDetail(pkg.id)"
           >
             <!-- 封面 -->
             <view class="card-cover" :style="{ background: getCoverGradient(idx) }">
               <view class="cover-deco-circle"></view>
               <view class="cover-deco-circle small"></view>
               <view class="cover-content">
-                <text class="cover-title">{{ p.countryName }}</text>
+                <text class="cover-title">{{ pkg.countryName }}</text>
                 <text class="cover-subtitle">{{ fmt('countries.plan') }}</text>
                 <view class="cover-specs">
-                  <text class="spec-tag">{{ formatDays(p) }}</text>
-                  <text class="spec-tag">{{ formatGb(p) }}</text>
+                  <text class="spec-tag">{{ formatDays(pkg) }}</text>
+                  <text class="spec-tag">{{ formatGb(pkg) }}</text>
                 </view>
               </view>
               <view class="esim-badge">eSIM</view>
             </view>
             <!-- 信息 -->
             <view class="card-info">
-              <text class="card-title">{{ p.countryName }}{{ fmt('countries.plan') }}</text>
+              <text class="card-title">{{ pkg.countryName }}{{ fmt('countries.plan') }}</text>
               <view class="card-tags">
                 <text class="tag tag-primary">{{ fmt('countries.instant') }}</text>
                 <text class="tag tag-secondary">{{ fmt('countries.noRealName') }}</text>
               </view>
               <view class="card-footer">
-                <text class="sales-count">{{ fmt('countries.sold') }}</text>
+                <text class="sales-count">{{ fmt('countries.sold', { n: pkg.soldCount ?? 0 }) }}</text>
                 <view class="price-block">
                   <text class="price-currency">{{ displayCurrency }}</text>
-                  <text class="price-value">{{ fmtPrice(p.price) }}</text>
+                  <text class="price-value">{{ fmtPrice(pkg.price) }}</text>
                   <text class="price-unit">{{ fmt('common.priceFrom') }}</text>
                 </view>
               </view>
@@ -178,8 +177,8 @@
                     <image class="row-flag-img" :src="getFlagImage(c.code)" mode="aspectFit" />
                   </view>
                   <view class="row-info">
-                    <text class="row-name">{{ c.name }}</text>
-                    <text class="row-en">{{ c.en }}</text>
+                    <text class="row-name">{{ localName(c) }}</text>
+                    <text class="row-en">{{ altName(c) }}</text>
                   </view>
                   <text class="row-arrow">›</text>
                 </view>
@@ -295,6 +294,25 @@ export default {
     fmt(key, params) {
       return fmtNamed(translate(key, params), params)
     },
+    // 地区名称按当前语言显示：英文用 en，中文（简/繁）用 name
+    localName(c) {
+      if (!c) return ''
+      const isEn = this.isEnLocale()
+      return (isEn ? (c.en || c.name) : (c.name || c.en)) || ''
+    },
+    // 副语言名：英文模式显示中文，中文模式显示英文
+    altName(c) {
+      if (!c) return ''
+      const isEn = this.isEnLocale()
+      return (isEn ? (c.name || c.en) : (c.en || c.name)) || ''
+    },
+    isEnLocale() {
+      try {
+        return uni.getStorageSync('yy_locale') === 'en'
+      } catch (e) {
+        return false
+      }
+    },
     getFlagImage(code) {
       return `/static/icons/flag-${code.toLowerCase()}.png`
     },
@@ -355,9 +373,10 @@ export default {
       this.saveRecentSearch(tag)
     },
     onCountryTap(country) {
-      this.keyword = country.name
+      const name = this.localName(country)
+      this.keyword = name
       this.doSearch()
-      this.saveRecentSearch(country.name)
+      this.saveRecentSearch(name)
     },
     scrollToLetter(letter) {
       this.currentLetter = letter
@@ -406,22 +425,10 @@ export default {
 .hero-header {
   position: relative;
   overflow: hidden;
-  background: $gradient-brand;
-  padding: 28rpx 32rpx 40rpx;
+  background: linear-gradient(168deg, #E4EAFF 0%, #F0F3FF 52%, #F5F7F8 100%);
+  padding: 28rpx 32rpx 52rpx;
+  border-radius: 0 0 48rpx 48rpx;
   flex-shrink: 0;
-}
-
-.hero-bg {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  opacity: 0.12;
-  background-image: url('/static/icons/region-global.png');
-  background-size: 320rpx;
-  background-position: right -40rpx top 20rpx;
-  background-repeat: no-repeat;
 }
 
 .hero-search-wrap {
@@ -436,7 +443,7 @@ export default {
   display: flex;
   align-items: center;
   padding: 0 24rpx;
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.12);
+  box-shadow: 0 8rpx 24rpx rgba(48, 48, 160, 0.08);
 }
 
 .search-icon {

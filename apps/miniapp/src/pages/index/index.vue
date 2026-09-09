@@ -1,23 +1,25 @@
 <template>
   <view class="home">
-    <!-- Hero Banner -->
+    <!-- Hero Banner：浅色编辑排版 + 3D 视觉 -->
     <view class="hero" :style="{ paddingTop: statusBarHeight + 'px' }">
+      <image class="hero-art" src="/static/icons/hero-globe.jpg" mode="aspectFill" />
+
       <view class="hero-content">
-        <view class="hero-left">
-          <text class="hero-title">{{ fmt('index.heroTitle') }}</text>
-          <view class="hero-features">
-            <view class="feature-item">
-              <text class="feature-dot">•</text>
-              <text class="feature-text">{{ fmt('index.heroFeature1') }}</text>
-            </view>
-            <view class="feature-item">
-              <text class="feature-dot">•</text>
-              <text class="feature-text">{{ fmt('index.heroFeature2') }}</text>
-            </view>
-          </view>
+        <text class="hero-overline">{{ fmt('index.heroBadge') }}</text>
+        <view class="hero-title">
+          <text class="hero-title-main">{{ fmt('index.heroTitle') }}</text>
+          <text class="hero-title-sub">{{ fmt('index.heroSub') }}</text>
         </view>
-        <view class="hero-right">
-          <image class="hero-phone" src="/static/icons/hero-esim-ai2.jpg" mode="aspectFit" />
+        <view class="hero-chips">
+          <view class="hero-chip">
+            <text class="hero-chip-text">{{ fmt('index.heroFeature1') }}</text>
+          </view>
+          <view class="hero-chip">
+            <text class="hero-chip-text">{{ fmt('index.heroFeature2') }}</text>
+          </view>
+          <view class="hero-chip">
+            <text class="hero-chip-text">{{ fmt('index.heroFeature3') }}</text>
+          </view>
         </view>
       </view>
     </view>
@@ -37,12 +39,15 @@
 
     <!-- Package Cards -->
     <view class="package-list">
+      <view class="section-head">
+        <text class="section-title">{{ fmt('index.hotPackages') }}</text>
+      </view>
       <view
-        v-for="(p, idx) in hotPackages"
-        :key="p.id"
+        v-for="(pkg, idx) in hotPackages"
+        :key="pkg.id"
         class="package-card"
         hover-class="package-card--hover"
-        @tap="goDetail(p.id)"
+        @tap="goDetail(pkg.id)"
       >
         <!-- Left: Cover Image -->
         <view class="card-cover" :style="{ background: getCoverGradient(idx) }">
@@ -50,11 +55,11 @@
           <view class="cover-deco-circle"></view>
           <view class="cover-deco-circle small"></view>
           <view class="cover-content">
-            <text class="cover-title">{{ p.countryName }}</text>
+            <text class="cover-title">{{ pkg.countryName }}</text>
             <text class="cover-subtitle">{{ fmt('index.plan') }}</text>
             <view class="cover-specs">
-              <text class="spec-tag">{{ fmt('common.dayUnit', { d: p.days }) }}</text>
-              <text class="spec-tag">{{ p.gb }}GB</text>
+              <text class="spec-tag">{{ fmt('common.dayUnit', { d: pkg.days }) }}</text>
+              <text class="spec-tag">{{ pkg.gb }}GB</text>
             </view>
           </view>
           <view class="esim-badge">eSIM</view>
@@ -62,7 +67,7 @@
 
         <!-- Right: Info -->
         <view class="card-info">
-          <text class="card-title">{{ p.countryName }}{{ fmt('index.plan') }}</text>
+          <text class="card-title">{{ pkg.countryName }}{{ fmt('index.plan') }}</text>
           <view class="card-tags">
             <text class="tag tag-primary">{{ fmt('index.instant') }}</text>
             <text class="tag tag-secondary">{{ fmt('index.noRealName') }}</text>
@@ -71,7 +76,7 @@
             <text class="sales-count">{{ fmt('index.soldCount', { n: formatSales(idx) }) }}</text>
             <view class="price-block">
               <text class="price-currency">{{ displayCurrency }}</text>
-              <text class="price-value">{{ fmtPrice(p.price) }}</text>
+              <text class="price-value">{{ fmtPrice(pkg.price) }}</text>
               <text class="price-unit">{{ fmt('common.priceFrom') }}</text>
             </view>
           </view>
@@ -138,10 +143,6 @@ export default {
     getCoverGradient(idx) {
       return COVER_GRADIENTS[idx % COVER_GRADIENTS.length]
     },
-    formatSales(idx) {
-      const salesList = ['9999+', '6590', '3447', '2890', '1560', '980']
-      return salesList[idx] || '1000+'
-    },
     async loadData() {
       uni.showLoading({ title: this.fmt('common.loading'), mask: true })
       try {
@@ -177,75 +178,94 @@ export default {
   background: $bg-page;
 }
 
-/* ============ Hero Banner ============ */
+/* ============ Hero Banner：浅色编辑排版 + 3D 视觉 ============ */
 .hero {
   position: relative;
   overflow: hidden;
-  background: $gradient-brand;
-  padding-bottom: 120rpx;
+  background: linear-gradient(168deg, #E4EAFF 0%, #F0F3FF 52%, #F5F7F8 100%);
+  padding-bottom: 130rpx;
+  border-radius: 0 0 48rpx 48rpx;
+}
+
+/* 3D 插画卡：右侧出血，圆角 + 柔和阴影 */
+.hero-art {
+  position: absolute;
+  right: -56rpx;
+  top: 64rpx;
+  width: 330rpx;
+  height: 330rpx;
+  border-radius: 40rpx;
+  box-shadow: 0 24rpx 48rpx rgba(64, 80, 192, 0.18);
+  z-index: 1;
 }
 
 .hero-content {
   position: relative;
-  display: flex;
-  align-items: center;
-  padding: 40rpx 40rpx 0;
-}
-
-.hero-left {
-  flex: 1;
+  padding: 56rpx 40rpx 0;
   z-index: 2;
 }
 
-.hero-title {
-  font-size: 56rpx;
+/* 眉题：品牌蓝小字，字距拉开 */
+.hero-overline {
+  display: block;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: $brand;
+  letter-spacing: 8rpx;
+  margin-bottom: 20rpx;
+}
+
+/* 双行大标语：品牌蓝紫渐变文字（呼应 logo 深蓝紫→浅蓝） */
+.hero-title-main {
+  display: block;
+  font-size: 64rpx;
   font-weight: 800;
-  color: #ffffff;
+  color: $brand;
+  background-image: $gradient-text;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.22;
   letter-spacing: 2rpx;
-  line-height: 1.2;
-  text-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.15);
 }
 
-.hero-features {
-  margin-top: 24rpx;
+.hero-title-sub {
+  display: block;
+  font-size: 64rpx;
+  font-weight: 800;
+  color: $brand;
+  background-image: $gradient-text;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.22;
+  letter-spacing: 2rpx;
 }
 
-.feature-item {
+/* 特性：白色小卡片 chip */
+.hero-chips {
+  display: flex;
+  flex-wrap: wrap;
+  margin-top: 30rpx;
+  max-width: 400rpx;
+}
+
+.hero-chip {
   display: flex;
   align-items: center;
-  margin-bottom: 12rpx;
+  height: 56rpx;
+  padding: 0 24rpx;
+  border-radius: 28rpx;
+  background: #ffffff;
+  box-shadow: 0 4rpx 16rpx rgba(64, 80, 192, 0.08);
+  margin-right: 14rpx;
+  margin-bottom: 14rpx;
 }
 
-.feature-dot {
-  font-size: 28rpx;
-  color: rgba(255, 255, 255, 0.9);
-  margin-right: 12rpx;
-}
-
-.feature-text {
-  font-size: 28rpx;
-  color: rgba(255, 255, 255, 0.9);
-  font-weight: 500;
-}
-
-.hero-right {
-  position: absolute;
-  right: 20rpx;
-  top: 20rpx;
-  width: 280rpx;
-  height: 280rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0.9;
-}
-
-.hero-phone {
-  width: 240rpx;
-  height: 240rpx;
-  border-radius: 50%;
-  border: 2rpx solid rgba(255, 255, 255, 0.35);
-  box-shadow: 0 12rpx 32rpx rgba(0, 0, 0, 0.18);
+.hero-chip-text {
+  font-size: 22rpx;
+  font-weight: 600;
+  color: $ink-2;
 }
 
 /* ============ Search Bar ============ */
@@ -320,7 +340,21 @@ export default {
 
 /* ============ Package List ============ */
 .package-list {
-  padding: 32rpx 24rpx;
+  padding: 36rpx 24rpx;
+}
+
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 24rpx;
+}
+
+.section-title {
+  font-size: 40rpx;
+  font-weight: 800;
+  color: $ink;
+  letter-spacing: 1rpx;
 }
 
 .package-card {

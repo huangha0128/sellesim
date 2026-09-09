@@ -20,7 +20,7 @@
 
       <!-- 条款正文 -->
       <view class="doc-card">
-        <view v-for="(s, i) in sections" :key="i" class="sec">
+        <view v-for="(s, i) in doc.sections" :key="i" class="sec">
           <text class="sec-h">{{ s.h }}</text>
           <text v-for="(p, j) in s.p" :key="j" class="sec-p">{{ p }}</text>
         </view>
@@ -50,6 +50,7 @@ export default {
   },
   onShow() {
     setNavTitle(`legal.${this.type}.title`)
+    this.buildDoc()
   },
   methods: {
     buildDoc() {
@@ -75,7 +76,7 @@ export default {
 
 /* ============ 顶部标题区 ============ */
 .page-hero {
-  background: $gradient-brand;
+  background: $gradient-canvas;
   padding: 56rpx $page-pad 64rpx;
   border-radius: 0 0 40rpx 40rpx;
   display: flex;
@@ -86,13 +87,17 @@ export default {
 .hero-title {
   font-size: 42rpx;
   font-weight: 800;
-  color: #ffffff;
+  color: $brand;
+  background-image: $gradient-text;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
 .hero-sub {
   margin-top: 12rpx;
   font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.85);
+  color: $ink-3;
 }
 
 .page-body {

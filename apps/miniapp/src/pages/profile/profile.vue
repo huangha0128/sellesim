@@ -51,12 +51,6 @@
           <text class="oc-label">{{ $t('profile.statusRefunded') }}</text>
           <view class="oc-badge" v-if="orderCountBy('refunded') > 0">{{ orderCountBy('refunded') }}</view>
         </view>
-        <view class="oc-item" hover-class="oc-item--hover" @click="goOrders">
-          <view class="oc-icon-wrap">
-            <image class="oc-icon" src="/static/icons/prof-help.png" mode="aspectFit" />
-          </view>
-          <text class="oc-label">{{ $t('profile.afterSales') }}</text>
-        </view>
       </view>
     </view>
 
@@ -219,8 +213,9 @@ export default {
 
 /* ============ 顶部用户区 ============ */
 .user-header {
-  background: $gradient-brand;
-  padding: 80rpx 40rpx 60rpx;
+  background: $gradient-canvas;
+  padding: 88rpx 40rpx 68rpx;
+  border-radius: 0 0 48rpx 48rpx;
   display: flex;
   align-items: center;
 }
@@ -229,8 +224,9 @@ export default {
   width: 120rpx;
   height: 120rpx;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  border: 4rpx solid rgba(255, 255, 255, 0.5);
+  background: #ffffff;
+  border: 4rpx solid #ffffff;
+  box-shadow: 0 8rpx 24rpx rgba(48, 48, 160, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -249,16 +245,17 @@ export default {
 }
 
 .uh-name {
-  font-size: 36rpx;
-  font-weight: 700;
-  color: #ffffff;
+  font-size: 40rpx;
+  font-weight: 800;
+  color: $ink;
   display: block;
+  letter-spacing: 1rpx;
 }
 
 .uh-sub {
   margin-top: 10rpx;
   font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.75);
+  color: $ink-3;
   display: block;
 }
 

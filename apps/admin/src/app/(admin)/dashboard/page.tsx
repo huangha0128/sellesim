@@ -24,7 +24,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { adminApi, unwrap, getErrorMessage, type DashboardStats, type Order, type Esim } from '@/api';
 
-const ACCENT = ['#6d5df0', '#8b5cf6', '#0ea5e9', '#10b981', '#a78bfa', '#f59e0b'];
+// 低饱和品牌点缀色板（与浅色高级感主题一致）
+const ACCENT = ['#5a53e0', '#7c6ff0', '#4f8fd9', '#2f9e7f', '#6f75d6', '#d98944'];
 
 function StatBadge({ status }: { status: string }) {
   if (status === 'paid') return <Badge variant="success">已支付</Badge>;
@@ -77,7 +78,7 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <div className="flex items-end justify-between gap-4 animate-fade-up">
         <div>
-          <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6d5df0]">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             Overview
           </div>
           <h1 className="mt-1.5 text-[26px] font-bold leading-none tracking-tight text-ink">

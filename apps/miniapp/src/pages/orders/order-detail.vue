@@ -13,18 +13,29 @@
 
     <template v-else>
       <view class="hero">
-        <view class="hero-flag">
-          <image class="hero-flag-img" :src="getFlagImage(order)" mode="aspectFit" />
+        <view class="hero-top">
+          <view class="hero-main">
+            <text class="hero-overline">{{ fmt('orders.detailEyebrow') }}</text>
+            <text class="hero-title">{{ fmt('checkout.skuName', { name: order.countryName || order.pkgName }) }}</text>
+            <text class="hero-meta">{{ fmt('orders.meta', { gb: order.gb, days: order.days }) }}</text>
+          </view>
+          <view class="hero-flag-card">
+            <image class="hero-flag-img" :src="getFlagImage(order)" mode="aspectFit" />
+          </view>
         </view>
-        <view class="hero-info">
-          <text class="hero-status" :class="categoryOf(order)">{{ statusText(order) }}</text>
-          <text class="hero-name">{{ fmt('checkout.skuName', { name: order.countryName || order.pkgName }) }}</text>
-          <text class="hero-meta">{{ fmt('orders.meta', { gb: order.gb, days: order.days }) }}</text>
+        <view class="hero-bottom">
+          <view class="hero-chip" :class="categoryOf(order)">
+            <view class="chip-dot"></view>
+            <text class="chip-text">{{ statusText(order) }}</text>
+          </view>
+          <view class="hero-price">
+            <text class="price-sym">¥</text>
+            <text class="price-num">{{ priceText(order) }}</text>
+          </view>
         </view>
-        <text class="hero-price">¥{{ priceText(order) }}</text>
       </view>
 
-      <view v-if="esim" class="card">
+      <view v-if="esim" class="card card--overlap">
         <view class="card-title">
           <text class="ct-txt">{{ fmt('orders.esimInfo') }}</text>
           <text class="ct-status" :class="esim.status">{{ esim.status === 'activated' ? fmt('esims.activated') : fmt('esims.pending') }}</text>
@@ -51,7 +62,7 @@
         </view>
       </view>
 
-      <view class="card">
+      <view class="card" :class="{ 'card--overlap': !esim }">
         <view class="card-title">
           <text class="ct-txt">{{ fmt('orders.orderInfo') }}</text>
         </view>
@@ -367,21 +378,68 @@ export default {
   color: $brand;
 }
 
+/* ============ 顶部浅色 Hero（首页同款：浅蓝紫渐变 + 编辑排版） ============ */
 .hero {
-  margin-top: 24rpx;
-  background: $gradient-brand;
-  border-radius: $radius-lg;
-  padding: 32rpx;
-  display: flex;
-  align-items: center;
-  box-shadow: $shadow-brand;
+  margin: 0 (-$page-pad);
+  background: $gradient-canvas;
+  padding: 40rpx $page-pad 100rpx;
+  border-radius: 0 0 48rpx 48rpx;
 }
 
-.hero-flag {
-  width: 92rpx;
-  height: 92rpx;
-  border-radius: 24rpx;
-  background: rgba(255, 255, 255, 0.9);
+.hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hero-main {
+  flex: 1;
+  min-width: 0;
+  padding-right: 24rpx;
+}
+
+/* 眉题：品牌蓝小字，字距拉开 */
+.hero-overline {
+  display: block;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: $brand;
+  letter-spacing: 8rpx;
+  margin-bottom: 16rpx;
+}
+
+/* 主标题：深墨色大字 */
+.hero-title {
+  display: block;
+  font-size: 48rpx;
+  font-weight: 800;
+  color: $brand;
+  background-image: $gradient-text;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.24;
+  letter-spacing: 1rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 副标语：规格信息 */
+.hero-meta {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: $ink-3;
+}
+
+/* 国旗卡：白色浮雕小卡 */
+.hero-flag-card {
+  width: 144rpx;
+  height: 144rpx;
+  border-radius: 36rpx;
+  background: #ffffff;
+  box-shadow: 0 12rpx 32rpx rgba(64, 80, 192, 0.14);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -390,65 +448,92 @@ export default {
 }
 
 .hero-flag-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+  width: 100rpx;
+  height: 100rpx;
 }
 
-.hero-info {
-  flex: 1;
-  margin-left: 22rpx;
-  min-width: 0;
+/* 底部行：状态 chip + 价格 */
+.hero-bottom {
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 28rpx;
 }
 
-.hero-status {
-  align-self: flex-start;
-  font-size: 20rpx;
-  font-weight: 700;
-  padding: 4rpx 18rpx;
-  border-radius: 999rpx;
-  background: rgba(255, 255, 255, 0.25);
-  color: #ffffff;
-
-  &.done {
-    background: rgba(255, 255, 255, 0.9);
-    color: $teal-deep;
-  }
-
-  &.pending,
-  &.activate {
-    color: #ffffff;
-  }
-
-  &.refunded {
-    background: rgba(255, 255, 255, 0.9);
-    color: $coral;
-  }
+.hero-chip {
+  display: flex;
+  align-items: center;
+  height: 56rpx;
+  padding: 0 24rpx;
+  border-radius: 28rpx;
+  background: #ffffff;
+  box-shadow: 0 4rpx 16rpx rgba(64, 80, 192, 0.08);
 }
 
-.hero-name {
-  margin-top: 12rpx;
-  font-size: 34rpx;
-  font-weight: 800;
-  color: #ffffff;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.chip-dot {
+  width: 12rpx;
+  height: 12rpx;
+  border-radius: 50%;
+  margin-right: 10rpx;
+  background: $ink-3;
 }
 
-.hero-meta {
-  margin-top: 6rpx;
-  font-size: 23rpx;
-  color: rgba(255, 255, 255, 0.85);
+.chip-text {
+  font-size: 22rpx;
+  font-weight: 600;
+  color: $ink-2;
+}
+
+.hero-chip.pending .chip-dot,
+.hero-chip.activate .chip-dot {
+  background: $sun;
+}
+
+.hero-chip.pending .chip-text,
+.hero-chip.activate .chip-text {
+  color: $sun-deep;
+}
+
+.hero-chip.done .chip-dot {
+  background: $teal;
+}
+
+.hero-chip.done .chip-text {
+  color: $teal-deep;
+}
+
+.hero-chip.refunded .chip-dot {
+  background: $coral;
+}
+
+.hero-chip.refunded .chip-text {
+  color: $coral;
 }
 
 .hero-price {
-  font-size: 36rpx;
+  display: flex;
+  align-items: baseline;
+}
+
+.price-sym {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: $ink-2;
+  margin-right: 4rpx;
+}
+
+.price-num {
+  font-size: 44rpx;
   font-weight: 800;
-  color: #ffffff;
-  margin-left: 16rpx;
+  color: $ink;
+  line-height: 1;
+}
+
+/* 首张卡片上浮叠压 Hero 底部 */
+.card--overlap {
+  margin-top: -48rpx;
+  position: relative;
+  z-index: 2;
 }
 
 .card {

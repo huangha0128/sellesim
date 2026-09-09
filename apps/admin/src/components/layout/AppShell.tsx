@@ -52,14 +52,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-canvas flex min-h-screen">
       {/* 侧边栏 */}
-      <aside className="sidebar-canvas sticky top-0 flex h-screen w-60 shrink-0 flex-col text-white">
+      <aside className="sidebar-canvas sticky top-0 flex h-screen w-60 shrink-0 flex-col">
         <div className="flex h-16 items-center gap-3 px-5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#6d5df0] to-[#8b5cf6] shadow-[0_4px_14px_-4px_rgba(109,93,240,0.55)]">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#5a53e0] to-[#7c6ff0] shadow-sm">
             <Zap className="h-5 w-5 text-white" />
           </span>
           <div className="leading-tight">
-            <div className="text-[15px] font-semibold tracking-[0.02em]">YYeSim</div>
-            <div className="text-[10.5px] uppercase tracking-[0.18em] text-white/45">Console</div>
+            <div className="text-[15px] font-semibold tracking-[0.02em] text-ink">YYeSim</div>
+            <div className="text-[10.5px] uppercase tracking-[0.18em] text-muted-foreground">Console</div>
           </div>
         </div>
 
@@ -74,33 +74,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 className={cn(
                   'group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13.5px] transition-colors',
                   active
-                    ? 'bg-white/12 text-white'
-                    : 'text-white/60 hover:bg-white/5 hover:text-white/90',
+                    ? 'bg-accent font-medium text-accent-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-ink',
                 )}
               >
                 <Icon
                   className={cn(
                     'h-[18px] w-[18px] transition-colors',
-                    active ? 'text-white' : 'text-white/40 group-hover:text-white/70',
+                    active ? 'text-primary' : 'text-muted-foreground group-hover:text-ink',
                   )}
                 />
                 <span>{item.label}</span>
                 {active && (
-                  <span className="absolute left-0 top-1/2 h-4 w-1 -translate-y-1/2 rounded-r-full bg-gradient-to-b from-[#6d5df0] to-[#a78bfa]" />
+                  <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-primary" />
                 )}
               </Link>
             );
           })}
         </nav>
 
-        <div className="border-t border-white/10 p-4">
+        <div className="border-t border-border/70 p-4">
           <div className="flex items-center gap-3">
-            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/10 text-[12px] font-semibold">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-[12px] font-semibold text-ink">
               管
             </span>
             <div className="leading-tight">
-              <div className="text-[13px] font-medium">管理员</div>
-              <div className="text-[11px] text-white/50">admin</div>
+              <div className="text-[13px] font-medium text-ink">管理员</div>
+              <div className="text-[11px] text-muted-foreground">admin</div>
             </div>
           </div>
         </div>
@@ -110,7 +110,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/70 bg-background/85 px-8 backdrop-blur-md">
           <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#6d5df0]">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               YYeSim Console
             </div>
             <div className="mt-0.5 text-[19px] font-bold leading-none tracking-tight text-ink">
@@ -118,11 +118,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-border/70 bg-card text-muted-foreground transition-colors hover:bg-accent">
+            <button className="relative flex h-9 w-9 items-center justify-center rounded-lg border border-border/70 bg-card text-muted-foreground transition-colors hover:bg-muted">
               <Bell className="h-4 w-4" />
-              <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-[#6d5df0]" />
+              <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary" />
             </button>
-            <span className="rounded-full border border-[#6d5df0]/20 bg-[#6d5df0]/10 px-3 py-1 text-[12px] font-medium text-[#5b4be4]">
+            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[12px] font-medium text-emerald-700">
               生产环境
             </span>
           </div>

@@ -1,8 +1,9 @@
 <template>
   <view class="payment-page">
-    <view v-if="!paid" class="pay-content">
-      <view class="amount-box">
-        <text class="amount-label">{{ $t('payment.amountLabel') }}</text>
+    <template v-if="!paid">
+      <!-- 浅色金额 Hero（首页同款视觉语言：眉题 → 大数字 → 副标语） -->
+      <view class="amount-hero">
+        <text class="hero-overline">{{ $t('payment.eyebrow') }}</text>
         <view class="amount">
           <text class="a-sym">¥</text>
           <text class="a-num">{{ amountText }}</text>
@@ -10,6 +11,7 @@
         <text class="amount-sub">{{ $t('payment.orderNoPrefix', { no: orderNo }) }}</text>
       </view>
 
+      <view class="pay-content">
       <view class="order-card">
         <view class="oc-row">
           <text class="oc-label">{{ $t('payment.goodsLabel') }}</text>
@@ -34,7 +36,8 @@
       <view class="pay-cancel" @tap="goHome">{{ $t('payment.cancel') }}</view>
 
       <view class="pay-note">{{ useRealPayment ? $t('payment.noteReal') : $t('payment.noteDemo') }}</view>
-    </view>
+      </view>
+    </template>
 
     <view v-else class="success-wrap">
       <view class="success-circle">
@@ -259,53 +262,60 @@ export default {
 }
 
 .pay-content {
-  padding: 20rpx $page-pad;
+  padding: 0 $page-pad 20rpx;
 }
 
-.amount-box {
-  background: $gradient-brand;
-  border-radius: $radius-xl;
-  padding: 48rpx 0 56rpx;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  box-shadow: $shadow-brand;
+/* ============ 浅色金额 Hero（首页同款：浅蓝紫渐变 + 编辑排版） ============ */
+.amount-hero {
+  background: $gradient-canvas;
+  padding: 48rpx $page-pad 100rpx;
+  border-radius: 0 0 48rpx 48rpx;
 }
 
-.amount-label {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.85);
+.hero-overline {
+  display: block;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: $brand;
+  letter-spacing: 8rpx;
 }
 
 .amount {
   display: flex;
   align-items: baseline;
-  color: #ffffff;
-  font-weight: 800;
-  margin-top: 12rpx;
+  margin-top: 20rpx;
 }
 
 .a-sym {
   font-size: 36rpx;
+  font-weight: 600;
+  color: $ink-2;
+  margin-right: 6rpx;
 }
 
 .a-num {
   font-size: 88rpx;
-  line-height: 1.1;
+  font-weight: 800;
+  color: $ink;
+  line-height: 1.05;
+  letter-spacing: 1rpx;
 }
 
 .amount-sub {
+  display: block;
   margin-top: 16rpx;
-  font-size: 22rpx;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: 24rpx;
+  color: $ink-3;
 }
 
 .order-card {
   background: $bg-card;
   border-radius: $radius-lg;
   padding: 12rpx 32rpx;
-  margin-top: 24rpx;
+  margin-top: -48rpx;
   box-shadow: $shadow-sm;
+  position: relative;
+  z-index: 2;
 }
 
 .oc-row {

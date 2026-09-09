@@ -75,8 +75,13 @@ $gap: 24rpx;
 $page-pad: 40rpx;
 $section-gap: 68rpx;
 
+/* 品牌渐变文字：呼应 logo 深蓝紫→浅蓝，各页 Hero 大标题用它（内联 background-clip 实现） */
+$gradient-text: linear-gradient(125deg, $brand-deep 0%, $brand 40%, $brand-bright 72%, $brand-sky 100%);
+
 /* 渐变：蓝紫为主 + 浅蓝为辅（亮蓝紫 → 蓝青，保证白字可读） */
 $gradient-brand: linear-gradient(135deg, #5050D0 0%, #4050C0 55%, #3030A0 100%);
+/* 浅色画布渐变（首页 hero 同款：浅蓝紫 → 雾白，供各页头图复用） */
+$gradient-canvas: linear-gradient(168deg, $brand-light 0%, $brand-lighter 52%, $bg-page 100%);
 $gradient-hero: linear-gradient(168deg, #3030A0 0%, #4050C0 45%, #5050D0 75%, #6CD5FA 100%);
 $gradient-card: linear-gradient(165deg, #FFFFFF 0%, #F0F3FF 100%);
 $gradient-sky: linear-gradient(160deg, #EEF0FF 0%, #F0F3FF 60%, #FFFFFF 100%);

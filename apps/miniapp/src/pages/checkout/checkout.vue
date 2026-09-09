@@ -1,23 +1,31 @@
 <template>
   <view class="checkout-page">
-    <view v-if="pkg" class="checkout-body">
-      <view class="section-card">
-        <view class="order-head">
-          <text class="order-title">{{ fmt('checkout.title') }}</text>
+    <template v-if="pkg">
+      <!-- 浅色商品摘要 Hero（首页同款视觉语言：眉题 → 大标题 → 白色 chip） -->
+      <view class="checkout-hero">
+        <view class="hero-top">
+          <view class="hero-main">
+            <text class="hero-overline">{{ fmt('checkout.eyebrow') }}</text>
+            <text class="hero-title">{{ fmt('checkout.skuName', { name: pkg.countryName }) }}</text>
+            <text class="hero-meta">{{ fmt('checkout.sumMeta', { label: dataLabel, days, network: pkg.network }) }}</text>
+          </view>
+          <view class="hero-flag-card">
+            <image class="hero-flag-img" :src="getFlagImage(pkg.countryCode)" mode="aspectFit" />
+          </view>
         </view>
-        <view class="pkg-summary">
-          <view class="sum-flag">
-            <image class="sum-flag-img" :src="getFlagImage(pkg.countryCode)" mode="aspectFit" />
+        <view class="hero-bottom">
+          <view class="hero-chip">
+            <text class="chip-text">{{ fmt('checkout.instantChip') }}</text>
           </view>
-          <view class="sum-main">
-            <text class="sum-name">{{ fmt('checkout.skuName', { name: pkg.countryName }) }}</text>
-            <text class="sum-meta">{{ fmt('checkout.sumMeta', { label: dataLabel, days, network: pkg.network }) }}</text>
+          <view class="hero-price">
+            <text class="price-sym">{{ sym }}</text>
+            <text class="price-num">{{ priceNum }}</text>
           </view>
-          <view class="sum-price">{{ sym }}{{ priceNum }}</view>
         </view>
       </view>
 
-      <view class="section-card">
+      <view class="checkout-body">
+      <view class="section-card card--overlap">
         <view class="form-item">
           <text class="form-label">{{ fmt('checkout.emailLabel') }}</text>
           <input
@@ -166,7 +174,8 @@
       </view>
 
       <view class="footer-safe"></view>
-    </view>
+      </view>
+    </template>
 
     <view v-if="pkg" class="bottom-bar">
       <view class="pay-total">
@@ -375,6 +384,122 @@ export default {
   padding-bottom: 40rpx;
 }
 
+/* ============ 浅色商品摘要 Hero（首页同款：浅蓝紫渐变 + 编辑排版） ============ */
+.checkout-hero {
+  background: $gradient-canvas;
+  padding: 40rpx $page-pad 100rpx;
+  border-radius: 0 0 48rpx 48rpx;
+}
+
+.hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.hero-main {
+  flex: 1;
+  min-width: 0;
+  padding-right: 24rpx;
+}
+
+/* 眉题：品牌蓝小字，字距拉开 */
+.hero-overline {
+  display: block;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: $brand;
+  letter-spacing: 8rpx;
+  margin-bottom: 16rpx;
+}
+
+/* 主标题：深墨色大字 */
+.hero-title {
+  display: block;
+  font-size: 48rpx;
+  font-weight: 800;
+  color: $brand;
+  background-image: $gradient-text;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.24;
+  letter-spacing: 1rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 副标语：规格信息 */
+.hero-meta {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: $ink-3;
+}
+
+/* 国旗卡：白色浮雕小卡 */
+.hero-flag-card {
+  width: 144rpx;
+  height: 144rpx;
+  border-radius: 36rpx;
+  background: #ffffff;
+  box-shadow: 0 12rpx 32rpx rgba(64, 80, 192, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.hero-flag-img {
+  width: 100rpx;
+  height: 100rpx;
+}
+
+/* 底部行：特性 chip + 价格 */
+.hero-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 28rpx;
+}
+
+.hero-chip {
+  display: flex;
+  align-items: center;
+  height: 56rpx;
+  padding: 0 24rpx;
+  border-radius: 28rpx;
+  background: #ffffff;
+  box-shadow: 0 4rpx 16rpx rgba(64, 80, 192, 0.08);
+}
+
+.chip-text {
+  font-size: 22rpx;
+  font-weight: 600;
+  color: $ink-2;
+}
+
+.hero-price {
+  display: flex;
+  align-items: baseline;
+}
+
+.price-sym {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: $ink-2;
+  margin-right: 4rpx;
+}
+
+.price-num {
+  font-size: 44rpx;
+  font-weight: 800;
+  color: $ink;
+  line-height: 1;
+}
+
 .section-card {
   background: $bg-card;
   border-radius: $radius-lg;
@@ -383,61 +508,19 @@ export default {
   box-shadow: $shadow-sm;
 }
 
+/* 首张卡片上浮叠压 Hero 底部 */
+.card--overlap {
+  margin-top: -48rpx;
+  position: relative;
+  z-index: 2;
+}
+
 .order-head {
   margin-bottom: 24rpx;
 }
 
 .order-title {
   font-size: 30rpx;
-  font-weight: 800;
-  color: $ink;
-}
-
-.pkg-summary {
-  display: flex;
-  align-items: center;
-}
-
-.sum-flag {
-  width: 88rpx;
-  height: 88rpx;
-  border-radius: 22rpx;
-  background: $brand-light;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  overflow: hidden;
-}
-
-.sum-flag-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.sum-main {
-  flex: 1;
-  margin-left: 24rpx;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-}
-
-.sum-name {
-  font-size: 29rpx;
-  font-weight: 700;
-  color: $ink;
-}
-
-.sum-meta {
-  margin-top: 8rpx;
-  font-size: 23rpx;
-  color: $ink-2;
-}
-
-.sum-price {
-  font-size: 34rpx;
   font-weight: 800;
   color: $ink;
 }

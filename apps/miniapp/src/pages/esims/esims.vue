@@ -148,9 +148,9 @@ export default {
 }
 
 .head-banner {
-  background: $gradient-brand;
-  padding: 36rpx 40rpx 44rpx;
-  border-radius: 0 0 40rpx 40rpx;
+  background: linear-gradient(168deg, #E4EAFF 0%, #F0F3FF 52%, #F5F7F8 100%);
+  padding: 36rpx 40rpx 52rpx;
+  border-radius: 0 0 48rpx 48rpx;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -162,25 +162,26 @@ export default {
 }
 
 .hb-title {
-  font-size: 40rpx;
+  font-size: 44rpx;
   font-weight: 800;
-  color: #ffffff;
+  color: $ink;
+  letter-spacing: 1rpx;
 }
 
 .hb-sub {
-  margin-top: 8rpx;
-  font-size: 23rpx;
-  color: rgba(255, 255, 255, 0.85);
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  color: $ink-3;
 }
 
 .hb-btn {
   background: #ffffff;
   color: $brand;
   font-size: 26rpx;
-  font-weight: 700;
-  padding: 16rpx 32rpx;
+  font-weight: 600;
+  padding: 18rpx 36rpx;
   border-radius: 999rpx;
-  box-shadow: 0 8rpx 20rpx rgba(10, 67, 104, 0.25);
+  box-shadow: 0 4rpx 16rpx rgba(64, 80, 192, 0.08);
   transition: transform 0.15s ease;
 
   &--hover {
@@ -236,33 +237,45 @@ export default {
 
 .esim-card {
   position: relative;
+  background: #ffffff;
   border-radius: 28rpx;
   padding: 32rpx;
   margin-bottom: 24rpx;
   overflow: hidden;
-  min-height: 280rpx;
+  min-height: 260rpx;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  box-shadow: 0 4rpx 20rpx rgba(48, 48, 160, 0.08);
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 
-  // 已激活：蓝紫渐变
-  &.activated {
-    background: $gradient-brand;
+  // 状态色带：顶部一条细色带标示激活状态
+  &::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    height: 8rpx;
   }
 
-  // 待激活：暖橙渐变
-  &.pending {
-    background: linear-gradient(135deg, $sun 0%, $warn 100%);
+  // 已激活：品牌蓝紫
+  &.activated::before {
+    background: linear-gradient(90deg, #5050D0 0%, #4050C0 60%, #6CD5FA 130%);
+  }
+
+  // 待激活：琥珀
+  &.pending::before {
+    background: linear-gradient(90deg, $sun 0%, $warn 100%);
   }
 
   &--hover {
-    transform: scale(0.98);
-    box-shadow: 0 8rpx 32rpx rgba(10, 67, 104, 0.18);
+    transform: translateY(-4rpx);
+    box-shadow: 0 12rpx 32rpx rgba(48, 48, 160, 0.14);
   }
 }
 
-/* 背景装饰圆 */
+/* 背景装饰圆（极淡品牌色） */
 .card-deco {
   position: absolute;
   top: 0;
@@ -275,7 +288,7 @@ export default {
 .card-deco-circle {
   position: absolute;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(80, 80, 208, 0.045);
 }
 
 .card-deco-circle.c1 {
@@ -305,7 +318,7 @@ export default {
   width: 72rpx;
   height: 72rpx;
   border-radius: 16rpx;
-  background: rgba(255, 255, 255, 0.2);
+  background: $brand-light;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -313,24 +326,24 @@ export default {
 }
 
 .card-flag-img {
-  width: 52rpx;
-  height: 52rpx;
+  width: 84%;
+  height: 84%;
 }
 
 .card-status-tag {
   font-size: 22rpx;
   font-weight: 600;
-  padding: 6rpx 18rpx;
+  padding: 8rpx 20rpx;
   border-radius: 999rpx;
 
   &.activated {
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.2);
+    color: $brand;
+    background: $brand-light;
   }
 
   &.pending {
-    color: #ffffff;
-    background: rgba(255, 255, 255, 0.2);
+    color: $warn-deep;
+    background: $warn-bg;
   }
 }
 
@@ -345,14 +358,14 @@ export default {
   display: block;
   font-size: 34rpx;
   font-weight: 800;
-  color: #ffffff;
+  color: $ink;
   margin-bottom: 8rpx;
 }
 
 .card-spec {
   display: block;
   font-size: 26rpx;
-  color: rgba(255, 255, 255, 0.8);
+  color: $ink-2;
   font-weight: 500;
 }
 
@@ -364,18 +377,20 @@ export default {
   position: relative;
   z-index: 1;
   margin-top: 24rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid $line;
 }
 
 .card-iccid {
   font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.7);
+  color: $ink-3;
   font-family: monospace;
   letter-spacing: 1rpx;
 }
 
 .card-expire {
   font-size: 22rpx;
-  color: rgba(255, 255, 255, 0.6);
+  color: $ink-3;
 }
 
 .footer-safe {

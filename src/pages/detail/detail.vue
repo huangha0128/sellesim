@@ -119,7 +119,7 @@
       <view class="price-area">
         <text class="price-currency">RMB</text>
         <text class="price-main">{{ priceNum }}</text>
-        <view class="price-original">
+        <view v-if="discountPercent > 0" class="price-original">
           <text class="price-orig-text">原价 ¥{{ originalPrice }}</text>
           <text class="price-discount">立减{{ discountPercent }}%</text>
         </view>

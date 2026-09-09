@@ -119,10 +119,10 @@ export default function CardsPage() {
   };
 
   const statDefs = [
-    { label: '卡片总数', value: stats.total, icon: <Layers size={22} />, color: '#8b5cf6' },
-    { label: '可用', value: stats.available, icon: <CircleCheckBig size={22} />, color: '#14b8a6' },
-    { label: '已使用', value: stats.used, icon: <Clock3 size={22} />, color: '#f59e0b' },
-    { label: '仅环境变量', value: stats.envOnly, icon: <ServerCog size={22} />, color: '#38bdf8' },
+    { label: '卡片总数', value: stats.total, icon: <Layers size={22} />, color: '#5a53e0' },
+    { label: '可用', value: stats.available, icon: <CircleCheckBig size={22} />, color: '#2f9e7f' },
+    { label: '已使用', value: stats.used, icon: <Clock3 size={22} />, color: '#d98944' },
+    { label: '仅环境变量', value: stats.envOnly, icon: <ServerCog size={22} />, color: '#4f8fd9' },
   ];
 
   return (

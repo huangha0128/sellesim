@@ -3,7 +3,7 @@
     <!-- 顶部品牌区 -->
     <view class="page-hero">
       <view class="hero-logo">
-        <image class="hero-logo-img" src="/static/icons/hero-avatar.png" mode="aspectFit" />
+        <image class="hero-logo-img" src="/static/logo.png" mode="aspectFit" />
       </view>
       <text class="hero-name">YYeSim</text>
       <text class="hero-slogan">{{ $t('about.slogan') }}</text>
@@ -118,7 +118,7 @@ export default {
 
 /* ============ 顶部品牌区 ============ */
 .page-hero {
-  background: $gradient-brand;
+  background: $gradient-canvas;
   padding: 64rpx $page-pad 72rpx;
   border-radius: 0 0 40rpx 40rpx;
   display: flex;
@@ -130,8 +130,8 @@ export default {
   width: 140rpx;
   height: 140rpx;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  border: 4rpx solid rgba(255, 255, 255, 0.5);
+  background: #ffffff;
+  box-shadow: $shadow-sm;
   overflow: hidden;
   display: flex;
   align-items: center;
@@ -147,14 +147,18 @@ export default {
   margin-top: 24rpx;
   font-size: 44rpx;
   font-weight: 800;
-  color: #ffffff;
+  color: $brand;
+  background-image: $gradient-text;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
   letter-spacing: 2rpx;
 }
 
 .hero-slogan {
   margin-top: 10rpx;
   font-size: 25rpx;
-  color: rgba(255, 255, 255, 0.85);
+  color: $ink-3;
 }
 
 /* ============ 应用信息卡片 ============ */

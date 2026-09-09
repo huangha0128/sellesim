@@ -28,7 +28,7 @@
           </view>
         </view>
         <view class="pkg-tags">
-          <text class="pkg-tag sold">{{ fmt('detail.sold') }}</text>
+          <text class="pkg-tag sold">{{ fmt('detail.sold', { n: pkg.soldCount ?? 0 }) }}</text>
           <text class="pkg-tag normal">{{ fmt('detail.instant') }}</text>
           <text class="pkg-tag normal">{{ fmt('detail.noRealName') }}</text>
           <text class="pkg-tag normal">{{ fmt('detail.globalApp') }}</text>
@@ -208,14 +208,14 @@
           </view>
           <view class="drawer-tag-wrap">
             <view
-              v-for="p in filteredDrawerPackages"
-              :key="p.id"
+              v-for="pkg in filteredDrawerPackages"
+              :key="pkg.id"
               class="drawer-pkg-tagv2"
-              :class="{ active: isCurrentPkg(p) }"
-              @tap="selectPackage(p)"
+              :class="{ active: isCurrentPkg(pkg) }"
+              @tap="selectPackage(pkg)"
             >
-              <text class="drawer-pkg-tagv2-text">{{ p.countryName }}</text>
-              <text v-if="isCurrentPkg(p)" class="drawer-pkg-tagv2-check">✓</text>
+              <text class="drawer-pkg-tagv2-text">{{ pkg.countryName }}</text>
+              <text v-if="isCurrentPkg(pkg)" class="drawer-pkg-tagv2-check">✓</text>
             </view>
           </view>
         </scroll-view>
@@ -697,25 +697,25 @@ export default {
   }
 }
 
-/* ========== 警告横幅 ========== */
+/* ========== 警告横幅（柔和琥珀警示，与浅色画布视觉语言一致） ========== */
 .warn-banner {
   display: flex;
   align-items: center;
-  background: $gradient-brand;
+  background: $warn-bg;
+  border-left: 6rpx solid $warn;
   border-radius: 16rpx;
   padding: 26rpx 30rpx;
   margin-top: 24rpx;
-  box-shadow: 0 8rpx 24rpx rgba(6, 44, 69, 0.3);
 }
 
 .warn-icon-box {
   width: 48rpx;
   height: 48rpx;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(217, 119, 6, 0.12);
   margin-right: 16rpx;
   flex-shrink: 0;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23FFFFFF' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9'/%3E%3Cpath d='M10.3 21a1.94 1.94 0 0 0 3.4 0'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23D97706' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9'/%3E%3Cpath d='M10.3 21a1.94 1.94 0 0 0 3.4 0'/%3E%3C/svg%3E");
   background-size: 28rpx 28rpx;
   background-repeat: no-repeat;
   background-position: center;
@@ -724,7 +724,7 @@ export default {
 .warn-txt {
   flex: 1;
   font-size: 26rpx;
-  color: #ffffff;
+  color: $warn-deep;
   line-height: 1.5;
 }
 

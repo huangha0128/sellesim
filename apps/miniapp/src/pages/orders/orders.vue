@@ -1,5 +1,12 @@
 <template>
   <view class="orders-page">
+    <!-- 浅色 Hero 头部（首页同款视觉语言） -->
+    <view class="page-hero">
+      <text class="hero-overline">{{ fmt('orders.eyebrow') }}</text>
+      <text class="hero-title">{{ fmt('orders.heroTitle') }}</text>
+      <text class="hero-sub">{{ fmt('orders.heroSub', { n: store.orders.length }) }}</text>
+    </view>
+
     <view v-if="!store.orders.length" class="empty">
       <image class="empty-icon" src="/static/icons/prof-order.png" mode="aspectFit" />
       <text class="empty-title">{{ fmt('orders.emptyTitle') }}</text>
@@ -229,6 +236,43 @@ export default {
   padding: 0 $page-pad;
 }
 
+/* ============ 浅色 Hero 头部（首页同款：浅蓝紫渐变 + 编辑排版） ============ */
+.page-hero {
+  margin: 0 (-$page-pad);
+  background: $gradient-canvas;
+  padding: 40rpx $page-pad 44rpx;
+  border-radius: 0 0 48rpx 48rpx;
+}
+
+.hero-overline {
+  display: block;
+  font-size: 22rpx;
+  font-weight: 700;
+  color: $brand;
+  letter-spacing: 8rpx;
+  margin-bottom: 16rpx;
+}
+
+.hero-title {
+  display: block;
+  font-size: 48rpx;
+  font-weight: 800;
+  color: $brand;
+  background-image: $gradient-text;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  line-height: 1.24;
+  letter-spacing: 1rpx;
+}
+
+.hero-sub {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: $ink-3;
+}
+
 .tabs {
   position: sticky;
   top: 0;
@@ -299,7 +343,7 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding-top: 180rpx;
+  padding-top: 110rpx;
 }
 
 .empty-icon {

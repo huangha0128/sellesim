@@ -39,9 +39,12 @@ export default {
     titleSub: 'One card, all covered',
     searchPlaceholder: 'Search for your destination',
     searchBtn: 'Search',
-    heroTitle: 'Global eSIM',
-    heroFeature1: 'Top choice for travel in China',
-    heroFeature2: '190+ destinations covered',
+    heroBadge: 'TRAVEL eSIM',
+    heroTitle: 'Global Data',
+    heroSub: 'One eSIM',
+    heroFeature1: 'Instant Activation',
+    heroFeature2: 'No ID Required',
+    heroFeature3: '190+ Destinations',
     plan: 'Data Plan',
     instant: 'Instant Activation',
     noRealName: 'No Real-name',
@@ -245,46 +248,84 @@ export default {
       ],
       sections: [
         {
-          h: '1. General Refund Terms',
+          h: '1. Effective Date and Scope',
           p: [
-            'This policy applies to refunds for orders of eSIM plans purchased through this mini program.',
-            'Refunds are based on the principle of activation status: orders that have not been activated may apply for a refund; activated orders are generally not refundable.'
+            'This policy takes effect from September 2026. If this policy is revised, the version in effect on the date you submit your refund request shall prevail.',
+            'This policy applies to all orders of eSIM plans placed through this mini program (including new purchases and add-on purchases to existing eSIMs). Placing an order means you have read and agreed to this policy.'
           ]
         },
         {
-          h: '2. Refunds for Not-Activated eSIMs',
+          h: '2. Basic Refund Principles',
           p: [
-            'If your eSIM has not been installed or activated (the order is still in "To Activate" status), you can submit a refund request for the corresponding order in "My Orders".',
-            'After the platform verifies that the eSIM is not activated, a full refund will be processed for the actual amount paid.'
+            'Refunds are determined by whether the eSIM has been activated: orders that have not been activated may apply for a refund; for activated orders, the platform has the right to refuse a refund.',
+            'Once an eSIM is installed or activated, its data and validity period begin to be consumed. It is a consumed digital product and is generally not eligible for no-reason refunds.'
           ]
         },
         {
-          h: '3. Refunds for Activated eSIMs',
+          h: '3. Refundable Situations',
           p: [
-            'Once the eSIM is installed or activated, the plan validity period and data begin to be consumed. It is a consumed digital product, and the platform has the right to refuse refund requests for such orders.',
-            'If you believe there are special circumstances caused by the platform (such as the plan being unusable), you can contact customer service with relevant evidence for discretionary review.'
+            '1. The eSIM has not been installed or activated (the order is in "To Activate" status): regardless of the reason (trip cancelled, wrong plan purchased, duplicate purchase, etc.), you may apply for a full refund;',
+            '2. The activation code cannot be issued or is invalid due to platform reasons: a full refund will be issued after verification;',
+            '3. Duplicate charges caused by payment channel issues: the platform will proactively verify and return the overcharged amount;',
+            '4. You proactively request cancellation before the eSIM is issued: a full refund can be processed.'
           ]
         },
         {
-          h: '4. Refund Process',
+          h: '4. Non-Refundable Situations',
           p: [
-            'Step 1: Go to "Me → My Orders", find the corresponding order and tap "Apply for Refund";',
-            'Step 2: Fill in the refund reason and submit the request;',
-            'Step 3: The platform reviews the request;',
-            'Step 4: Once approved, the refund will be returned to your Alipay account via the original payment channel.'
+            '1. The eSIM has been installed or activated and the plan has started to be consumed;',
+            '2. The plan validity period has expired;',
+            '3. A refund is requested after activation for personal reasons (device not supporting eSIM, destination changed, etc.);',
+            '4. The compatibility of your phone with eSIM was not confirmed before purchase, and the activation code has been redeemed (see the "Setup Guide" for supported models).'
           ]
         },
         {
-          h: '5. Refund Timing and Method',
+          h: '5. Special Circumstances',
           p: [
-            'After approval, the refund will be returned to your Alipay account via the original payment channel. The arrival time depends on the payment channel, usually within 1-7 business days.'
+            '1. Plan unusable: if the eSIM cannot be activated within the supported countries or regions, or is completely unusable after activation, a full refund can be issued after verification by the platform and the service provider;',
+            '2. Network quality issues: slower-than-expected speeds or intermittent disconnections caused by local carrier coverage or signal issues fall under third-party network services. The platform will assist in troubleshooting and offer compensation (such as plan replacement or validity extension), but a full refund generally does not apply;',
+            '3. Device compatibility: if your device is within the supported range listed in the "Setup Guide" but cannot complete installation and activation, a refund can be issued after verification by customer service; if the device itself does not support eSIM, the "activation status" standard applies;',
+            '4. Add-on orders: for new plans added to an expired eSIM, the standard is whether the new plan has been activated: not activated — refundable; activated — non-refundable;',
+            '5. Force majeure: if the service cannot be provided due to natural disasters, destination policy changes, or other force majeure events, both parties shall resolve the matter through friendly negotiation.'
           ]
         },
         {
-          h: '6. Special Notes',
+          h: '6. Refund Process',
           p: [
-            'For malicious refunds, repeated applications, and other abnormal behavior, the platform has the right to refuse processing and reserves the right to pursue further action.',
-            'This policy and the User Agreement together constitute the complete agreement between you and the platform. In case of conflict, the refund terms of this policy shall prevail.'
+            'Step 1: Go to "Me → My Orders", find the corresponding order and tap "Apply for Refund" (the entry is only shown for orders awaiting activation);',
+            'Step 2: Select a refund reason, fill in the supplementary notes, and submit the refund request;',
+            'Step 3: The platform completes the review within 1-3 business days;',
+            'Step 4: The review result will be sent to you via message; the refund is initiated automatically once approved, and you can view the rejection reason if refused;',
+            'Step 5: The refund is returned to your Alipay account via the original payment channel, usually within 1-7 business days, depending on the payment channel\'s processing time.'
+          ]
+        },
+        {
+          h: '7. Refund Amount and Method',
+          p: [
+            'The refund amount is the actual amount paid for the order, returned in full to your Alipay account via the original payment channel, with no handling fees charged by the platform;',
+            'For orders placed with coupons or discounts, the actual amount paid will be refunded; the discount portion is not convertible into cash and will not be compensated.'
+          ]
+        },
+        {
+          h: '8. Exceptions and Restrictions',
+          p: [
+            '1. For malicious refunds, bulk order-and-refund behavior, fraudulent applications, or other abnormal behavior, the platform has the right to refuse refunds and restrict account features;',
+            '2. Refund requests from accounts banned for violating the User Agreement will be reviewed manually;',
+            '3. If you need a refund for a deleted eSIM record, please contact customer service with the order number for verification.'
+          ]
+        },
+        {
+          h: '9. Policy Updates',
+          p: [
+            'This policy may be revised from time to time according to laws, regulations, and business adjustments. After revision, the "Last updated" date shown at the top of this page will be updated;',
+            'For significant changes, we will remind you in an appropriate manner. If you continue to use the service or submit a refund request after the revision, you are deemed to accept the revised content;',
+            'In case of conflict between this policy and the User Agreement, the refund terms of this policy shall prevail.'
+          ]
+        },
+        {
+          h: '10. Contact Us',
+          p: [
+            'If you have any questions about the refund policy or refund progress, please contact us via the in-app customer service channel, and we will handle it as soon as possible.'
           ]
         }
       ]
@@ -309,41 +350,94 @@ export default {
   },
   faq: {
     title: 'FAQ',
-    sub: 'Quick answers to common questions',
+    eyebrow: 'Help Center',
+    sub: 'Orders, installation, connectivity & data — answered in one place',
     guideEntry: 'View eSIM Setup Guide',
     guideEntrySub: 'Step-by-step guides for iPhone / Android',
-    items: [
+    countUnit: 'questions',
+    searchPlaceholder: 'Search questions, e.g. refund / activation / data',
+    searchEmptyTitle: 'No matching questions',
+    searchEmptySub: 'Try keywords like "refund", "activation" or "data"',
+    groups: [
       {
-        q: 'How do I view my eSIM activation code?',
-        a: 'Open the "My eSIMs" page and tap "View Activation Code" to scan the QR code or copy the code for manual installation.'
+        icon: 'order',
+        title: 'Orders & Refunds',
+        items: [
+          {
+            q: 'How do I view my orders and their status?',
+            a: 'Open "Me → My Orders" to see all your orders. Each order clearly shows one of these statuses: Pending Payment / Awaiting Activation / Completed / Refunded.'
+          },
+          {
+            q: 'How do I apply for a refund?',
+            a: 'Only orders that have not been activated can be refunded. Open the order detail and tap "Apply for Refund"; once approved, the amount is returned to your original payment account.'
+          },
+          {
+            q: 'How long does a refund take?',
+            a: 'After approval, the refund is returned through the original payment channel. Actual arrival time depends on the payment platform.'
+          },
+          {
+            q: 'How do I change my notification email?',
+            a: 'You can view or update it anytime under "Me → My Email". It is used to receive order and activation notifications.'
+          }
+        ]
       },
       {
-        q: 'How long is the activation code valid?',
-        a: 'The activation code stays valid for a long time after purchase. The plan validity starts from the day of installation and activation, so we recommend installing after arriving at your destination.'
+        icon: 'install',
+        title: 'Installation & Activation',
+        items: [
+          {
+            q: 'How do I view my eSIM activation code?',
+            a: 'Open the "My eSIMs" page and tap "View Activation Code" to scan the QR code or copy the code for manual installation.'
+          },
+          {
+            q: 'Which devices are supported?',
+            a: 'iPhone XS/XR and above, plus selected eSIM-capable models from Samsung, Huawei, Xiaomi, etc. See the device compatibility check in the "Setup Guide".'
+          },
+          {
+            q: 'When is the best time to install?',
+            a: 'We recommend buying and installing after arriving at your destination to avoid using up valid days early, as plan validity is counted from the purchase date.'
+          },
+          {
+            q: 'How long is the activation code valid?',
+            a: 'The activation code stays valid for a long time after purchase, while plan validity is counted from the purchase date. Please plan your purchase around your trip and install after arriving.'
+          }
+        ]
       },
       {
-        q: 'What if I run out of data?',
-        a: 'For an expired eSIM, choose "Add to an expired eSIM" at checkout — data is stacked, validity is extended, and the activation code stays the same. You can also buy a brand-new eSIM.'
+        icon: 'signal',
+        title: 'Connectivity & Roaming',
+        items: [
+          {
+            q: 'What if I have no network abroad?',
+            a: 'Make sure the eSIM is installed and "Data roaming" is on. If you still cannot get online, try manually selecting a local carrier network in your system settings.'
+          },
+          {
+            q: 'Can I share my personal hotspot?',
+            a: 'Yes. Most plans support Personal Hotspot, so you can share data with your companions\' phones, tablets, and other devices.'
+          },
+          {
+            q: 'How fast is the connection?',
+            a: 'Plans provide high-speed 4G/5G networks. Actual speeds depend on local carrier coverage and signal conditions.'
+          }
+        ]
       },
       {
-        q: 'Can I share my hotspot?',
-        a: 'Yes. Most plans support Personal Hotspot, so you can share data with your companions\' phones, tablets, and other devices.'
-      },
-      {
-        q: 'What if I have no network abroad?',
-        a: 'Please make sure the eSIM is installed and "Data roaming" is on; if you still cannot get online, try manually selecting a local carrier network.'
-      },
-      {
-        q: 'How do I apply for a refund?',
-        a: 'Submit a refund request in "My Orders" for orders that have not been activated. Once approved, the refund will be returned to your original payment account.'
-      },
-      {
-        q: 'Which devices are supported?',
-        a: 'iPhone XS/XR and above, plus selected eSIM-capable models from Samsung, Huawei, Xiaomi, etc. See the device compatibility check in the "Setup Guide".'
-      },
-      {
-        q: 'How do I change my notification email?',
-        a: 'You can view or update it anytime under "Me → My Email". It is used to receive order and activation notifications.'
+        icon: 'data',
+        title: 'Data & Plans',
+        items: [
+          {
+            q: 'What if I run out of data?',
+            a: 'For an expired eSIM, choose "Add to an expired eSIM" at checkout — data is stacked, validity is extended, and the activation code stays the same. You can also buy a brand-new eSIM.'
+          },
+          {
+            q: 'How do I check my remaining data?',
+            a: 'Open the "My eSIMs" page to see the remaining data and validity of your purchased plans.'
+          },
+          {
+            q: 'How is plan validity calculated?',
+            a: 'Validity is counted from the purchase date; exact days are shown on the plan detail page. When you top up, data is added and the expiry is extended.'
+          }
+        ]
       }
     ]
   },
@@ -380,10 +474,10 @@ export default {
     recentTitle: 'Recent Searches',
     clearAll: 'Clear',
     hotTitle: 'Popular Destinations',
-    plan: 'Data Plan',
-    sold: '1000+ sold',
+    plan: 'Data Plans',
+    sold: '{n} sold',
     instant: 'Instant Activation',
-    noRealName: 'No Real-name'
+    noRealName: 'No Real-Name Required'
   },
   packages: {
     noRealName: 'No real-name required',
@@ -456,6 +550,8 @@ export default {
     navTitle: 'eSIM Details'
   },
   checkout: {
+    eyebrow: 'CHECKOUT',
+    instantChip: 'Instant Activation',
     title: 'Product Info',
     emailLabel: 'Receiving Email',
     emailPlaceholder: 'To receive eSIM activation info',
@@ -496,6 +592,7 @@ export default {
     buyPreselectGone: 'Target card not renewable, switched to new purchase'
   },
   payment: {
+    eyebrow: 'PAYMENT',
     amountLabel: 'Payment Amount',
     orderNoPrefix: 'Order No. {no}',
     goodsLabel: 'Item',
@@ -523,6 +620,10 @@ export default {
     orderLabel: '{name} eSIM ({gb}GB / {days} days)'
   },
   orders: {
+    eyebrow: 'MY ORDERS',
+    detailEyebrow: 'ORDER DETAIL',
+    heroTitle: 'My Orders',
+    heroSub: '{n} orders in total',
     emptyTitle: 'No Orders Yet',
     emptySub: 'Pick a global data plan that suits you',
     goBuy: 'Go Buy',
@@ -598,6 +699,7 @@ export default {
     deleteFailed: 'Delete failed'
   },
   esimDetail: {
+    eyebrow: 'TRAVEL eSIM',
     specTitle: 'Plan Spec',
     specValue: '{gb}GB · {days} days',
     usageTitle: 'Data Usage',
