@@ -251,6 +251,8 @@ export default {
     this.pkgId = options.pkgId || ''
     this.mode = options.mode || ''
     this.esimId = options.esimId || ''
+    // 自动填充账号邮箱（「我的 → 我的邮箱地址」中设置的）
+    this.email = (store.isLoggedIn && store.user.email) || ''
     setNavTitle('pageTitle.checkout')
     this.load()
     this.loadReneEsims()
@@ -501,11 +503,11 @@ export default {
   flex-shrink: 0;
 
   &.alipay {
-    background: #1677FF;
+    background: $alipay;
   }
 
   &.wechat {
-    background: #07C160;
+    background: $wechat;
   }
 }
 
@@ -588,7 +590,7 @@ export default {
   background: $brand;
 
   &.renew-logo {
-    background: #E8883A;
+    background: $coral;
   }
 }
 

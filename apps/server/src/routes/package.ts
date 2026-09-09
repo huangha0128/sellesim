@@ -72,7 +72,7 @@ export default (prisma: PrismaClient) => {
     try {
       const all = await listAllPackagesView();
       const kw = String(req.query.keyword || '').trim().toLowerCase();
-      const packages = kw
+      const matched = kw
         ? all.filter((p) =>
             String(p.countryName || '').includes(kw) ||
             String(p.countryNameEn || '').toLowerCase().includes(kw) ||
@@ -84,6 +84,15 @@ export default (prisma: PrismaClient) => {
             JSON.stringify(p.coverageParams || '').toLowerCase().includes(kw)
           )
         : all;
+      // 同一套餐组（countryCode）的各流量/天数组合只展示一张卡片：
+      // 每组取最低价套餐作代表，按价格升序（与首页热销卡片、详情页抽屉的分组逻辑一致）
+      const byRegion = new Map<string, any>();
+      for (const p of matched) {
+        const key = p.countryCode || p.countryName || 'OTHER';
+        const cur = byRegion.get(key);
+        if (!cur || p.price < cur.price) byRegion.set(key, p);
+      }
+      const packages = Array.from(byRegion.values()).sort((a: any, b: any) => a.price - b.price);
       res.json({ code: 0, data: { packages } });
     } catch (e: any) {
       res.status(502).json({ code: 1, message: 'Tiger 套餐拉取失败：' + e.message });

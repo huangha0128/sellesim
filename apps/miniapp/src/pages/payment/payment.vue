@@ -31,7 +31,7 @@
       </view>
 
       <view class="pay-btn" hover-class="pay-btn--hover" @click="pay">{{ $t('payment.payNow') }}</view>
-      <view class="pay-cancel" @click="goBack">{{ $t('payment.cancel') }}</view>
+      <view class="pay-cancel" @tap="goHome">{{ $t('payment.cancel') }}</view>
 
       <view class="pay-note">{{ useRealPayment ? $t('payment.noteReal') : $t('payment.noteDemo') }}</view>
     </view>
@@ -133,7 +133,7 @@ export default {
     }
     if (!this.order) {
       uni.showToast({ title: '订单不存在', icon: 'none' })
-      setTimeout(() => this.goBack(), 1200)
+      setTimeout(() => this.goHome(), 1200)
       return
     }
     this.paid = this.order.status === 'paid'
@@ -247,14 +247,6 @@ export default {
         url: '/pages/index/index',
         fail: () => uni.reLaunch({ url: '/pages/index/index' })
       })
-    },
-    goBack() {
-      const pages = getCurrentPages()
-      if (pages.length > 1) {
-        uni.navigateBack()
-      } else {
-        uni.switchTab({ url: '/pages/index/index' })
-      }
     }
   }
 }
@@ -348,14 +340,14 @@ export default {
   padding: 28rpx 32rpx;
   margin-top: 24rpx;
   box-shadow: $shadow-sm;
-  border: 2rpx solid rgba(22, 119, 255, 0.25);
+  border: 2rpx solid rgba($alipay, 0.25);
 }
 
 .alipay-logo {
   width: 80rpx;
   height: 80rpx;
   border-radius: 22rpx;
-  background: #1677FF;
+  background: $alipay;
   color: #ffffff;
   font-size: 42rpx;
   font-weight: 800;
@@ -542,7 +534,7 @@ export default {
 .mask {
   position: fixed;
   inset: 0;
-  background: rgba(30, 27, 75, 0.5);
+  background: rgba(6, 44, 69, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;

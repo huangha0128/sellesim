@@ -8,7 +8,9 @@ export default {
     unknown: 'Unknown',
     know: 'Got it',
     needLogin: 'Please log in first',
-    cancel: 'Cancel'
+    cancel: 'Cancel',
+    dayUnit: '{d} days',
+    priceFrom: 'onwards'
   },
   tab: {
     home: 'Home',
@@ -27,14 +29,23 @@ export default {
     profile: 'Me',
     guide: 'eSIM Setup Guide',
     email: 'My Email',
-    faq: 'FAQ'
+    faq: 'FAQ',
+    esimDetail: 'eSIM Details',
+    about: 'About Us'
   },
   index: {
     slogan: 'Data in 200+ destinations worldwide',
     titleMain: 'Global Data',
     titleSub: 'One card, all covered',
-    searchPlaceholder: 'Search country, e.g. Japan',
+    searchPlaceholder: 'Search for your destination',
     searchBtn: 'Search',
+    heroTitle: 'Global eSIM',
+    heroFeature1: 'Top choice for travel in China',
+    heroFeature2: '190+ destinations covered',
+    plan: 'Data Plan',
+    instant: 'Instant Activation',
+    noRealName: 'No Real-name',
+    soldCount: '{n} sold',
     hotCountries: 'Popular Destinations',
     allCountries: 'All Countries ›',
     hotPackages: 'Best-selling Plans',
@@ -67,10 +78,217 @@ export default {
     menuLanguage: 'Language / 语言',
     menuLogout: 'Log Out',
     demo: 'Demo environment · Data connected to local backend',
-    aboutContent: 'YYeSim v1.0.0 (Demo)\nData plans in 200+ countries and regions worldwide. Buy and use instantly.',
     logoutConfirm: 'Are you sure you want to log out?',
     loggedOut: 'Logged out',
     languageTitle: 'Switch Language'
+  },
+  about: {
+    slogan: 'Global data, buy and use instantly',
+    version: 'Version',
+    introTitle: 'About YYeSim',
+    introText:
+      'YYeSim offers eSIM data plans for 200+ countries and regions. Scan, install, and connect on arrival — no physical SIM, no hassle.',
+    tagRegions: 'Regions',
+    tagSpeed: 'Network',
+    tagSupport: 'Support',
+    docAgreement: 'User Agreement',
+    docAgreementSub: 'Services, user obligations and disclaimers',
+    docPrivacy: 'Privacy Policy',
+    docPrivacySub: 'How we collect, use and protect your information',
+    docRefund: 'Refund Policy',
+    docRefundSub: 'Full refund if not activated · No refund once activated'
+  },
+  legal: {
+    updated: 'Last updated: {date}',
+    date: 'Sep 2026',
+    agreement: {
+      title: 'User Agreement',
+      date: 'Sep 2026',
+      sections: [
+        {
+          h: '1. Acceptance of the Agreement',
+          p: [
+            'Welcome to YYeSim. This Agreement is a contract between you and YYeSim regarding your use of this mini program service. Please read and fully understand all terms before logging in or using the service.',
+            'By logging in or using the service in any way, you acknowledge that you have read and agree to be bound by all terms of this Agreement. If you do not agree, please stop registering or using the service.'
+          ]
+        },
+        {
+          h: '2. Services',
+          p: [
+            'Through this mini program, we provide the display, purchase, activation code delivery, and management of eSIM data plans for 200+ countries and regions worldwide.',
+            'eSIM plans are provided by partner telecom service providers. The data allowance, validity period, network type, and coverage are subject to the details shown on each plan page.'
+          ]
+        },
+        {
+          h: '3. Account and Login',
+          p: [
+            'You can log in and create an account via Alipay authorization. The account is used to associate your orders and eSIM information.',
+            'You are responsible for keeping your account and login status secure. Losses caused by your voluntary disclosure, lending, or improper safekeeping shall be borne by you.'
+          ]
+        },
+        {
+          h: '4. Orders and Payment',
+          p: [
+            'Please carefully verify the plan specifications, purchase method, and receiving email before placing an order. Once the order is submitted and paid, the eSIM activation code will be automatically issued to your account.',
+            'Refunds for paid orders are handled in accordance with the Refund Policy.'
+          ]
+        },
+        {
+          h: '5. User Obligations',
+          p: [
+            'You agree to use the service lawfully and may not use it for any illegal activities, nor resell plans or activation codes.',
+            'eSIM plans are for personal and fair use only. The platform may take measures such as throttling or suspension against abnormally frequent or malicious resource usage.'
+          ]
+        },
+        {
+          h: '6. Intellectual Property',
+          p: [
+            'The trademarks, interface designs, program code, and documents of this mini program are owned by YYeSim or the respective rights holders.',
+            'Without authorization, no entity or individual may copy, reproduce, reverse engineer, or use them for other commercial purposes.'
+          ]
+        },
+        {
+          h: '7. Disclaimer',
+          p: [
+            'If the eSIM cannot be used normally due to reasons beyond the platform\'s control, such as local carrier coverage, signal quality, device compatibility, or destination policy changes, the platform will assist in resolving the issue but shall not be liable for any direct or indirect losses.',
+            'To the extent permitted by law, the platform shall not be liable for breach of contract due to service interruptions or data delays.'
+          ]
+        },
+        {
+          h: '8. Changes and Termination',
+          p: [
+            'We may revise this Agreement in accordance with laws, regulations, and operational needs. Revised terms will be published on this page.',
+            'If you continue to use the service after the revision, you are deemed to accept the revised content; if you disagree, you should stop using the service.'
+          ]
+        }
+      ]
+    },
+    privacy: {
+      title: 'Privacy Policy',
+      date: 'Sep 2026',
+      sections: [
+        {
+          h: '1. Introduction',
+          p: [
+            'We take your personal information and privacy very seriously. This policy explains what information we collect and how we use and protect it.',
+            'By using this service, you acknowledge that you have read and agree to the information handling practices described in this policy.'
+          ]
+        },
+        {
+          h: '2. Information We Collect',
+          p: [
+            'Account information: the user identifier (OpenID), nickname, and avatar obtained through Alipay authorized login;',
+            'Order information: purchased plans, amounts, payment status, and the order-associated eSIM card number (ICCID) and activation code;',
+            'Contact information: the receiving email you voluntarily provide at checkout or in your profile;',
+            'Device information: device identifiers necessary for account and service security.'
+          ]
+        },
+        {
+          h: '3. How We Use Information',
+          p: [
+            'Create and manage your account;',
+            'Process orders, activate eSIM plans, and issue activation codes;',
+            'Send you notifications such as payment results and eSIM activation reminders;',
+            'Improve and optimize our products and services.'
+          ]
+        },
+        {
+          h: '4. Storage and Protection',
+          p: [
+            'We use security technologies and management measures such as encrypted transmission and access control to protect your information from leakage, tampering, or loss.',
+            'Personal information is stored only for the shortest period necessary to fulfill the processing purpose, after which it will be deleted or anonymized.'
+          ]
+        },
+        {
+          h: '5. Sharing and Disclosure',
+          p: [
+            'To complete card issuance and payment, we provide your relevant information to partners only as necessary: the eSIM service partner (for plan activation and management) and Alipay (for payments and refunds).',
+            'Without your consent, we will not sell or provide your personal information to any other third party, except as required by laws and regulations.'
+          ]
+        },
+        {
+          h: '6. Your Rights',
+          p: [
+            'You can view and correct your account profile and receiving email within the mini program.',
+            'To delete your account and related data, please contact us via customer service. We will process it according to the law after verifying your identity.'
+          ]
+        },
+        {
+          h: '7. Protection of Minors',
+          p: [
+            'This service is intended for adult travelers. If you are a minor, please use the service under the guidance of a guardian and submit personal information with their consent.'
+          ]
+        },
+        {
+          h: '8. Policy Updates',
+          p: [
+            'We may update this policy from time to time, and the revised policy will be published on this page.',
+            'For significant changes, we will remind you in an appropriate manner. If you continue to use the service, you are deemed to agree to the revised policy.'
+          ]
+        }
+      ]
+    },
+    refund: {
+      title: 'Refund Policy',
+      date: 'Sep 2026',
+      highlights: [
+        {
+          theme: 'ok',
+          title: 'Not-activated eSIM · Full refund supported',
+          desc: 'If the eSIM has not been installed or activated, a refund request can be submitted. Once approved, the full paid amount will be refunded.'
+        },
+        {
+          theme: 'warn',
+          title: 'Activated eSIM · Refund may be refused',
+          desc: 'Once the eSIM is installed or activated, the plan starts being consumed, and the platform has the right to refuse refund requests for such orders.'
+        }
+      ],
+      sections: [
+        {
+          h: '1. General Refund Terms',
+          p: [
+            'This policy applies to refunds for orders of eSIM plans purchased through this mini program.',
+            'Refunds are based on the principle of activation status: orders that have not been activated may apply for a refund; activated orders are generally not refundable.'
+          ]
+        },
+        {
+          h: '2. Refunds for Not-Activated eSIMs',
+          p: [
+            'If your eSIM has not been installed or activated (the order is still in "To Activate" status), you can submit a refund request for the corresponding order in "My Orders".',
+            'After the platform verifies that the eSIM is not activated, a full refund will be processed for the actual amount paid.'
+          ]
+        },
+        {
+          h: '3. Refunds for Activated eSIMs',
+          p: [
+            'Once the eSIM is installed or activated, the plan validity period and data begin to be consumed. It is a consumed digital product, and the platform has the right to refuse refund requests for such orders.',
+            'If you believe there are special circumstances caused by the platform (such as the plan being unusable), you can contact customer service with relevant evidence for discretionary review.'
+          ]
+        },
+        {
+          h: '4. Refund Process',
+          p: [
+            'Step 1: Go to "Me → My Orders", find the corresponding order and tap "Apply for Refund";',
+            'Step 2: Fill in the refund reason and submit the request;',
+            'Step 3: The platform reviews the request;',
+            'Step 4: Once approved, the refund will be returned to your Alipay account via the original payment channel.'
+          ]
+        },
+        {
+          h: '5. Refund Timing and Method',
+          p: [
+            'After approval, the refund will be returned to your Alipay account via the original payment channel. The arrival time depends on the payment channel, usually within 1-7 business days.'
+          ]
+        },
+        {
+          h: '6. Special Notes',
+          p: [
+            'For malicious refunds, repeated applications, and other abnormal behavior, the platform has the right to refuse processing and reserves the right to pursue further action.',
+            'This policy and the User Agreement together constitute the complete agreement between you and the platform. In case of conflict, the refund terms of this policy shall prevail.'
+          ]
+        }
+      ]
+    }
   },
   emailPage: {
     title: 'My Email',
@@ -228,8 +446,6 @@ export default {
     onlyNeed: 'only',
     network: 'Calls & SMS:',
     pkgTypeIntro: 'Plan Type Introduction',
-    csTitle: 'Online Customer Service',
-    csNow: 'Consult Now',
     androidInstall: 'Android eSIM Setup',
     appleInstall: 'Apple eSIM Setup',
     supportModels: 'Supported eSIM Phone Models Summary',
@@ -380,6 +596,17 @@ export default {
     deleteConfirm: 'This eSIM cannot be restored after deletion. Delete it?',
     deleted: 'Deleted',
     deleteFailed: 'Delete failed'
+  },
+  esimDetail: {
+    specTitle: 'Plan Spec',
+    specValue: '{gb}GB · {days} days',
+    usageTitle: 'Data Usage',
+    usedGb: 'Used {used}GB',
+    totalGb: 'Total {gb}GB',
+    qrTitle: 'eSIM Activation Code',
+    copied: 'Copied',
+    deleteConfirm: 'Are you sure you want to delete this eSIM? This cannot be undone.',
+    loadFailed: 'Failed to load'
   },
   guide: {
     title: 'eSIM Setup Guide',

@@ -1,19 +1,24 @@
 <template>
   <view class="detail-page">
-    <!-- 顶部 Tab 栏 -->
+    <!-- 顶部 Tab 导航栏（固定在上方，滚动时吸顶） -->
     <view class="tab-bar">
       <view
         v-for="(tab, i) in tabs"
-        :key="i"
+        :key="tab.anchor"
         class="tab-item"
         :class="{ active: currentTab === i }"
-        @tap="currentTab = i"
+        @tap="switchTab(i)"
       >
-        <text class="tab-text">{{ fmt(tab) }}</text>
+        <text class="tab-text">{{ fmt(tab.key) }}</text>
       </view>
+      <!-- 滑动指示条 -->
+      <view class="tab-indicator" :style="indicatorStyle"></view>
     </view>
 
+    <!-- 页面原生滚动，onPageScroll 联动高亮 -->
     <view v-if="pkg" class="detail-body">
+      <!-- ===== 套餐选择 ===== -->
+      <view id="sec-select" class="sec-anchor">
       <!-- 套餐名称卡片 -->
       <view class="pkg-name-card">
         <view class="pkg-name-row">
@@ -74,8 +79,10 @@
           </view>
         </view>
       </view>
+      </view><!-- /sec-select -->
 
-      <!-- 套餐详情 -->
+      <!-- ===== 套餐详情 ===== -->
+      <view id="sec-detail" class="sec-anchor">
       <view class="info-section">
         <text class="info-title">{{ fmt('detail.detailTitle') }}</text>
         <view class="info-item">
@@ -98,7 +105,10 @@
           <text class="pkg-type-link-arrow">›</text>
         </view>
       </view>
+      </view><!-- /sec-detail -->
 
+      <!-- ===== 使用须知 ===== -->
+      <view id="sec-notice" class="sec-anchor">
       <!-- 安装步骤 -->
       <view class="info-section">
         <text class="info-title">{{ fmt('detail.installTitle') }}</text>
@@ -135,6 +145,7 @@
         <view class="notice-divider"></view>
         <text class="notice-txt">{{ fmt('detail.noticeText') }}</text>
       </view>
+      </view><!-- /sec-notice -->
 
       <view class="footer-safe"></view>
     </view>
@@ -217,6 +228,7 @@
 import { api } from '@/utils/api'
 import { setNavTitle, t as translate } from '@/locales'
 import { currencySymbol } from '@/utils/format'
+import { COVER_GRADIENTS } from '@/theme'
 
 function fmtNamed(str, p) {
   return String(str).replace(/\{(\w+)\}/g, (m, k) =>
@@ -253,7 +265,13 @@ export default {
       pkg: null,
       allPackages: [],
       currentTab: 0,
-      tabs: ['detail.tabSelect', 'detail.tabDetail', 'detail.tabHot', 'detail.tabNotice'],
+      tabs: [
+        { key: 'detail.tabSelect', anchor: 'sec-select' },
+        { key: 'detail.tabDetail', anchor: 'sec-detail' },
+        { key: 'detail.tabNotice', anchor: 'sec-notice' }
+      ],
+      sectionOffsets: [],
+      _tabH: 0,
       selectedDays: 0,
       selectedGb: 0,
       showDrawer: false,
@@ -380,6 +398,14 @@ export default {
       const list = Array.from(byRegion.values())
       // 按价格排序
       return list.sort((a, b) => a.price - b.price)
+    },
+    // 滑动指示条定位：宽度按 tab 均分，translateX 按当前索引平移
+    indicatorStyle() {
+      const n = this.tabs.length || 1
+      return {
+        width: (100 / n) + '%',
+        transform: 'translateX(' + (this.currentTab * 100) + '%)'
+      }
     }
   },
   onLoad(options) {
@@ -390,6 +416,23 @@ export default {
     this.load()
     this.loadAllPackages()
   },
+    onReady() {
+      this.measureSections()
+    },
+    // 页面滚动高亮联动（页面级生命周期）
+    onPageScroll(e) {
+      const st = (e && e.scrollTop) || 0
+      const offs = this.sectionOffsets || []
+      if (!offs.length) {
+        this.measureSections()
+        return
+      }
+      let active = 0
+      for (let i = 0; i < offs.length; i++) {
+        if (st >= offs[i] - (this._tabH || 0) - 20) active = i
+      }
+      this.currentTab = active
+    },
   methods: {
     fmt(key, params) {
       return fmtNamed(translate(key, params), params)
@@ -409,12 +452,14 @@ export default {
       if (!this.dataCells.some(c => c.gb === this.selectedGb)) {
         this.selectedGb = this.dataCells[0] ? this.dataCells[0].gb : 0
       }
+      this.measureSections()
     },
     selectData(gb) {
       this.selectedGb = gb
       if (!this.dayCells.includes(this.selectedDays)) {
         this.selectedDays = this.dayCells[0] || 0
       }
+      this.measureSections()
     },
     async load() {
       uni.showLoading({ title: this.fmt('common.loading'), mask: true })
@@ -435,6 +480,7 @@ export default {
         setNavTitle('detail.navTitle')
       } finally {
         uni.hideLoading()
+        this.measureSections()
       }
     },
     async loadAllPackages() {
@@ -464,6 +510,37 @@ export default {
     goGuide() {
       uni.navigateTo({ url: '/pages/guide/guide' })
     },
+    // 点击 Tab：滚动到对应区块
+    switchTab(i) {
+      this.currentTab = i
+      const offs = this.sectionOffsets || []
+      let top = offs[i] || 0
+      top = Math.max(0, top - (this._tabH || 0))
+      uni.pageScrollTo({ scrollTop: top, duration: 250 })
+    },
+    // 测量各区块在页面中的滚动位置与 Tab 栏高度（用于点击定位与滚动高亮）
+    measureSections() {
+      this.$nextTick(() => {
+        uni.createSelectorQuery()
+          .select('.tab-bar')
+          .boundingClientRect((bar) => {
+            this._tabH = bar ? bar.height : 0
+          })
+          .exec()
+        uni.createSelectorQuery()
+          .selectViewport()
+          .scrollOffset((res) => {
+            const refScroll = res ? res.scrollTop : 0
+            uni.createSelectorQuery()
+              .selectAll('.sec-anchor')
+              .boundingClientRect((rects) => {
+                this.sectionOffsets = (rects || []).map((r) => r.top + refScroll)
+              })
+              .exec()
+          })
+          .exec()
+      })
+    },
     openPackageDrawer() {
       this.showDrawer = true
     },
@@ -478,15 +555,7 @@ export default {
       return this.pkg && p.id === this.pkg.id
     },
     getCoverGradient(idx) {
-      const gradients = [
-        'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-        'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-        'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-        'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-        'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
-      ]
-      return gradients[idx % gradients.length]
+      return COVER_GRADIENTS[idx % COVER_GRADIENTS.length]
     },
     selectPackage(p) {
       // 切换当前套餐
@@ -507,51 +576,59 @@ export default {
 <style lang="scss" scoped>
 .detail-page {
   min-height: 100vh;
-  background: #EEF0FF;
+  background: $bg-page;
 }
 
-/* ========== Tab 栏 ========== */
+/* ========== Tab 栏（固定上方） ========== */
 .tab-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   background: #ffffff;
-  padding: 0 $page-pad;
-  border-bottom: 1rpx solid #F0F0F0;
-  position: sticky;
-  top: 0;
+  border-bottom: 1rpx solid $line;
   z-index: 100;
 }
 
 .tab-item {
-  padding: 28rpx 24rpx;
-  margin-right: 32rpx;
+  flex: 1;
   position: relative;
-
-  &.active::after {
-    content: '';
-    position: absolute;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 48rpx;
-    height: 6rpx;
-    background: #6C63FF;
-    border-radius: 3rpx;
-  }
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 28rpx 8rpx;
+  white-space: nowrap;
 }
 
 .tab-text {
   font-size: 28rpx;
-  color: #999999;
+  color: $ink-3;
+  white-space: nowrap;
+  transition: color 0.3s ease;
 
   .active & {
-    color: #6C63FF;
+    color: $brand;
     font-weight: 700;
   }
+}
+
+/* 滑动指示条 */
+.tab-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 6rpx;
+  background: $brand;
+  border-radius: 3rpx;
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
 }
 
 /* ========== 内容区 ========== */
 .detail-body {
   padding: 20rpx $page-pad;
+  padding-top: 100rpx;
   padding-bottom: 40rpx;
 }
 
@@ -572,14 +649,14 @@ export default {
 .pkg-name-text {
   font-size: 40rpx;
   font-weight: 800;
-  color: #1A1A2E;
+  color: $ink;
 }
 
 .pkg-name-arrow-icon {
   width: 64rpx;
   height: 64rpx;
   border-radius: 50%;
-  background: #F5F5FF;
+  background: $brand-lighter;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -590,8 +667,8 @@ export default {
 .chevron-down {
   width: 20rpx;
   height: 20rpx;
-  border-right: 4rpx solid #6C63FF;
-  border-bottom: 4rpx solid #6C63FF;
+  border-right: 4rpx solid $brand;
+  border-bottom: 4rpx solid $brand;
   transform: rotate(45deg);
   margin-top: -4rpx;
 }
@@ -610,13 +687,13 @@ export default {
   margin-bottom: 8rpx;
 
   &.sold {
-    color: #F5A623;
-    background: #FFF8EC;
+    color: $sun;
+    background: $sun-light;
   }
 
   &.normal {
-    color: #6C63FF;
-    background: #F0F0FF;
+    color: $brand;
+    background: $brand-light;
   }
 }
 
@@ -624,11 +701,11 @@ export default {
 .warn-banner {
   display: flex;
   align-items: center;
-  background: linear-gradient(135deg, #6C63FF 0%, #8B83FF 50%, #A78BFA 100%);
+  background: $gradient-brand;
   border-radius: 16rpx;
   padding: 26rpx 30rpx;
   margin-top: 24rpx;
-  box-shadow: 0 8rpx 24rpx rgba(108, 99, 255, 0.3);
+  box-shadow: 0 8rpx 24rpx rgba(6, 44, 69, 0.3);
 }
 
 .warn-icon-box {
@@ -662,7 +739,7 @@ export default {
 .select-title {
   font-size: 32rpx;
   font-weight: 800;
-  color: #1A1A2E;
+  color: $ink;
   display: block;
   margin-bottom: 24rpx;
 }
@@ -677,7 +754,7 @@ export default {
   width: calc(25% - 12rpx);
   margin-right: 16rpx;
   margin-bottom: 16rpx;
-  background: #F5F5FF;
+  background: $brand-lighter;
   border-radius: 16rpx;
   padding: 28rpx 0;
   display: flex;
@@ -693,18 +770,18 @@ export default {
   }
 
   &.active {
-    border-color: #6C63FF;
-    background: #F0EEFF;
+    border-color: $brand;
+    background: $brand-light;
   }
 }
 
 .day-text {
   font-size: 30rpx;
-  color: #333333;
+  color: $ink;
   font-weight: 600;
 
   .active & {
-    color: #6C63FF;
+    color: $brand;
     font-weight: 700;
   }
 }
@@ -716,7 +793,7 @@ export default {
   width: 28rpx;
   height: 28rpx;
   border-radius: 50%;
-  background: #6C63FF;
+  background: $brand;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -739,7 +816,7 @@ export default {
   width: calc(33.33% - 14rpx);
   margin-right: 20rpx;
   margin-bottom: 16rpx;
-  background: #F5F5FF;
+  background: $brand-lighter;
   border-radius: 16rpx;
   padding: 24rpx 12rpx;
   display: flex;
@@ -756,24 +833,24 @@ export default {
   }
 
   &.active {
-    border-color: #FF4D4F;
-    background: #FFF5F5;
+    border-color: $coral;
+    background: $coral-light;
   }
 }
 
 .data-text {
   font-size: 28rpx;
-  color: #333333;
+  color: $ink;
   font-weight: 600;
   text-align: center;
 
   .active & {
-    color: #FF4D4F;
+    color: $coral;
     font-weight: 700;
   }
 
   &.unlimited {
-    color: #FF4D4F;
+    color: $coral;
     font-size: 30rpx;
     font-weight: 700;
   }
@@ -781,7 +858,7 @@ export default {
 
 .data-price-hint {
   font-size: 20rpx;
-  color: #FF4D4F;
+  color: $coral;
   margin-top: 6rpx;
   text-align: center;
   line-height: 1.3;
@@ -794,7 +871,7 @@ export default {
   width: 28rpx;
   height: 28rpx;
   border-radius: 50%;
-  background: #FF4D4F;
+  background: $coral;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -818,7 +895,7 @@ export default {
 .info-title {
   font-size: 32rpx;
   font-weight: 800;
-  color: #1A1A2E;
+  color: $ink;
   display: block;
   margin-bottom: 24rpx;
 }
@@ -838,19 +915,19 @@ export default {
 
 .info-label {
   font-size: 28rpx;
-  color: #666666;
+  color: $ink-2;
   flex-shrink: 0;
 }
 
 .info-value {
   font-size: 28rpx;
-  color: #1A1A2E;
+  color: $ink;
   font-weight: 600;
 }
 
 .desc-inline {
   font-weight: 400;
-  color: #333333;
+  color: $ink;
   line-height: 1.6;
 }
 
@@ -863,13 +940,13 @@ export default {
 
 .pkg-type-link-text {
   font-size: 28rpx;
-  color: #6C63FF;
+  color: $brand;
   font-weight: 600;
 }
 
 .pkg-type-link-arrow {
   font-size: 28rpx;
-  color: #6C63FF;
+  color: $brand;
   margin-left: 4rpx;
 }
 
@@ -886,7 +963,7 @@ export default {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #8B83FF;
+  background: $brand-sky;
 }
 
 .install-btn-text {
@@ -912,18 +989,18 @@ export default {
 
 .link-text {
   font-size: 30rpx;
-  color: #1A1A2E;
+  color: $ink;
   font-weight: 600;
 }
 
 .link-arrow {
   font-size: 32rpx;
-  color: #CCCCCC;
+  color: $ink-3;
 }
 
 .link-divider {
   height: 1rpx;
-  background: #F0F0F0;
+  background: $line;
 }
 
 /* ========== 注意事项 ========== */
@@ -943,7 +1020,7 @@ export default {
   width: 20rpx;
   height: 20rpx;
   border-radius: 50%;
-  background: #4ADE80;
+  background: $teal;
   margin-right: 12rpx;
   flex-shrink: 0;
 }
@@ -952,16 +1029,16 @@ export default {
   flex: 1;
   font-size: 36rpx;
   font-weight: 800;
-  color: #1A1A2E;
+  color: $ink;
 }
 
 .notice-collapse-icon {
   font-size: 28rpx;
-  color: #6C63FF;
+  color: $brand;
   width: 48rpx;
   height: 48rpx;
   border-radius: 50%;
-  background: #F0EEFF;
+  background: $brand-light;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -970,14 +1047,14 @@ export default {
 
 .notice-divider {
   height: 2rpx;
-  background: #6C63FF;
+  background: $brand;
   margin: 20rpx 0;
   border-radius: 1rpx;
 }
 
 .notice-txt {
   font-size: 26rpx;
-  color: #666666;
+  color: $ink-2;
   line-height: 1.8;
   white-space: pre-wrap;
 }
@@ -1010,14 +1087,14 @@ export default {
 
 .price-currency {
   font-size: 24rpx;
-  color: #1A1A2E;
+  color: $ink;
   font-weight: 700;
   margin-right: 4rpx;
 }
 
 .price-main {
   font-size: 56rpx;
-  color: #1A1A2E;
+  color: $ink;
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -1033,7 +1110,7 @@ export default {
 .price-discount-badge {
   font-size: 20rpx;
   color: #ffffff;
-  background: #FF6B35;
+  background: $coral;
   border-radius: 6rpx;
   padding: 2rpx 12rpx;
   display: inline-block;
@@ -1043,18 +1120,18 @@ export default {
 
 .price-orig-text {
   font-size: 22rpx;
-  color: #999999;
+  color: $ink-3;
   text-decoration: line-through;
 }
 
 .buy-btn {
-  background: #6C63FF;
+  background: $brand;
   color: #ffffff;
   font-size: 32rpx;
   font-weight: 700;
   padding: 24rpx 64rpx;
   border-radius: 999rpx;
-  box-shadow: 0 8rpx 24rpx rgba(108, 99, 255, 0.35);
+  box-shadow: 0 8rpx 24rpx rgba(6, 44, 69, 0.35);
   transition: transform 0.15s ease;
 
   &--hover {
@@ -1097,37 +1174,37 @@ export default {
   align-items: center;
   justify-content: space-between;
   padding: 32rpx 40rpx;
-  border-bottom: 1rpx solid #F0F0F0;
+  border-bottom: 1rpx solid $line;
 }
 
 .drawer-title {
   font-size: 32rpx;
   font-weight: 700;
-  color: #1A1A2E;
+  color: $ink;
 }
 
 .drawer-close {
   width: 48rpx;
   height: 48rpx;
   border-radius: 50%;
-  background: #F5F5F5;
+  background: $bg-soft;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 24rpx;
-  color: #999999;
+  color: $ink-3;
 }
 
 /* 搜索栏 */
 .drawer-search-bar {
   padding: 20rpx 40rpx;
-  border-bottom: 1rpx solid #F0F0F0;
+  border-bottom: 1rpx solid $line;
 }
 
 .drawer-search-input {
   display: flex;
   align-items: center;
-  background: #F5F5F5;
+  background: $bg-soft;
   border-radius: 16rpx;
   padding: 16rpx 24rpx;
 }
@@ -1140,14 +1217,14 @@ export default {
 .search-input {
   flex: 1;
   font-size: 28rpx;
-  color: #333333;
+  color: $ink;
 }
 
 /* 分类标签 */
 .drawer-tabs {
   display: flex;
   padding: 20rpx 40rpx;
-  border-bottom: 1rpx solid #F0F0F0;
+  border-bottom: 1rpx solid $line;
   white-space: nowrap;
 }
 
@@ -1155,16 +1232,16 @@ export default {
   padding: 12rpx 24rpx;
   margin-right: 16rpx;
   border-radius: 24rpx;
-  background: #F5F5F5;
+  background: $bg-soft;
 
   &.active {
-    background: #6C63FF;
+    background: $brand;
   }
 }
 
 .drawer-tab-text {
   font-size: 24rpx;
-  color: #666666;
+  color: $ink-2;
 
   .active & {
     color: #ffffff;
@@ -1187,7 +1264,7 @@ export default {
 
 .drawer-empty-text {
   font-size: 28rpx;
-  color: #999999;
+  color: $ink-3;
 }
 
 .drawer-group {
@@ -1196,18 +1273,18 @@ export default {
 
 .drawer-group-title {
   font-size: 26rpx;
-  color: #999999;
+  color: $ink-3;
   font-weight: 600;
   margin-bottom: 16rpx;
   padding-bottom: 12rpx;
-  border-bottom: 1rpx solid #F0F0F0;
+  border-bottom: 1rpx solid $line;
 }
 
 .drawer-pkg-item {
   display: flex;
   align-items: center;
   padding: 24rpx 0;
-  border-bottom: 1rpx solid #F5F5F5;
+  border-bottom: 1rpx solid $bg-soft;
   position: relative;
 
   &:last-child {
@@ -1215,7 +1292,7 @@ export default {
   }
 
   &.active {
-    background: #F5F5FF;
+    background: $brand-lighter;
     margin: 0 -40rpx;
     padding-left: 40rpx;
     padding-right: 40rpx;
@@ -1232,19 +1309,19 @@ export default {
 
 .drawer-pkg-name {
   font-size: 28rpx;
-  color: #1A1A2E;
+  color: $ink;
   font-weight: 600;
   margin-bottom: 4rpx;
 }
 
 .drawer-pkg-spec {
   font-size: 22rpx;
-  color: #999999;
+  color: $ink-3;
 }
 
 .drawer-pkg-price {
   font-size: 28rpx;
-  color: #6C63FF;
+  color: $brand;
   font-weight: 700;
   margin-right: 16rpx;
 }
@@ -1253,7 +1330,7 @@ export default {
   width: 36rpx;
   height: 36rpx;
   border-radius: 50%;
-  background: #6C63FF;
+  background: $brand;
   color: #ffffff;
   font-size: 20rpx;
   font-weight: 700;
@@ -1275,14 +1352,14 @@ export default {
   align-items: center;
   justify-content: center;
   padding: 32rpx 40rpx 24rpx;
-  border-bottom: 1rpx solid #F0F0F0;
+  border-bottom: 1rpx solid $line;
   position: relative;
 }
 
 .drawer-title-v2 {
   font-size: 36rpx;
   font-weight: 700;
-  color: #1A1A2E;
+  color: $ink;
 }
 
 .drawer-close-v2 {
@@ -1295,7 +1372,7 @@ export default {
   align-items: center;
   justify-content: center;
   font-size: 28rpx;
-  color: #999999;
+  color: $ink-3;
 }
 
 .drawer-search-v2 {
@@ -1305,7 +1382,7 @@ export default {
 .drawer-search-input-v2 {
   display: flex;
   align-items: center;
-  background: #F5F5F7;
+  background: $bg-soft;
   border-radius: 16rpx;
   padding: 18rpx 24rpx;
 }
@@ -1319,7 +1396,7 @@ export default {
 .search-input-v2 {
   flex: 1;
   font-size: 28rpx;
-  color: #333333;
+  color: $ink;
 }
 
 /* 左右两栏 */
@@ -1332,8 +1409,8 @@ export default {
 /* 左侧分类导航 */
 .drawer-sidebar {
   width: 180rpx;
-  background: #F8F8FA;
-  border-right: 1rpx solid #EEEEEE;
+  background: $bg-page;
+  border-right: 1rpx solid $line;
   flex-shrink: 0;
   overflow-y: auto;
 }
@@ -1348,17 +1425,17 @@ export default {
 
   &.active {
     background: #ffffff;
-    border-left-color: #6C63FF;
+    border-left-color: $brand;
   }
 }
 
 .drawer-sidebar-text {
   font-size: 26rpx;
-  color: #666666;
+  color: $ink-2;
   font-weight: 500;
 
   .active & {
-    color: #6C63FF;
+    color: $brand;
     font-weight: 700;
   }
 }
@@ -1380,20 +1457,20 @@ export default {
   display: flex;
   align-items: center;
   padding: 16rpx 28rpx;
-  background: #F5F5F7;
+  background: $bg-soft;
   border-radius: 999rpx;
   margin-right: 16rpx;
   margin-bottom: 16rpx;
   transition: all 0.2s ease;
 
   &.active {
-    background: #6C63FF;
+    background: $brand;
   }
 }
 
 .drawer-pkg-tagv2-text {
   font-size: 26rpx;
-  color: #333333;
+  color: $ink;
   font-weight: 500;
   white-space: nowrap;
 

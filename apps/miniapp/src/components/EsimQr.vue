@@ -11,6 +11,7 @@
 
 <script>
 import qrcode from '@/utils/qrcode'
+import { colors } from '@/theme'
 
 export default {
   name: 'EsimQr',
@@ -62,7 +63,7 @@ export default {
           ctx.scale(dpr, dpr)
           ctx.fillStyle = '#FFFFFF'
           ctx.fillRect(0, 0, this.size, this.size)
-          ctx.fillStyle = '#16252E'
+          ctx.fillStyle = colors.ink
           for (let r = 0; r < moduleCount; r++) {
             for (let c = 0; c < moduleCount; c++) {
               if (qr.isDark(r, c)) {

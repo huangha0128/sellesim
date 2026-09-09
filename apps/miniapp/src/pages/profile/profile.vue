@@ -100,11 +100,6 @@
       </view>
     </view>
 
-    <!-- 客服悬浮按钮 -->
-    <view class="float-cs" hover-class="float-cs--hover" @click="goCs">
-      <image class="float-cs-icon" src="/static/icons/prof-help.png" mode="aspectFit" />
-    </view>
-
     <view class="footer-safe"></view>
 
     <!-- 底部导航栏 -->
@@ -186,9 +181,6 @@ export default {
     goFaq() {
       uni.navigateTo({ url: '/pages/profile/faq' })
     },
-    goCs() {
-      uni.showToast({ title: '客服功能开发中', icon: 'none' })
-    },
     switchLanguage() {
       const items = LOCALES.map((l) => ({ name: l.label, value: l.value }))
       uni.showActionSheet({
@@ -204,13 +196,7 @@ export default {
       })
     },
     about() {
-      uni.showModal({
-        title: this.$t('profile.menuAbout'),
-        content: this.$t('profile.aboutContent'),
-        showCancel: false,
-        confirmText: this.$t('common.know'),
-        confirmColor: '#0E5E8F'
-      })
+      uni.navigateTo({ url: '/pages/profile/about' })
     },
     switchTab(tab) {
       if (tab === this.currentTab) return
@@ -228,12 +214,12 @@ export default {
 <style lang="scss" scoped>
 .profile-page {
   min-height: 100vh;
-  background: #f5f6fa;
+  background: $bg-page;
 }
 
 /* ============ 顶部用户区 ============ */
 .user-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 60%, #a78bfa 100%);
+  background: $gradient-brand;
   padding: 80rpx 40rpx 60rpx;
   display: flex;
   align-items: center;
@@ -284,7 +270,7 @@ export default {
   padding: 32rpx 24rpx 16rpx;
   position: relative;
   z-index: 2;
-  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.06);
+  box-shadow: $shadow-sm;
 }
 
 .oc-header {
@@ -297,14 +283,14 @@ export default {
 .oc-title {
   font-size: 32rpx;
   font-weight: 700;
-  color: #1f2937;
+  color: $ink;
 }
 
 .oc-all {
   display: flex;
   align-items: center;
   font-size: 24rpx;
-  color: #9ca3af;
+  color: $ink-3;
   transition: opacity 0.15s;
 
   &--hover {
@@ -339,7 +325,7 @@ export default {
   width: 72rpx;
   height: 72rpx;
   border-radius: 20rpx;
-  background: #f3f4f6;
+  background: $bg-soft;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -353,7 +339,7 @@ export default {
 .oc-label {
   margin-top: 14rpx;
   font-size: 22rpx;
-  color: #4b5563;
+  color: $ink-2;
   text-align: center;
 }
 
@@ -365,7 +351,7 @@ export default {
   height: 32rpx;
   padding: 0 8rpx;
   border-radius: 999rpx;
-  background: #ef4444;
+  background: $danger;
   color: #ffffff;
   font-size: 20rpx;
   font-weight: 700;
@@ -381,14 +367,14 @@ export default {
   border-radius: 24rpx;
   margin: 24rpx 24rpx 0;
   padding: 8rpx 0;
-  box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.06);
+  box-shadow: $shadow-sm;
 }
 
 .menu-item {
   display: flex;
   align-items: center;
   padding: 30rpx 28rpx;
-  border-bottom: 1rpx solid #f0f0f0;
+  border-bottom: 1rpx solid $line;
   transition: background 0.15s ease;
 
   &:last-child {
@@ -396,7 +382,7 @@ export default {
   }
 
   &--hover {
-    background: #f9fafb;
+    background: $bg-soft;
   }
 }
 
@@ -411,23 +397,23 @@ export default {
   margin-right: 24rpx;
 
   &.ic-orange {
-    background: #fff3e0;
+    background: $sun-light;
   }
 
   &.ic-green {
-    background: #e8f5e9;
+    background: $teal-light;
   }
 
   &.ic-red {
-    background: #fce4ec;
+    background: $danger-light;
   }
 
   &.ic-purple {
-    background: #f3e5f5;
+    background: $brand-light;
   }
 
   &.ic-blue {
-    background: #e3f2fd;
+    background: $brand-blue-light;
   }
 }
 
@@ -439,46 +425,19 @@ export default {
 .menu-txt {
   flex: 1;
   font-size: 28rpx;
-  color: #1f2937;
+  color: $ink;
   font-weight: 500;
 }
 
 .menu-value {
   font-size: 24rpx;
-  color: #9ca3af;
+  color: $ink-3;
   margin-right: 16rpx;
 }
 
 .menu-arrow {
   font-size: 34rpx;
-  color: #d1d5db;
-}
-
-/* ============ 客服悬浮按钮 ============ */
-.float-cs {
-  position: fixed;
-  right: 32rpx;
-  bottom: calc(160rpx + env(safe-area-inset-bottom));
-  width: 100rpx;
-  height: 100rpx;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 8rpx 28rpx rgba(102, 126, 234, 0.4);
-  z-index: 50;
-  transition: transform 0.15s ease;
-
-  &--hover {
-    transform: scale(0.92);
-  }
-}
-
-.float-cs-icon {
-  width: 48rpx;
-  height: 48rpx;
-  filter: brightness(0) invert(1);
+  color: $ink-3;
 }
 
 .footer-safe {
@@ -516,12 +475,12 @@ export default {
 
 .tab-label {
   font-size: 22rpx;
-  color: #9ca3af;
+  color: $ink-3;
   font-weight: 500;
 }
 
 .tab-item.active .tab-label {
-  color: #667eea;
+  color: $brand;
   font-weight: 700;
 }
 </style>

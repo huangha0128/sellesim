@@ -16,11 +16,11 @@
     <!-- 卡片信息 -->
     <view class="info-card">
       <view class="info-row">
-        <text class="info-label">套餐规格</text>
-        <text class="info-value">{{ esim?.pkg?.gb }}GB · {{ esim?.pkg?.days }}天</text>
+        <text class="info-label">{{ fmt('esimDetail.specTitle') }}</text>
+        <text class="info-value">{{ specText }}</text>
       </view>
       <view class="info-row">
-        <text class="info-label">到期时间</text>
+        <text class="info-label">{{ fmt('esims.expireLabel') }}</text>
         <text class="info-value">{{ formatDate(esim?.expireAt) }}</text>
       </view>
       <view class="info-row">
@@ -32,24 +32,24 @@
     <!-- 流量使用情况 -->
     <view v-if="esim?.status === 'activated'" class="usage-card">
       <view class="usage-header">
-        <text class="usage-title">流量使用情况</text>
+        <text class="usage-title">{{ fmt('esimDetail.usageTitle') }}</text>
         <text class="usage-percent">{{ usagePercent }}%</text>
       </view>
       <view class="usage-bar">
         <view class="usage-fill" :style="{ width: usagePercent + '%' }"></view>
       </view>
       <view class="usage-footer">
-        <text class="usage-used">已用 {{ usedData }}GB</text>
-        <text class="usage-total">共 {{ esim?.pkg?.gb }}GB</text>
+        <text class="usage-used">{{ fmt('esimDetail.usedGb', { used: usedData }) }}</text>
+        <text class="usage-total">{{ fmt('esimDetail.totalGb', { gb: esim?.pkg?.gb }) }}</text>
       </view>
     </view>
 
     <!-- 激活码区域 -->
     <view class="qr-card">
       <view class="qr-header">
-        <text class="qr-title">eSIM 激活码</text>
-        <view class="qr-copy-btn" hover-class="qr-copy-btn--hover" @click="copyCode">
-          <text>{{ copied ? '已复制' : '复制' }}</text>
+        <text class="qr-title">{{ fmt('esimDetail.qrTitle') }}</text>
+        <view class="qr-copy-btn" hover-class="qr-copy-btn--hover" @tap="copyCode">
+          <text>{{ copied ? fmt('esimDetail.copied') : fmt('esims.copy') }}</text>
         </view>
       </view>
       <view class="qr-code-box">
@@ -62,14 +62,14 @@
 
     <!-- 操作按钮 -->
     <view class="action-buttons">
-      <view v-if="esim?.status === 'pending'" class="action-btn primary" @click="markActivated">
-        <text>标记为已激活</text>
+      <view v-if="esim?.status === 'pending'" class="action-btn primary" @tap="markActivated">
+        <text>{{ fmt('esims.markActivated') }}</text>
       </view>
-      <view v-if="canRenew" class="action-btn renew" @click="goRenew">
-        <text>续费</text>
+      <view v-if="canRenew" class="action-btn renew" @tap="goRenew">
+        <text>{{ fmt('esims.renew') }}</text>
       </view>
-      <view class="action-btn danger" @click="deleteEsim">
-        <text>删除</text>
+      <view class="action-btn danger" @tap="deleteEsim">
+        <text>{{ fmt('esims.delete') }}</text>
       </view>
     </view>
 
@@ -83,6 +83,14 @@ import { api } from '@/utils/api'
 import { store } from '@/store'
 import { formatDate } from '@/utils/format'
 import { setNavTitle, t as translate } from '@/locales'
+import { HEADER_GRADIENT } from '@/theme'
+
+// 命名占位符兜底替换（如 {gb}、{used}）
+function fmtNamed(str, p) {
+  return String(str).replace(/\{(\w+)\}/g, (m, k) =>
+    p && p[k] !== undefined && p[k] !== null ? p[k] : m
+  )
+}
 
 export default {
   components: { EsimQr },
@@ -96,7 +104,14 @@ export default {
   computed: {
     statusText() {
       if (!this.esim) return ''
-      return this.esim.status === 'activated' ? '已激活' : '待激活'
+      return this.fmt(this.esim.status === 'activated' ? 'esims.activated' : 'esims.pending')
+    },
+    specText() {
+      if (!this.esim?.pkg) return ''
+      return this.fmt('esimDetail.specValue', {
+        gb: this.esim.pkg.gb,
+        days: this.esim.pkg.days
+      })
     },
     usagePercent() {
       if (!this.esim || this.esim.status !== 'activated') return 0
@@ -114,17 +129,20 @@ export default {
   },
   onLoad(options) {
     this.esimId = options.id
-    setNavTitle('eSIM 详情')
+    setNavTitle('pageTitle.esimDetail')
     this.loadEsim()
   },
   methods: {
     formatDate,
+    fmt(key, params) {
+      return fmtNamed(translate(key, params), params)
+    },
     getFlagImage(code) {
       if (!code) return '/static/icons/flag-unknown.png'
       return `/static/icons/flag-${code.toLowerCase()}.png`
     },
     getHeaderGradient() {
-      return 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #a78bfa 100%)'
+      return HEADER_GRADIENT
     },
     async loadEsim() {
       try {
@@ -133,7 +151,7 @@ export default {
           this.esim = res.data.esims.find(e => e.id === this.esimId)
         }
       } catch (e) {
-        uni.showToast({ title: '加载失败', icon: 'none' })
+        uni.showToast({ title: this.fmt('esimDetail.loadFailed'), icon: 'none' })
       }
     },
     copyCode() {
@@ -142,7 +160,7 @@ export default {
         data: this.esim.activationCode,
         success: () => {
           this.copied = true
-          uni.showToast({ title: '已复制', icon: 'success' })
+          uni.showToast({ title: this.fmt('esimDetail.copied'), icon: 'success' })
           setTimeout(() => { this.copied = false }, 2000)
         }
       })
@@ -150,10 +168,10 @@ export default {
     async markActivated() {
       try {
         await api.activateEsim(this.esimId)
-        uni.showToast({ title: '已标记为激活', icon: 'success' })
+        uni.showToast({ title: this.fmt('esims.activateSuccess'), icon: 'success' })
         this.loadEsim()
       } catch (e) {
-        uni.showToast({ title: '操作失败', icon: 'none' })
+        uni.showToast({ title: this.fmt('common.opFailed'), icon: 'none' })
       }
     },
     goRenew() {
@@ -163,19 +181,19 @@ export default {
     },
     deleteEsim() {
       uni.showModal({
-        title: '删除 eSIM',
-        content: '确定要删除这张 eSIM 卡吗？删除后无法恢复。',
-        confirmColor: '#EF4444',
+        title: this.fmt('esims.deleteTitle'),
+        content: this.fmt('esimDetail.deleteConfirm'),
+        confirmColor: '#DE4B5B',
         success: async (res) => {
           if (res.confirm) {
             try {
               await api.deleteEsim(this.esimId)
-              uni.showToast({ title: '已删除', icon: 'success' })
+              uni.showToast({ title: this.fmt('esims.deleted'), icon: 'success' })
               setTimeout(() => {
                 uni.navigateBack()
               }, 1500)
             } catch (e) {
-              uni.showToast({ title: '删除失败', icon: 'none' })
+              uni.showToast({ title: this.fmt('esims.deleteFailed'), icon: 'none' })
             }
           }
         }
@@ -188,7 +206,7 @@ export default {
 <style lang="scss" scoped>
 .detail-page {
   min-height: 100vh;
-  background: #f0f2f5;
+  background: $bg-page;
 }
 
 .status-header {
@@ -240,12 +258,12 @@ export default {
   display: inline-block;
 
   &.activated {
-    color: #059669;
+    color: $teal-deep;
     background: rgba(255, 255, 255, 0.9);
   }
 
   &.pending {
-    color: #d97706;
+    color: $warn;
     background: rgba(255, 255, 255, 0.9);
   }
 }
@@ -255,7 +273,7 @@ export default {
   border-radius: 24rpx;
   margin: -30rpx 24rpx 24rpx;
   padding: 28rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  box-shadow: $shadow-sm;
   position: relative;
   z-index: 2;
 }
@@ -265,7 +283,7 @@ export default {
   justify-content: space-between;
   align-items: center;
   padding: 16rpx 0;
-  border-bottom: 1rpx solid #f3f4f6;
+  border-bottom: 1rpx solid $line;
 
   &:last-child {
     border-bottom: none;
@@ -274,12 +292,12 @@ export default {
 
 .info-label {
   font-size: 26rpx;
-  color: #6b7280;
+  color: $ink-2;
 }
 
 .info-value {
   font-size: 26rpx;
-  color: #1f2937;
+  color: $ink;
   font-weight: 600;
 
   &.iccid {
@@ -293,7 +311,7 @@ export default {
   border-radius: 24rpx;
   margin: 0 24rpx 24rpx;
   padding: 28rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  box-shadow: $shadow-sm;
 }
 
 .usage-header {
@@ -306,19 +324,19 @@ export default {
 .usage-title {
   font-size: 28rpx;
   font-weight: 700;
-  color: #1f2937;
+  color: $ink;
 }
 
 .usage-percent {
   font-size: 28rpx;
   font-weight: 700;
-  color: #667eea;
+  color: $brand;
 }
 
 .usage-bar {
   height: 16rpx;
   border-radius: 8rpx;
-  background: #f3f4f6;
+  background: $bg-soft;
   overflow: hidden;
   margin-bottom: 16rpx;
 }
@@ -326,7 +344,7 @@ export default {
 .usage-fill {
   height: 100%;
   border-radius: 8rpx;
-  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(90deg, $brand 0%, $brand-sky 100%);
   transition: width 0.4s ease;
 }
 
@@ -337,12 +355,12 @@ export default {
 
 .usage-used {
   font-size: 24rpx;
-  color: #6b7280;
+  color: $ink-2;
 }
 
 .usage-total {
   font-size: 24rpx;
-  color: #9ca3af;
+  color: $ink-3;
 }
 
 .qr-card {
@@ -350,7 +368,7 @@ export default {
   border-radius: 24rpx;
   margin: 0 24rpx 24rpx;
   padding: 28rpx;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  box-shadow: $shadow-sm;
 }
 
 .qr-header {
@@ -363,11 +381,11 @@ export default {
 .qr-title {
   font-size: 28rpx;
   font-weight: 700;
-  color: #1f2937;
+  color: $ink;
 }
 
 .qr-copy-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: $gradient-brand;
   color: #ffffff;
   font-size: 24rpx;
   font-weight: 600;
@@ -384,18 +402,18 @@ export default {
   display: flex;
   justify-content: center;
   padding: 20rpx;
-  background: #f9fafb;
+  background: $bg-soft;
   border-radius: 16rpx;
   margin-bottom: 20rpx;
 }
 
 .qr-code-text {
-  background: #f9fafb;
+  background: $bg-soft;
   border-radius: 12rpx;
   padding: 20rpx;
   text-align: center;
   font-size: 22rpx;
-  color: #6b7280;
+  color: $ink-2;
   font-family: monospace;
   word-break: break-all;
   line-height: 1.6;
@@ -418,21 +436,21 @@ export default {
   transition: transform 0.15s ease;
 
   &.primary {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: $gradient-brand;
     color: #ffffff;
-    box-shadow: 0 8rpx 20rpx rgba(102, 126, 234, 0.3);
+    box-shadow: 0 8rpx 20rpx rgba(6, 44, 69, 0.3);
   }
 
   &.renew {
     background: #ffffff;
-    color: #667eea;
-    border: 2rpx solid #667eea;
+    color: $brand;
+    border: 2rpx solid $brand;
   }
 
   &.danger {
     background: #ffffff;
-    color: #ef4444;
-    border: 2rpx solid #ef4444;
+    color: $danger;
+    border: 2rpx solid $danger;
   }
 
   &:active {

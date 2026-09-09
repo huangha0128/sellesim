@@ -144,11 +144,11 @@ export default {
 <style lang="scss" scoped>
 .esims-page {
   min-height: 100vh;
-  background: #f0f2f5;
+  background: $bg-page;
 }
 
 .head-banner {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #a78bfa 100%);
+  background: $gradient-brand;
   padding: 36rpx 40rpx 44rpx;
   border-radius: 0 0 40rpx 40rpx;
   display: flex;
@@ -175,12 +175,12 @@ export default {
 
 .hb-btn {
   background: #ffffff;
-  color: #667eea;
+  color: $brand;
   font-size: 26rpx;
   font-weight: 700;
   padding: 16rpx 32rpx;
   border-radius: 999rpx;
-  box-shadow: 0 8rpx 20rpx rgba(102, 126, 234, 0.25);
+  box-shadow: 0 8rpx 20rpx rgba(10, 67, 104, 0.25);
   transition: transform 0.15s ease;
 
   &--hover {
@@ -205,24 +205,24 @@ export default {
   margin-top: 32rpx;
   font-size: 34rpx;
   font-weight: 800;
-  color: #1f2937;
+  color: $ink;
 }
 
 .empty-sub {
   margin-top: 12rpx;
   font-size: 25rpx;
-  color: #9ca3af;
+  color: $ink-3;
 }
 
 .empty-btn {
   margin-top: 44rpx;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: $gradient-brand;
   color: #ffffff;
   font-size: 28rpx;
   font-weight: 700;
   padding: 22rpx 72rpx;
   border-radius: 999rpx;
-  box-shadow: 0 12rpx 32rpx rgba(102, 126, 234, 0.35);
+  box-shadow: $shadow-brand;
   transition: transform 0.15s ease;
 
   &--hover {
@@ -248,17 +248,17 @@ export default {
 
   // 已激活：蓝紫渐变
   &.activated {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: $gradient-brand;
   }
 
   // 待激活：暖橙渐变
   &.pending {
-    background: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+    background: linear-gradient(135deg, $sun 0%, $warn 100%);
   }
 
   &--hover {
     transform: scale(0.98);
-    box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.18);
+    box-shadow: 0 8rpx 32rpx rgba(10, 67, 104, 0.18);
   }
 }
 
@@ -413,12 +413,12 @@ export default {
 
 .tab-label {
   font-size: 22rpx;
-  color: #9ca3af;
+  color: $ink-3;
   font-weight: 500;
 }
 
 .tab-item.active .tab-label {
-  color: #667eea;
+  color: $brand;
   font-weight: 700;
 }
 </style>

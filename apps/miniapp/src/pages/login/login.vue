@@ -13,9 +13,9 @@
 
       <view class="login-tips">
         <text class="tips-text">{{ $t('login.agreePrefix') }}</text>
-        <text class="link">{{ $t('login.agreement') }}</text>
+        <text class="link" @tap="goLegal('agreement')">{{ $t('login.agreement') }}</text>
         <text class="tips-text">{{ $t('login.and') }}</text>
-        <text class="link">{{ $t('login.privacy') }}</text>
+        <text class="link" @tap="goLegal('privacy')">{{ $t('login.privacy') }}</text>
       </view>
     </view>
 
@@ -42,6 +42,9 @@ export default {
     }
   },
   methods: {
+    goLegal(type) {
+      uni.navigateTo({ url: `/pages/profile/legal?type=${type}` })
+    },
     afterLogin() {
       if (this.redirectUrl) {
         uni.redirectTo({ url: this.redirectUrl })

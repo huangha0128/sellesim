@@ -4,34 +4,34 @@
     <view class="hero" :style="{ paddingTop: statusBarHeight + 'px' }">
       <view class="hero-content">
         <view class="hero-left">
-          <text class="hero-title">全球通 eSIM</text>
+          <text class="hero-title">{{ fmt('index.heroTitle') }}</text>
           <view class="hero-features">
             <view class="feature-item">
               <text class="feature-dot">•</text>
-              <text class="feature-text">中国旅行首选</text>
+              <text class="feature-text">{{ fmt('index.heroFeature1') }}</text>
             </view>
             <view class="feature-item">
               <text class="feature-dot">•</text>
-              <text class="feature-text">覆盖190+目的地</text>
+              <text class="feature-text">{{ fmt('index.heroFeature2') }}</text>
             </view>
           </view>
         </view>
         <view class="hero-right">
-          <image class="hero-phone" src="/static/icons/hero-airplane.png" mode="aspectFit" />
+          <image class="hero-phone" src="/static/icons/hero-esim-ai2.jpg" mode="aspectFit" />
         </view>
       </view>
     </view>
 
     <!-- Search Bar -->
     <view class="search-section">
-      <view class="search-bar" hover-class="search-bar--hover" @click="goCountries">
+      <view class="search-bar" hover-class="search-bar--hover" @tap="goCountries">
         <view class="search-icon">
           <image src="/static/icons/search-icon.png" mode="aspectFit" />
         </view>
-        <text class="search-placeholder">搜索您想去的目的地</text>
+        <text class="search-placeholder">{{ fmt('index.searchPlaceholder') }}</text>
       </view>
-      <view class="search-btn" hover-class="search-btn--hover">
-        <text>搜索</text>
+      <view class="search-btn" hover-class="search-btn--hover" @tap="goCountries">
+        <text>{{ fmt('index.searchBtn') }}</text>
       </view>
     </view>
 
@@ -42,7 +42,7 @@
         :key="p.id"
         class="package-card"
         hover-class="package-card--hover"
-        @click="goDetail(p.id)"
+        @tap="goDetail(p.id)"
       >
         <!-- Left: Cover Image -->
         <view class="card-cover" :style="{ background: getCoverGradient(idx) }">
@@ -51,9 +51,9 @@
           <view class="cover-deco-circle small"></view>
           <view class="cover-content">
             <text class="cover-title">{{ p.countryName }}</text>
-            <text class="cover-subtitle">流量套餐</text>
+            <text class="cover-subtitle">{{ fmt('index.plan') }}</text>
             <view class="cover-specs">
-              <text class="spec-tag">{{ p.days }}天</text>
+              <text class="spec-tag">{{ fmt('common.dayUnit', { d: p.days }) }}</text>
               <text class="spec-tag">{{ p.gb }}GB</text>
             </view>
           </view>
@@ -62,17 +62,17 @@
 
         <!-- Right: Info -->
         <view class="card-info">
-          <text class="card-title">{{ p.countryName }}流量套餐</text>
+          <text class="card-title">{{ p.countryName }}{{ fmt('index.plan') }}</text>
           <view class="card-tags">
-            <text class="tag tag-primary">即时激活</text>
-            <text class="tag tag-secondary">无需实名</text>
+            <text class="tag tag-primary">{{ fmt('index.instant') }}</text>
+            <text class="tag tag-secondary">{{ fmt('index.noRealName') }}</text>
           </view>
           <view class="card-footer">
-            <text class="sales-count">已售 {{ formatSales(idx) }}</text>
+            <text class="sales-count">{{ fmt('index.soldCount', { n: formatSales(idx) }) }}</text>
             <view class="price-block">
-              <text class="price-currency">RMB</text>
+              <text class="price-currency">{{ displayCurrency }}</text>
               <text class="price-value">{{ fmtPrice(p.price) }}</text>
-              <text class="price-unit">起</text>
+              <text class="price-unit">{{ fmt('common.priceFrom') }}</text>
             </view>
           </view>
         </view>
@@ -83,17 +83,17 @@
 
     <!-- 底部导航栏 -->
     <view class="tab-bar">
-      <view class="tab-item" :class="{ active: currentTab === 'home' }" @click="switchTab('home')">
+      <view class="tab-item" :class="{ active: currentTab === 'home' }" @tap="switchTab('home')">
         <image class="tab-icon" :src="currentTab === 'home' ? '/static/icons/tab-home-active.png' : '/static/icons/tab-home.png'" mode="aspectFit" />
-        <text class="tab-label">首页</text>
+        <text class="tab-label">{{ fmt('tab.home') }}</text>
       </view>
-      <view class="tab-item" :class="{ active: currentTab === 'esim' }" @click="switchTab('esim')">
+      <view class="tab-item" :class="{ active: currentTab === 'esim' }" @tap="switchTab('esim')">
         <image class="tab-icon" :src="currentTab === 'esim' ? '/static/icons/tab-esim-active.png' : '/static/icons/tab-esim.png'" mode="aspectFit" />
         <text class="tab-label">eSIM</text>
       </view>
-      <view class="tab-item" :class="{ active: currentTab === 'profile' }" @click="switchTab('profile')">
+      <view class="tab-item" :class="{ active: currentTab === 'profile' }" @tap="switchTab('profile')">
         <image class="tab-icon" :src="currentTab === 'profile' ? '/static/icons/tab-profile-active.png' : '/static/icons/tab-profile.png'" mode="aspectFit" />
-        <text class="tab-label">我的</text>
+        <text class="tab-label">{{ fmt('tab.profile') }}</text>
       </view>
     </view>
   </view>
@@ -101,16 +101,15 @@
 
 <script>
 import { api } from '@/utils/api'
+import { t as translate } from '@/locales'
+import { COVER_GRADIENTS } from '@/theme'
 
-// 封面渐变配色方案
-const COVER_GRADIENTS = [
-  'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-  'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-  'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-  'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-  'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-  'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
-]
+// 命名占位符兜底替换（如 {d}、{n}）
+function fmtNamed(str, p) {
+  return String(str).replace(/\{(\w+)\}/g, (m, k) =>
+    p && p[k] !== undefined && p[k] !== null ? p[k] : m
+  )
+}
 
 export default {
   data() {
@@ -129,6 +128,9 @@ export default {
     this.loadData()
   },
   methods: {
+    fmt(key, params) {
+      return fmtNamed(translate(key, params), params)
+    },
     fmtPrice(n) {
       const v = Number(n)
       return Number(v).toFixed(2)
@@ -141,7 +143,7 @@ export default {
       return salesList[idx] || '1000+'
     },
     async loadData() {
-      uni.showLoading({ title: '加载中...', mask: true })
+      uni.showLoading({ title: this.fmt('common.loading'), mask: true })
       try {
         const res = await api.getHomeData()
         this.hotPackages = res.data.hotPackages || []
@@ -172,14 +174,14 @@ export default {
 <style lang="scss" scoped>
 .home {
   min-height: 100vh;
-  background: #f0f2f5;
+  background: $bg-page;
 }
 
 /* ============ Hero Banner ============ */
 .hero {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #a78bfa 100%);
+  background: $gradient-brand;
   padding-bottom: 120rpx;
 }
 
@@ -241,6 +243,9 @@ export default {
 .hero-phone {
   width: 240rpx;
   height: 240rpx;
+  border-radius: 50%;
+  border: 2rpx solid rgba(255, 255, 255, 0.35);
+  box-shadow: 0 12rpx 32rpx rgba(0, 0, 0, 0.18);
 }
 
 /* ============ Search Bar ============ */
@@ -286,7 +291,7 @@ export default {
 
 .search-placeholder {
   font-size: 28rpx;
-  color: #9ca3af;
+  color: $ink-3;
   font-weight: 400;
 }
 
@@ -305,7 +310,7 @@ export default {
   text {
     font-size: 28rpx;
     font-weight: 600;
-    color: #667eea;
+    color: $brand;
   }
 
   &--hover {
@@ -324,7 +329,7 @@ export default {
   border-radius: 24rpx;
   margin-bottom: 24rpx;
   overflow: hidden;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  box-shadow: $shadow-sm;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 
   &--hover {
@@ -433,7 +438,7 @@ export default {
 .card-title {
   font-size: 32rpx;
   font-weight: 800;
-  color: #1f2937;
+  color: $ink;
   display: block;
   margin-bottom: 16rpx;
   line-height: 1.3;
@@ -455,13 +460,13 @@ export default {
 }
 
 .tag-primary {
-  color: #667eea;
-  background: rgba(102, 126, 234, 0.1);
+  color: $brand;
+  background: $brand-light;
 }
 
 .tag-secondary {
-  color: #6b7280;
-  background: rgba(107, 114, 128, 0.1);
+  color: $ink-2;
+  background: $bg-soft;
 }
 
 .card-footer {
@@ -473,7 +478,7 @@ export default {
 
 .sales-count {
   font-size: 24rpx;
-  color: #9ca3af;
+  color: $ink-3;
   font-weight: 500;
 }
 
@@ -484,7 +489,7 @@ export default {
 
 .price-currency {
   font-size: 24rpx;
-  color: #6b7280;
+  color: $ink-2;
   font-weight: 600;
   margin-right: 4rpx;
 }
@@ -492,13 +497,13 @@ export default {
 .price-value {
   font-size: 48rpx;
   font-weight: 800;
-  color: #1f2937;
+  color: $ink;
   line-height: 1;
 }
 
 .price-unit {
   font-size: 24rpx;
-  color: #9ca3af;
+  color: $ink-3;
   font-weight: 400;
   margin-left: 4rpx;
 }
@@ -538,12 +543,12 @@ export default {
 
 .tab-label {
   font-size: 22rpx;
-  color: #9ca3af;
+  color: $ink-3;
   font-weight: 500;
 }
 
 .tab-item.active .tab-label {
-  color: #667eea;
+  color: $brand;
   font-weight: 700;
 }
 </style>

@@ -64,7 +64,7 @@
                 <view class="price-block">
                   <text class="price-currency">{{ displayCurrency }}</text>
                   <text class="price-value">{{ fmtPrice(p.price) }}</text>
-                  <text class="price-unit">起</text>
+                  <text class="price-unit">{{ fmt('common.priceFrom') }}</text>
                 </view>
               </view>
             </view>
@@ -215,7 +215,8 @@
 
 <script>
 import { api } from '@/utils/api'
-import { t as translate } from '@/locales'
+import { setNavTitle, t as translate } from '@/locales'
+import { COVER_GRADIENTS } from '@/theme'
 
 // 命名占位符兜底替换（如 {kw}）
 function fmtNamed(str, p) {
@@ -226,16 +227,6 @@ function fmtNamed(str, p) {
 
 // 热门目的地（按销量排序）
 const HOT_CODES = ['mo', 'my', 'hk', 'cn', 'jp', 'kr', 'th', 'sg']
-
-// 封面渐变配色方案（与首页一致）
-const COVER_GRADIENTS = [
-  'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-  'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-  'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
-  'linear-gradient(135deg, #43e97b 0%, #38f9d7 100%)',
-  'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
-  'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
-]
 
 export default {
   data() {
@@ -296,6 +287,7 @@ export default {
     }
   },
   onShow() {
+    setNavTitle('pageTitle.countries')
     this.loadRecentSearches()
     this.loadCountries()
   },
@@ -318,7 +310,7 @@ export default {
     },
     formatDays(p) {
       const d = p.days ?? p.valid_days ?? p.validDays
-      return d ? `${d}天` : ''
+      return d ? this.fmt('common.dayUnit', { d }) : ''
     },
     async doSearch() {
       const kw = this.keyword.trim()
@@ -414,7 +406,7 @@ export default {
 .hero-header {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(160deg, #4F6DF5 0%, #6a7bf2 60%, #8a7bf0 100%);
+  background: $gradient-brand;
   padding: 28rpx 32rpx 40rpx;
   flex-shrink: 0;
 }
@@ -531,7 +523,7 @@ export default {
   border-radius: 24rpx;
   margin-bottom: 24rpx;
   overflow: hidden;
-  box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
+  box-shadow: $shadow-sm;
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 
   &--hover {
@@ -635,7 +627,7 @@ export default {
 .card-title {
   font-size: 32rpx;
   font-weight: 800;
-  color: #1f2937;
+  color: $ink;
   display: block;
   margin-bottom: 16rpx;
   line-height: 1.3;
@@ -657,13 +649,13 @@ export default {
 }
 
 .tag-primary {
-  color: #667eea;
-  background: rgba(102, 126, 234, 0.1);
+  color: $brand;
+  background: $brand-light;
 }
 
 .tag-secondary {
-  color: #6b7280;
-  background: rgba(107, 114, 128, 0.1);
+  color: $ink-2;
+  background: $bg-soft;
 }
 
 .card-footer {
@@ -675,7 +667,7 @@ export default {
 
 .sales-count {
   font-size: 24rpx;
-  color: #9ca3af;
+  color: $ink-3;
   font-weight: 500;
 }
 
@@ -686,7 +678,7 @@ export default {
 
 .price-currency {
   font-size: 24rpx;
-  color: #6b7280;
+  color: $ink-2;
   font-weight: 600;
   margin-right: 4rpx;
 }
@@ -694,13 +686,13 @@ export default {
 .price-value {
   font-size: 48rpx;
   font-weight: 800;
-  color: #1f2937;
+  color: $ink;
   line-height: 1;
 }
 
 .price-unit {
   font-size: 24rpx;
-  color: #9ca3af;
+  color: $ink-3;
   font-weight: 400;
   margin-left: 4rpx;
 }

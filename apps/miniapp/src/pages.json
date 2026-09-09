@@ -111,6 +111,22 @@
       }
     },
     {
+      "path": "pages/profile/about",
+      "style": {
+        "navigationBarTitleText": "关于我们",
+        "navigationBarBackgroundColor": "#F5F7F8",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/profile/legal",
+      "style": {
+        "navigationBarTitleText": "协议详情",
+        "navigationBarBackgroundColor": "#F5F7F8",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
       "path": "pages/guide/guide",
       "style": {
         "navigationBarTitleText": "eSIM 安装指南",

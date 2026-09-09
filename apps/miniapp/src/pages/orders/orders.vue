@@ -88,6 +88,7 @@ import { api } from '@/utils/api'
 import { store } from '@/store'
 import { formatDateTime } from '@/utils/format'
 import { setNavTitle, t as translate } from '@/locales'
+import { colors } from '@/theme'
 
 // 命名占位符兜底替换（如 {name}、{gb}、{days}）
 function fmtNamed(str, p) {
@@ -181,7 +182,7 @@ export default {
         title: this.fmt('orders.deleteTitle'),
         content: this.fmt('orders.deleteConfirm', { name: order.countryName || order.pkgName || '' }),
         confirmText: this.fmt('orders.delete'),
-        confirmColor: '#EF4444',
+        confirmColor: colors.danger,
         cancelText: this.fmt('orders.cancel'),
         success: async (r) => {
           if (!r.confirm) return
