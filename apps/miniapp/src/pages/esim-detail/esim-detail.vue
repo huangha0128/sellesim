@@ -43,7 +43,13 @@
       </view>
       <view class="usage-footer">
         <text class="usage-used">{{ fmt('esimDetail.usedGb', { used: usedData }) }}</text>
-        <text class="usage-total">{{ fmt('esimDetail.totalGb', { gb: esim?.pkg?.gb }) }}</text>
+        <text class="usage-total">
+          {{ esim?.pkg?.isUnlimited ? fmt('esimDetail.highSpeedGb', { gb: esim?.pkg?.gb }) : fmt('esimDetail.totalGb', { gb: esim?.pkg?.gb }) }}
+        </text>
+      </view>
+      <!-- 不限量套餐：高速额度用完后限速，仍可继续使用 -->
+      <view v-if="esim?.pkg?.isUnlimited" class="usage-note">
+        <text class="usage-note-txt">{{ fmt('esimDetail.unlimitedNote') }}</text>
       </view>
     </view>
 
@@ -110,10 +116,10 @@ export default {
     },
     specText() {
       if (!this.esim?.pkg) return ''
-      return this.fmt('esimDetail.specValue', {
-        gb: this.esim.pkg.gb,
-        days: this.esim.pkg.days
-      })
+      const gbText = this.esim.pkg.isUnlimited
+        ? this.fmt('package.unlimited')
+        : this.fmt('esimDetail.specGb', { gb: this.esim.pkg.gb })
+      return `${gbText} · ${this.fmt('esimDetail.specDays', { days: this.esim.pkg.days })}`
     },
     usagePercent() {
       if (!this.esim || this.esim.status !== 'activated') return 0

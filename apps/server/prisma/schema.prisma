@@ -47,6 +47,7 @@ model Order {
   pkgNameEn     String?   @map("pkg_name_en")
   gb            Int?
   days          Int?
+  isUnlimited   Boolean   @default(false) @map("is_unlimited") // unlimited plan snapshot (throttled after high-speed quota)
   tigerPkgId    Int?      @map("tiger_pkg_id")
   tigerPid      String?   @map("tiger_pid")
   userId        String?   @map("user_id")
@@ -85,9 +86,10 @@ model Esim {
   status         String    @default("pending")
   activatedAt    DateTime?
   expireAt       DateTime
-  used           Float     @default(0)
-  gb             Int?      @default(0) // cumulative gb snapshot
-  days           Int?      @default(0) // cumulative days snapshot
+  used         Float    @default(0)
+  gb           Int?     @default(0) // cumulative gb snapshot
+  days         Int?     @default(0) // cumulative days snapshot
+  isUnlimited  Boolean  @default(false) @map("is_unlimited") // unlimited plan snapshot (throttled after high-speed quota)
   pkgName        String?   @map("pkg_name")
   pkgNameEn      String?   @map("pkg_name_en")
   countryCode    String?   @map("country_code")

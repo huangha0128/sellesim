@@ -10,6 +10,7 @@ export interface ProvisionResult {
   expireAt: Date;
   gb?: number;
   days?: number;
+  isUnlimited?: boolean;
   countryCode?: string;
   pkgName?: string;
   pkgNameEn?: string;
@@ -29,6 +30,7 @@ export async function provisionEsim(prisma: PrismaClient, order: any): Promise<P
   const snap = {
     gb: Number(order?.gb || 0),
     days,
+    isUnlimited: !!order?.isUnlimited,
     countryCode: order?.countryCode || '',
     pkgName: order?.pkgName || '',
     pkgNameEn: order?.pkgNameEn || '',

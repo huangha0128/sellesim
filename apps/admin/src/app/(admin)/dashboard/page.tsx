@@ -126,7 +126,7 @@ export default function DashboardPage() {
                     <TableRow key={o.id}>
                       <TableCell className="font-mono text-[12.5px]">{o.orderNo}</TableCell>
                       <TableCell>
-                        {o.pkgName || o.countryCode || '—'} {o.gb ? `${o.gb}GB` : ''}
+                        {o.pkgName || o.countryCode || '—'} {o.isUnlimited ? '不限量' : o.gb ? `${o.gb}GB` : ''}
                       </TableCell>
                       <TableCell>¥{o.price}</TableCell>
                       <TableCell>

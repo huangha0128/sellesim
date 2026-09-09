@@ -50,7 +50,7 @@
         <view
           class="bm-item"
           :class="{ active: buyMode === 'new' }"
-          @click="selectBuyMode('new')"
+          @tap="selectBuyMode('new')"
         >
           <view class="bm-logo">新</view>
           <view class="bm-info">
@@ -66,7 +66,7 @@
         <view
           class="bm-item"
           :class="{ active: buyMode === 'renew' }"
-          @click="selectBuyMode('renew')"
+          @tap="selectBuyMode('renew')"
         >
           <view class="bm-logo renew-logo">充</view>
           <view class="bm-info">
@@ -79,56 +79,48 @@
         </view>
 
         <!-- 已选择加购目标卡 -->
-        <view v-if="buyMode === 'renew'" class="bm-target" @click="openEsimDrawer">
+        <view v-if="buyMode === 'renew'" class="bm-target">
+          <!-- 已选卡：点左侧信息可重新选择（原生 picker），右侧清除 -->
           <template v-if="selectedEsim">
-            <view class="bm-target-left">
-              <text class="bm-target-label">{{ fmt('checkout.buyAddTo') }}</text>
-              <text class="bm-target-name">{{ selectedEsim.pkg.countryName }}</text>
-              <text class="bm-target-spec">{{ selectedEsim.pkg.gb }}GB · {{ selectedEsim.pkg.days }}{{ fmt('checkout.buyDayUnit') }} · {{ fmt('checkout.buyExpire', { date: formatDate(selectedEsim.expireAt) }) }}</text>
-            </view>
-            <view class="bm-clear" @click.stop="selectEsim('')">{{ fmt('checkout.buyClear') }}</view>
+            <picker
+              class="bm-target-picker"
+              mode="selector"
+              :range="pickerRange"
+              range-key="label"
+              @change="onPickEsim"
+            >
+              <view class="bm-target-left">
+                <text class="bm-target-label">{{ fmt('checkout.buyAddTo') }}</text>
+                <text class="bm-target-name">{{ selectedEsim.pkg.countryName }}</text>
+                <text class="bm-target-spec">{{ selectedEsim.pkg.isUnlimited ? fmt('package.unlimited') : selectedEsim.pkg.gb + 'GB' }} · {{ selectedEsim.pkg.days }}{{ fmt('checkout.buyDayUnit') }} · {{ fmt('checkout.buyExpire', { date: formatDate(selectedEsim.expireAt) }) }}</text>
+              </view>
+            </picker>
+            <view class="bm-clear" @tap.stop="selectEsim('')">{{ fmt('checkout.buyClear') }}</view>
           </template>
+          <!-- 未选卡：整个区域用原生 picker 弹出可选卡列表 -->
           <template v-else>
-            <view class="bm-target-left">
-              <text class="bm-target-empty">{{ expiredEsims.length ? fmt('checkout.buySelectCard') : fmt('checkout.buyAddEmpty') }}</text>
-            </view>
-            <view v-if="expiredEsims.length" class="bm-target-btn">{{ fmt('checkout.buyChoose') }} ›</view>
+            <picker
+              class="bm-target-picker"
+              mode="selector"
+              :range="pickerRange"
+              range-key="label"
+              :disabled="!expiredEsims.length"
+              @change="onPickEsim"
+            >
+              <view class="bm-target-left">
+                <text class="bm-target-empty">{{ expiredEsims.length ? fmt('checkout.buySelectCard') : fmt('checkout.buyAddEmpty') }}</text>
+              </view>
+              <view v-if="expiredEsims.length" class="bm-target-btn">{{ fmt('checkout.buyChoose') }} ›</view>
+            </picker>
           </template>
         </view>
-      </view>
-
-      <!-- 加购目标卡选择抽屉 -->
-      <view v-if="showEsimDrawer" class="drawer-mask" @click="closeEsimDrawer"></view>
-      <view v-if="showEsimDrawer" class="drawer-panel">
-        <view class="drawer-header">
-          <text class="drawer-title">{{ fmt('checkout.buyDrawerTitle') }}</text>
-          <view class="drawer-close" @click="closeEsimDrawer">✕</view>
-        </view>
-        <scroll-view class="drawer-body" scroll-y>
-          <view v-if="expiredEsims.length === 0" class="drawer-empty">
-            <text class="drawer-empty-text">{{ fmt('checkout.buyAddEmpty') }}</text>
-          </view>
-          <view
-            v-for="e in expiredEsims"
-            :key="e.id"
-            class="drawer-item"
-            :class="{ active: e.id === selectedEsimId }"
-            @click="selectEsim(e.id)"
-          >
-            <view class="drawer-item-info">
-              <text class="drawer-item-name">{{ e.pkg.countryName }}</text>
-              <text class="drawer-item-spec">{{ e.pkg.gb }}GB · {{ e.pkg.days }}{{ fmt('checkout.buyDayUnit') }} · {{ fmt('checkout.buyExpire', { date: formatDate(e.expireAt) }) }}</text>
-            </view>
-            <view v-if="e.id === selectedEsimId" class="drawer-item-check">✓</view>
-          </view>
-        </scroll-view>
       </view>
 
       <view class="section-card">
         <view class="order-head">
           <text class="order-title">{{ fmt('checkout.payMethod') }}</text>
         </view>
-        <view class="pay-item" :class="{ active: payMethod === 'alipay' }" @click="payMethod = 'alipay'">
+        <view class="pay-item" :class="{ active: payMethod === 'alipay' }" @tap="payMethod = 'alipay'">
           <view class="pay-logo alipay">支</view>
           <view class="pay-info">
             <text class="pay-name">{{ fmt('checkout.alipayName') }}</text>
@@ -166,7 +158,7 @@
         </view>
       </view>
 
-      <view class="agree-row" @click="agreed = !agreed">
+      <view class="agree-row" @tap="agreed = !agreed">
         <view class="agree-box" :class="{ checked: agreed }">
           <image v-if="agreed" src="/static/icons/co-check.png" mode="aspectFit" class="check-icon" />
         </view>
@@ -189,7 +181,7 @@
         class="submit-btn"
         :class="{ disabled: !agreed || submitting }"
         hover-class="submit-btn--hover"
-        @click="submit"
+        @tap="submit"
       >
         {{ submitting ? fmt('checkout.submitting') : fmt('checkout.submit') }}
       </view>
@@ -232,7 +224,8 @@ export default {
   computed: {
     // 详情页已传入唯一真实套餐，此处直接取套餐字段展示
     dataLabel() {
-      return this.pkg ? this.fmt('detail.totalGb', { gb: this.pkg.gb }) : ''
+      if (!this.pkg) return ''
+      return this.pkg.isUnlimited ? this.fmt('package.unlimited') : this.fmt('detail.totalGb', { gb: this.pkg.gb })
     },
     days() {
       return this.pkg ? this.pkg.days : 0
@@ -254,6 +247,11 @@ export default {
     },
     selectedEsim() {
       return this.renewEsims.find(e => e.id === this.selectedEsimId) || null
+    },
+    pickerRange() {
+      return this.expiredEsims.map(e => ({
+        label: `${e.pkg.countryName} · ${e.pkg.isUnlimited ? this.fmt('package.unlimited') : e.pkg.gb + 'GB'} · ${e.pkg.days}${this.fmt('checkout.buyDayUnit')} · ${this.fmt('checkout.buyExpire', { date: formatDate(e.expireAt) })}`
+      }))
     }
   },
   onLoad(options) {
@@ -286,8 +284,12 @@ export default {
       if (!store.isLoggedIn) return
       try {
         const res = await api.getMyEsims()
-        this.renewEsims = (res.data.esims || [])
-          .filter(e => e.status === 'activated' && new Date(e.expireAt) < new Date())
+        const all = res.data.esims || []
+        this.renewEsims = all.filter(
+          e => e.status === 'activated' && new Date(e.expireAt) < new Date()
+        )
+        // 诊断：确认前端拿到的卡数量与过滤结果
+        console.log('[checkout] esims total=', all.length, 'expired=', this.renewEsims.length, all.map(e => ({ s: e.status, exp: e.expireAt })))
         // 预选：从 eSIM 详情页续费进入时（onLoad 已带 mode=renew&esimId）
         if (this.mode === 'renew' && this.esimId) {
           if (this.renewEsims.some(e => e.id === this.esimId)) {
@@ -308,11 +310,22 @@ export default {
       this.buyMode = m
       if (m === 'new') this.selectedEsimId = ''
     },
+    onPickEsim(e) {
+      const idx = Number(e.detail.value)
+      const target = this.expiredEsims[idx]
+      if (target) this.selectedEsimId = target.id
+    },
     selectEsim(id) {
       this.selectedEsimId = id
       this.closeEsimDrawer()
     },
     openEsimDrawer() {
+      console.log('[checkout] openEsimDrawer expired=', this.expiredEsims.length)
+      // 无可选加购卡时给出明确提示，避免点了没反应
+      if (!this.expiredEsims.length) {
+        uni.showToast({ title: this.fmt('checkout.buyAddEmpty'), icon: 'none' })
+        return
+      }
       this.showEsimDrawer = true
     },
     closeEsimDrawer() {
@@ -721,6 +734,14 @@ export default {
   border-radius: $radius-sm;
   padding: 20rpx 24rpx;
   margin-top: 8rpx;
+}
+
+.bm-target-picker {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-width: 0;
 }
 
 .bm-target-left {

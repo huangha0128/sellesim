@@ -41,7 +41,7 @@
         <!-- 中部：套餐信息 -->
         <view class="card-body">
           <text class="card-country">{{ esim.pkg.countryName }} eSIM</text>
-          <text class="card-spec">{{ esim.pkg.gb }}GB · {{ esim.pkg.days }}天</text>
+          <text class="card-spec">{{ esim.pkg.isUnlimited ? fmt('package.unlimited') : esim.pkg.gb + 'GB' }} · {{ esim.pkg.days }}天</text>
         </view>
 
         <!-- 底部：ICCID + 到期时间 -->

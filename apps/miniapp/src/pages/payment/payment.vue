@@ -100,6 +100,9 @@ export default {
     },
     orderLabel() {
       if (!this.order) return ''
+      if (this.order.isUnlimited) {
+        return this.$t('payment.orderLabelUnlimited', { name: this.order.countryName, days: this.order.days })
+      }
       return this.$t('payment.orderLabel', { name: this.order.countryName, gb: this.order.gb, days: this.order.days })
     }
   },
@@ -126,6 +129,7 @@ export default {
           countryCode: o.countryCode,
           gb: o.gb,
           days: o.days,
+          isUnlimited: !!o.isUnlimited,
           flag: o.countryCode || '',
         }
         store.updateOrder(this.orderNo, order)

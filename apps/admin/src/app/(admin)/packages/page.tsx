@@ -472,7 +472,20 @@ export default function PackagesPage() {
                             <span className="font-medium text-ink">{p.country?.name || p.countryCode}</span>
                           </div>
                         </TableCell>
-                        <TableCell>{p.gb}GB</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            <span>{p.gb}GB</span>
+                            {p.isUnlimited && (
+                              <span
+                                className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10.5px] font-medium text-amber-700"
+                                style={{ background: 'rgba(217, 119, 6, 0.12)' }}
+                                title="不限量套餐：高速流量用完后限速，仍可继续使用"
+                              >
+                                不限量
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>{p.days}天</TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1">
@@ -751,7 +764,20 @@ export default function PackagesPage() {
                         <TableCell>
                           <span className="max-w-[13rem] truncate text-ink">{c.name}</span>
                         </TableCell>
-                        <TableCell>{c.gb}GB</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            <span>{c.gb}GB</span>
+                            {c.isUnlimited && (
+                              <span
+                                className="inline-flex items-center rounded-full px-1.5 py-0.5 text-[10.5px] font-medium text-amber-700"
+                                style={{ background: 'rgba(217, 119, 6, 0.12)' }}
+                                title="不限量套餐：高速流量用完后限速，仍可继续使用"
+                              >
+                                不限量
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>{c.days}天</TableCell>
                         <TableCell className="text-muted-foreground">{c.type}</TableCell>
                         <TableCell>

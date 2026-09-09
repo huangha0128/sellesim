@@ -58,7 +58,7 @@
         </view>
         <view v-if="esim.status === 'activated'" class="row">
           <text class="row-label">{{ fmt('orders.usage') }}</text>
-          <text class="row-value">{{ fmt('esims.usage', { used: Number(esim.used || 0).toFixed(1), total: esim.gb || order.gb || 0 }) }}</text>
+          <text class="row-value">{{ (esim.isUnlimited || order.isUnlimited) ? fmt('esims.usageUnlimited', { used: Number(esim.used || 0).toFixed(1), total: esim.gb || order.gb || 0 }) : fmt('esims.usage', { used: Number(esim.used || 0).toFixed(1), total: esim.gb || order.gb || 0 }) }}</text>
         </view>
       </view>
 

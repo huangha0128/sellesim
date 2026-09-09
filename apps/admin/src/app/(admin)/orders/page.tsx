@@ -161,7 +161,7 @@ export default function OrdersPage() {
                       <TableCell>
                         <span className="inline-flex items-center gap-1.5">
                           <span>
-                            {o.pkgName || o.countryCode || '—'} {o.gb ? `${o.gb}GB/` : ''}{o.days ? `${o.days}天` : ''}
+                            {o.pkgName || o.countryCode || '—'} {o.isUnlimited ? `不限量/${o.days ? `${o.days}天` : ''}` : `${o.gb ? `${o.gb}GB/` : ''}${o.days ? `${o.days}天` : ''}`}
                           </span>
                         </span>
                       </TableCell>

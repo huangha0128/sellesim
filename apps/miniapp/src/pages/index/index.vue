@@ -59,7 +59,7 @@
             <text class="cover-subtitle">{{ fmt('index.plan') }}</text>
             <view class="cover-specs">
               <text class="spec-tag">{{ fmt('common.dayUnit', { d: pkg.days }) }}</text>
-              <text class="spec-tag">{{ pkg.gb }}GB</text>
+              <text class="spec-tag">{{ pkg.isUnlimited ? fmt('package.unlimited') : pkg.gb + 'GB' }}</text>
             </view>
           </view>
           <view class="esim-badge">eSIM</view>
@@ -73,7 +73,7 @@
             <text class="tag tag-secondary">{{ fmt('index.noRealName') }}</text>
           </view>
           <view class="card-footer">
-            <text class="sales-count">{{ fmt('index.soldCount', { n: formatSales(idx) }) }}</text>
+            <text class="sales-count">{{ fmt('index.soldCount', { n: pkg.soldCount ?? 0 }) }}</text>
             <view class="price-block">
               <text class="price-currency">{{ displayCurrency }}</text>
               <text class="price-value">{{ fmtPrice(pkg.price) }}</text>

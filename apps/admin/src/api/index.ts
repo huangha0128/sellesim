@@ -40,6 +40,7 @@ export interface PackageItem {
   gb: number;
   days: number;
   price: number;
+  isUnlimited?: boolean;
   currency?: 'CNY' | 'USD';
   onSale?: boolean;
   name?: string;
@@ -84,6 +85,7 @@ export interface Order {
   pkgName?: string | null;
   gb?: number | null;
   days?: number | null;
+  isUnlimited?: boolean;
   package?: PackageItem;
   user?: { id: string; nickname?: string; alipayUserId?: string } | null;
 }

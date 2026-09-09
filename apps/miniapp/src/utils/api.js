@@ -135,14 +135,14 @@ export const api = {
     const hotCountries = hotRes.data.countries || [];
     const hotPackages = [];
     for (const c of hotCountries) {
-      const pkgRes = await request('GET', `/packages?countryCode=${c.code}`);
+      // all=1 获取该国家全部套餐，确保选出最低价，与搜索页逻辑一致
+      const pkgRes = await request('GET', `/packages?countryCode=${c.code}&all=1`);
       const list = pkgRes.data.packages || [];
-      // 取该国最便宜的真实套餐作「热销」卡片，价格与「起价」一致；
-      // 真实后端 tag 只有「热门」，故不再用不存在的「热销」去匹配
-      const featured = list.filter((p) => p.tag);
-      const hot = (featured.length ? featured : list)
-        .slice()
-        .sort((a, b) => a.price - b.price)[0] || null;
+      // 取该国最便宜的真实套餐作「热销」卡片，价格与搜索页、起价一致；
+      // 在全部套餐中选最低价，确保与搜索结果卡片一致
+      const hot = list.length
+        ? list.slice().sort((a, b) => a.price - b.price)[0]
+        : null;
       if (hot) hotPackages.push(flattenPkg(hot));
     }
     const priceMap = {};
@@ -236,6 +236,7 @@ export const api = {
         countryCode: o.countryCode,
         gb: o.gb,
         days: o.days,
+        isUnlimited: !!o.isUnlimited,
         flag: o.countryCode || '',
         esimStatus: (o.esim && o.esim.status) || '',
         refundedAt: o.refundedAt,
@@ -312,6 +313,8 @@ export const api = {
           flag: e.countryCode || '',
           gb: e.gb ?? o.gb ?? 0,
           days: e.days ?? o.days ?? 0,
+          // eSIM 与订单快照任一标记不限量即视为不限量（兼容旧数据）
+          isUnlimited: !!(e.isUnlimited || o.isUnlimited),
           price: o.price ?? 0,
         },
       };

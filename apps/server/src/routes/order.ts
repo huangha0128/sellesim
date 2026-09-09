@@ -63,6 +63,7 @@ export default (prisma: PrismaClient) => {
         pkgNameEn: pkg.nameEn || `${pkg.countryCode} ${pkg.gb}GB/${pkg.days} Days`,
         gb: pkg.gb,
         days: pkg.days,
+        isUnlimited: !!pkg.isUnlimited,
         tigerPkgId: pkg.tigerPkgId,
         tigerPid: pkg.tigerPid,
         orderType,
@@ -84,7 +85,7 @@ export default (prisma: PrismaClient) => {
     }
 
     // 商品名用纯 ASCII，避免中文编码导致支付宝"加签结果验证不通过"
-    const subject = `eSIM ${order.gb || 0}GB ${order.days || 0}Days`;
+    const subject = `eSIM ${order.isUnlimited ? 'Unlimited' : `${order.gb || 0}GB`} ${order.days || 0}Days`;
     // TODO(测试): 测试期间付款金额写死为 0.01 元，测试完成后需改回订单实价
     const totalAmount = '0.01';
 

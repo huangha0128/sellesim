@@ -44,6 +44,10 @@ export function tigerToView(t: any): any {
   const gb = Math.max(1, Math.round(amountMb / 1024));
   const days = Math.max(1, Number(t.valid_days) || 1);
   const price = Number(t.sales ?? t.nets ?? 0);
+  // Tiger API does not expose an explicit "unlimited" flag; the only reliable marker
+  // is the package name containing "Unlimited" (matches TigerESIM admin "是否不限量").
+  // amount >= 9999GB is kept as a fallback marker for huge-quota packages.
+  const isUnlimited = /unlimited/i.test(String(t.name || '')) || amountMb >= 9999 * 1024;
   // 中文名称（默认）
   const regionNameCn = region.name_cn || region.name_en || code;
   // 英文名称
@@ -66,6 +70,7 @@ export function tigerToView(t: any): any {
     gb,
     days,
     price,
+    isUnlimited,
     name: nameCn,
     nameEn: nameEn,
     type: typeKey,

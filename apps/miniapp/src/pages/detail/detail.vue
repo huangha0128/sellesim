@@ -66,17 +66,21 @@
         <view class="data-grid">
           <view
             v-for="c in dataCells"
-            :key="c.gb"
+            :key="c.gb + (c.isUnlimited ? '-unlimited' : '')"
             class="data-cell"
-            :class="{ active: selectedGb === c.gb }"
-            @tap="selectData(c.gb)"
+            :class="{ active: selectedGb === c.gb && selectedIsUnlimited === c.isUnlimited }"
+            @tap="selectData(c)"
           >
-            <text class="data-text" :class="{ unlimited: c.isUnlimited }">{{ fmt('detail.totalGb', { gb: c.gb }) }}</text>
+            <text class="data-text" :class="{ unlimited: c.isUnlimited }">{{ c.isUnlimited ? fmt('package.unlimited') : fmt('detail.totalGb', { gb: c.gb }) }}</text>
             <text v-if="c.isUnlimited" class="data-price-hint">{{ selectedDays }}{{ fmt('detail.dayUnitShort') }}{{ fmt('detail.onlyNeed') }}{{ c.priceDisplay }}</text>
-            <view v-if="selectedGb === c.gb" class="data-check-badge">
+            <view v-if="selectedGb === c.gb && selectedIsUnlimited === c.isUnlimited" class="data-check-badge">
               <text class="data-check-text">✓</text>
             </view>
           </view>
+        </view>
+        <!-- 不限量套餐说明：高速额度用完后限速，eSIM 仍可使用 -->
+        <view v-if="selectedPkg && selectedPkg.isUnlimited" class="unlimited-note">
+          <text class="unlimited-note-txt">{{ fmt('detail.unlimitedHint', { gb: selectedPkg.gb }) }}</text>
         </view>
       </view>
       </view><!-- /sec-select -->
@@ -155,10 +159,6 @@
       <view class="price-area">
         <text class="price-currency">{{ sym }}</text>
         <text class="price-main">{{ priceNum }}</text>
-        <view class="price-original-area">
-          <text class="price-discount-badge">{{ fmt('detail.discount', { percent: discountPercent }) }}</text>
-          <text class="price-orig-text">{{ fmt('detail.originalPrice', { price: originalPrice }) }}</text>
-        </view>
       </view>
       <view class="buy-btn" hover-class="buy-btn--hover" @tap="buy">{{ fmt('detail.buyNow') }}</view>
     </view>
@@ -274,6 +274,7 @@ export default {
       _tabH: 0,
       selectedDays: 0,
       selectedGb: 0,
+      selectedIsUnlimited: false,
       showDrawer: false,
       drawerSearch: '',
       drawerActiveCat: '历史/热门',
@@ -285,28 +286,33 @@ export default {
     dayCells() {
       if (!this.allPackages.length || !this.selectedGb) return []
       return Array.from(new Set(
-        this.allPackages.filter(p => p.gb === this.selectedGb && p.days).map(p => p.days)
+        this.allPackages
+          .filter(p => p.gb === this.selectedGb && !!p.isUnlimited === this.selectedIsUnlimited && p.days)
+          .map(p => p.days)
       )).sort((a, b) => a - b)
     },
     dataCells() {
       if (!this.allPackages.length || !this.selectedDays) return []
+      // 分组键需区分「相同GB数的限量/不限量」两种套餐（如 3GB 限量与 3GB 高速不限量并存）
       const byGb = new Map()
       for (const p of this.allPackages) {
         if (p.days !== this.selectedDays || !p.gb) continue
-        const cur = byGb.get(p.gb)
-        if (!cur || p.price < cur.price) byGb.set(p.gb, { gb: p.gb, price: p.price, currency: p.currency })
+        const key = p.gb + (p.isUnlimited ? '-unlimited' : '')
+        const cur = byGb.get(key)
+        if (!cur || p.price < cur.price) byGb.set(key, { gb: p.gb, isUnlimited: !!p.isUnlimited, price: p.price, currency: p.currency })
       }
       return Array.from(byGb.values())
-        .sort((a, b) => a.gb - b.gb)
+        .sort((a, b) => a.gb - b.gb || (a.isUnlimited ? 1 : 0) - (b.isUnlimited ? 1 : 0))
         .map(c => ({
           ...c,
-          isUnlimited: c.gb >= 9999,
           priceDisplay: Number(c.price).toFixed(2)
         }))
     },
     selectedPkg() {
       if (!this.allPackages.length) return null
-      const matches = this.allPackages.filter(p => p.days === this.selectedDays && p.gb === this.selectedGb)
+      const matches = this.allPackages.filter(
+        p => p.days === this.selectedDays && p.gb === this.selectedGb && !!p.isUnlimited === this.selectedIsUnlimited
+      )
       if (!matches.length) return null
       return matches.reduce((min, p) => (p.price < min.price ? p : min), matches[0])
     },
@@ -317,17 +323,6 @@ export default {
     sym() {
       const pkg = this.selectedPkg || this.pkg
       return currencySymbol(pkg ? pkg.currency : 'CNY')
-    },
-    originalPrice() {
-      const cur = parseFloat(this.priceNum)
-      if (!cur) return '0.00'
-      return (cur * 1.55).toFixed(2)
-    },
-    discountPercent() {
-      const orig = parseFloat(this.originalPrice)
-      const cur = parseFloat(this.priceNum)
-      if (!orig || !cur) return 0
-      return Math.round((1 - cur / orig) * 100)
     },
     pkgDescText() {
       if (!this.pkg) return ''
@@ -446,16 +441,20 @@ export default {
       const best = [...this.allPackages].sort((a, b) => a.price - b.price)[0]
       this.selectedDays = best.days
       this.selectedGb = best.gb
+      this.selectedIsUnlimited = !!best.isUnlimited
     },
     selectDays(d) {
       this.selectedDays = d
-      if (!this.dataCells.some(c => c.gb === this.selectedGb)) {
-        this.selectedGb = this.dataCells[0] ? this.dataCells[0].gb : 0
+      if (!this.dataCells.some(c => c.gb === this.selectedGb && c.isUnlimited === this.selectedIsUnlimited)) {
+        const fallback = this.dataCells[0]
+        this.selectedGb = fallback ? fallback.gb : 0
+        this.selectedIsUnlimited = fallback ? !!fallback.isUnlimited : false
       }
       this.measureSections()
     },
-    selectData(gb) {
-      this.selectedGb = gb
+    selectData(c) {
+      this.selectedGb = c.gb
+      this.selectedIsUnlimited = !!c.isUnlimited
       if (!this.dayCells.includes(this.selectedDays)) {
         this.selectedDays = this.dayCells[0] || 0
       }
@@ -562,6 +561,7 @@ export default {
       this.pkg = p
       this.selectedDays = p.days || this.selectedDays
       this.selectedGb = p.gb || this.selectedGb
+      this.selectedIsUnlimited = !!p.isUnlimited
       this.showDrawer = false
     },
     formatDrawerPrice(p) {
@@ -864,6 +864,20 @@ export default {
   line-height: 1.3;
 }
 
+/* 不限量套餐说明（高速额度用完后限速可用） */
+.unlimited-note {
+  margin-top: 16rpx;
+  background: $brand-lighter;
+  border-radius: 12rpx;
+  padding: 18rpx 24rpx;
+}
+
+.unlimited-note-txt {
+  font-size: 22rpx;
+  color: $brand-deep;
+  line-height: 1.6;
+}
+
 .data-check-badge {
   position: absolute;
   bottom: 4rpx;
@@ -1098,30 +1112,6 @@ export default {
   font-weight: 800;
   line-height: 1;
   font-variant-numeric: tabular-nums;
-}
-
-.price-original-area {
-  display: flex;
-  flex-direction: column;
-  margin-left: 16rpx;
-  align-items: flex-start;
-}
-
-.price-discount-badge {
-  font-size: 20rpx;
-  color: #ffffff;
-  background: $coral;
-  border-radius: 6rpx;
-  padding: 2rpx 12rpx;
-  display: inline-block;
-  align-self: flex-start;
-  margin-bottom: 4rpx;
-}
-
-.price-orig-text {
-  font-size: 22rpx;
-  color: $ink-3;
-  text-decoration: line-through;
 }
 
 .buy-btn {

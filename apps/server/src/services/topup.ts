@@ -52,6 +52,7 @@ export async function renewEsim(
       data: {
         gb: order?.gb || 0,
         days: order?.days || 0,
+        isUnlimited: !!order?.isUnlimited,
         expireAt,
         used: 0,
         activationCode,
@@ -72,6 +73,7 @@ export async function renewEsim(
     data: {
       gb: order?.gb || 0,
       days: order?.days || 0,
+      isUnlimited: !!order?.isUnlimited,
       expireAt,
       used: 0,
       countryCode: order?.countryCode || targetEsim.countryCode,

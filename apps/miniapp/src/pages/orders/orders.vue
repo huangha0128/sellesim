@@ -50,7 +50,7 @@
                 <text class="oc-name">{{ fmt('checkout.skuName', { name: order.countryName }) }}</text>
                 <text class="oc-status" :class="categoryOf(order)">{{ statusText(order) }}</text>
               </view>
-              <text class="oc-meta">{{ fmt('orders.meta', { gb: order.gb, days: order.days }) }}</text>
+              <text class="oc-meta">{{ order.isUnlimited ? fmt('orders.metaUnlimited', { days: order.days }) : fmt('orders.meta', { gb: order.gb, days: order.days }) }}</text>
             </view>
             <text class="oc-price">¥{{ priceText(order) }}</text>
           </view>

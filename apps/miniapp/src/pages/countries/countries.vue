@@ -323,6 +323,7 @@ export default {
       return Number(n || 0).toFixed(2)
     },
     formatGb(p) {
+      if (p.isUnlimited) return this.fmt('package.unlimited')
       const gb = p.gb ?? (p.amount ? p.amount / 1024 : null)
       return gb ? `${gb}GB` : ''
     },
