@@ -96,12 +96,24 @@ export default {
         return node
       }
 
-      const queryInComponent = (fallback) => {
+      // 依次尝试三种策略。此前是单次查询，极易撞上真机 2d canvas 节点异步就绪的空窗期，
+      // 导致 node 为 null 而失败；现改为每策略轮询等待节点就绪，超时后再推进下一策略。
+      const RETRY_INTERVAL = 60
+      const MAX_TRIES = 10
+      let settled = false
+
+      const settle = (node) => {
+        if (settled) return
+        settled = true
+        draw(node)
+      }
+
+      const queryComponentNode = (cb) => {
         // 支付宝自定义组件内部须用 .in(组件实例) 作用域查询
         const scope = this.$scope
         if (!scope) {
-          console.warn('[EsimQr] 未获取到组件实例 $scope，尝试页面作用域')
-          fallback()
+          console.warn('[EsimQr] 未获取到组件实例 $scope，尝试下一策略')
+          cb(null)
           return
         }
         try {
@@ -109,63 +121,61 @@ export default {
             .createSelectorQuery()
             .in(scope)
             .select('#' + this.canvasId)
-            .node((res) => {
-              const node = extractNode(res, '组件作用域.node')
-              if (node) {
-                draw(node)
-              } else {
-                fallback()
-              }
-            })
+            .node((res) => cb(extractNode(res, '组件作用域.node')))
             .exec()
         } catch (e) {
-          console.error('[EsimQr] 组件作用域 node 查询异常，尝试 fields', e)
-          fallback()
+          console.error('[EsimQr] 组件作用域 node 查询异常', e)
+          cb(null)
         }
       }
 
-      const queryInComponentFields = (fallback) => {
+      const queryComponentFields = (cb) => {
         try {
           uni
             .createSelectorQuery()
             .in(this.$scope)
             .select('#' + this.canvasId)
             .fields({ node: true, size: true }, () => {})
-            .exec((res) => {
-              const node = extractNode(res, '组件作用域.fields')
-              if (node) {
-                draw(node)
-              } else {
-                fallback()
-              }
-            })
+            .exec((res) => cb(extractNode(res, '组件作用域.fields')))
         } catch (e) {
-          console.error('[EsimQr] 组件作用域 fields 查询异常，尝试页面作用域', e)
-          fallback()
+          console.error('[EsimQr] 组件作用域 fields 查询异常', e)
+          cb(null)
         }
       }
 
-      const queryInPage = () => {
+      const queryPageFields = (cb) => {
         try {
           uni
             .createSelectorQuery()
             .select('#' + this.canvasId)
             .fields({ node: true, size: true }, () => {})
-            .exec((res) => {
-              const node = extractNode(res, '页面作用域.fields')
-              if (node) {
-                draw(node)
-              } else {
-                console.error('[EsimQr] 所有查询策略均未找到 canvas 节点')
-              }
-            })
+            .exec((res) => cb(extractNode(res, '页面作用域.fields')))
         } catch (e) {
           console.error('[EsimQr] 页面作用域查询异常', e)
+          cb(null)
         }
       }
 
-      // 依次尝试：组件作用域 node -> 组件作用域 fields -> 页面作用域 fields
-      queryInComponent(() => queryInComponentFields(queryInPage))
+      const strategies = [queryComponentNode, queryComponentFields, queryPageFields]
+
+      const poll = (index, tryCount) => {
+        if (settled) return
+        strategies[index]((node) => {
+          if (node) {
+            settle(node)
+            return
+          }
+          if (tryCount < MAX_TRIES) {
+            setTimeout(() => poll(index, tryCount + 1), RETRY_INTERVAL)
+          } else if (index + 1 < strategies.length) {
+            setTimeout(() => poll(index + 1, 0), RETRY_INTERVAL)
+          } else {
+            console.error('[EsimQr] 所有查询策略轮询后均未获取到可用 canvas 节点')
+          }
+        })
+      }
+
+      poll(0, 0)
     }
   }
 }

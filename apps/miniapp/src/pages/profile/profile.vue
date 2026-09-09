@@ -3,8 +3,9 @@
     <!-- 顶部用户区 -->
     <view class="user-header" @click="goLogin">
       <view class="uh-avatar">
-        <image v-if="store.isLoggedIn && store.user.avatar" class="uh-avatar-img" :src="store.user.avatar" mode="aspectFit" />
-        <image v-else class="uh-avatar-img" src="/static/icons/hero-avatar.png" mode="aspectFit" />
+        <image class="uh-avatar-img" src="/static/icons/default-avatar.png" mode="aspectFit" />
+<!--        <image v-if="store.isLoggedIn && store.user.avatar" class="uh-avatar-img" :src="store.user.avatar" mode="aspectFit" />-->
+<!--        <image v-else class="uh-avatar-img" src="/static/icons/hero-avatar.png" mode="aspectFit" />-->
       </view>
       <view class="uh-info">
         <text class="uh-name">{{ store.isLoggedIn ? (store.user.nickname || store.user.email || $t('profile.traveler')) : $t('profile.clickLogin') }}</text>
