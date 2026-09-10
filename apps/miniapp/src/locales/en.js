@@ -500,6 +500,7 @@ export default {
     typeLocal: 'Local Plan',
     // Tags
     tagHot: 'Hot',
+    unlimited: 'Unlimited',
     // Features
     feature1: 'Buy & use, instant activation',
     feature2: 'High-speed 4G/5G network',
@@ -705,6 +706,8 @@ export default {
     eyebrow: 'TRAVEL eSIM',
     specTitle: 'Plan Spec',
     specValue: '{gb}GB · {days} days',
+    specGb: '{gb}GB',
+    specDays: '{days} days',
     usageTitle: 'Data Usage',
     usedGb: 'Used {used}GB',
     totalGb: 'Total {gb}GB',

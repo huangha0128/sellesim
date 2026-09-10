@@ -502,6 +502,7 @@ export default {
     typeLocal: '本地套餐',
     // 标签
     tagHot: '热门',
+    unlimited: '不限量',
     // 特性
     feature1: '即买即用，扫码秒激活',
     feature2: '全程高速 4G/5G 网络',
@@ -709,6 +710,8 @@ export default {
     eyebrow: 'TRAVEL eSIM',
     specTitle: '套餐规格',
     specValue: '{gb}GB · {days}天',
+    specGb: '{gb}GB',
+    specDays: '{days}天',
     usageTitle: '流量使用情况',
     usedGb: '已用 {used}GB',
     totalGb: '共 {gb}GB',

@@ -500,8 +500,9 @@ export default {
     // 套餐類型
     typeMulti: '多國通用',
     typeLocal: '本地套餐',
-    // 標籤
+    // 标签
     tagHot: '熱門',
+    unlimited: '不限量',
     // 特性
     feature1: '即買即用，掃碼秒啟用',
     feature2: '全程高速 4G/5G 網路',
@@ -707,6 +708,8 @@ export default {
     eyebrow: 'TRAVEL eSIM',
     specTitle: '套餐規格',
     specValue: '{gb}GB · {days}天',
+    specGb: '{gb}GB',
+    specDays: '{days}天',
     usageTitle: '流量使用情況',
     usedGb: '已用 {used}GB',
     totalGb: '共 {gb}GB',

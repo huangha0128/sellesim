@@ -227,6 +227,14 @@ function fmtNamed(str, p) {
 // 热门目的地（按销量排序）
 const HOT_CODES = ['mo', 'my', 'hk', 'cn', 'jp', 'kr', 'th', 'sg']
 
+// 多国区域 -> 组成国家 code（需与后端 REGION_COUNTRY_ALIASES 保持一致）：
+// 新马泰/日韩/中国大陆香港澳门 等组合区域套餐覆盖的单个国家，也要出现在目的地列表中
+const REGION_CONSTITUENTS = {
+  SINGAPOREMALAYSIATHAILAND: ['SG', 'MY', 'TH'],
+  JAPANKOREA: ['JP', 'KR'],
+  CHINAMAINLANDHONGKONGMACAO: ['CN', 'HK', 'MO'],
+}
+
 export default {
   data() {
     return {
@@ -353,6 +361,15 @@ export default {
         const countries = res.data.countries || []
         // 只展示小程序套餐中存在（已添加并定价）的国家/地区，packageCount 由后端实时统计
         const withPkg = countries.filter((c) => (c.packageCount || 0) > 0)
+        // 多国区域套餐覆盖的组成国家（如"新马泰"覆盖新加坡/马来西亚/泰国）也加入列表，
+        // 点击后按国家名搜索即可命中对应组合套餐
+        const byCode = new Map(countries.map((c) => [c.code, c]))
+        withPkg.forEach((c) => {
+          ;(REGION_CONSTITUENTS[c.code] || []).forEach((code) => {
+            const cc = byCode.get(code)
+            if (cc && !withPkg.includes(cc)) withPkg.push(cc)
+          })
+        })
         this.regions = withPkg.filter((c) => c.cat === '全球')
         this.all = withPkg.filter((c) => c.cat !== '全球')
       } finally {

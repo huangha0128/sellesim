@@ -5,10 +5,12 @@ import { tigerClient } from '../tiger';
 import { getPackageView } from '../tiger/view';
 import { provisionEsim } from '../services/provision';
 import { renewEsim } from '../services/topup';
+import { resolveEsimActivationStatus } from '../tiger/activation';
 import { sendEsimEmail, sendRenewEmail } from '../services/email';
 import { applyRefundRequest } from '../services/refund';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { config } from '../config';
+import { readDisplayConfig, DEFAULT_DISPLAY_CONFIG } from '../pricing/priceOverride';
 
 export default (prisma: PrismaClient) => {
   const router = Router();
@@ -86,8 +88,16 @@ export default (prisma: PrismaClient) => {
 
     // 商品名用纯 ASCII，避免中文编码导致支付宝"加签结果验证不通过"
     const subject = `eSIM ${order.isUnlimited ? 'Unlimited' : `${order.gb || 0}GB`} ${order.days || 0}Days`;
-    // TODO(测试): 测试期间付款金额写死为 0.01 元，测试完成后需改回订单实价
-    const totalAmount = '0.01';
+    // 付款金额改为订单实价。订单价格按展示货币存储（CNY 或 USD），支付宝仅支持人民币，
+    // 展示货币为 USD 时需按汇率换算成 CNY。
+    const displayCfg = await readDisplayConfig();
+    let cnyAmount = order.price;
+    if (displayCfg.displayCurrency === 'USD') {
+      const rate = displayCfg.usdCnyRate > 0 ? displayCfg.usdCnyRate : DEFAULT_DISPLAY_CONFIG.usdCnyRate;
+      cnyAmount = order.price * rate;
+    }
+    cnyAmount = Math.round(cnyAmount * 100) / 100;
+    const totalAmount = cnyAmount.toFixed(2);
 
     const host = config.alipay.notifyHost;
     const notifyUrl = `${host}/api/alipay/notify`;
@@ -171,6 +181,10 @@ export default (prisma: PrismaClient) => {
     if (!order) {
       return res.json({ code: 1, message: '订单不存在' });
     }
+    // 激活状态改为 Tiger 实时套餐状态
+    if (order.esim && tigerClient.configured) {
+      order.esim.status = await resolveEsimActivationStatus(order.esim);
+    }
     res.json({ code: 0, data: { order } });
   });
 
@@ -240,8 +254,19 @@ export default (prisma: PrismaClient) => {
     const orders = await prisma.order.findMany({
       where: { userId: req.userId },
       orderBy: { createdAt: 'desc' },
-      include: { esim: { select: { status: true } } },
+      include: {
+        esim: { select: { status: true, iccid: true, tigerPkgId: true, tigerPid: true } },
+      },
     });
+    if (tigerClient.configured) {
+      await Promise.all(
+        orders.map(async (o) => {
+          if (o.esim) {
+            o.esim.status = await resolveEsimActivationStatus(o.esim);
+          }
+        }),
+      );
+    }
     res.json({ code: 0, data: { orders } });
   });
 
