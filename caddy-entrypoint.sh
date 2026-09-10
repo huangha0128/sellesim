@@ -26,8 +26,10 @@ $CADDY_DOMAIN {
         reverse_proxy admin:80
     }
 
+    # 默认路由 -> 官网静态站点
     handle {
-        respond "YYeSim 服务已启动"
+        root * /www/wwwroot/www.bjyyxx.com
+        file_server
     }
 }
 EOF
@@ -45,8 +47,10 @@ else
         reverse_proxy admin:80
     }
 
+    # 默认路由 -> 官网静态站点
     handle {
-        respond "YYeSim 服务已启动"
+        root * /www/wwwroot/www.bjyyxx.com
+        file_server
     }
 }
 EOF

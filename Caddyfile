@@ -28,8 +28,9 @@ www.bjyyxx.com {
         reverse_proxy admin:80
     }
 
-    # 其余路径提示
+    # 默认路由 → 官网静态站点
     handle {
-        respond "YYeSim 服务已启动"
+        root * /www/wwwroot/www.bjyyxx.com
+        file_server
     }
 }

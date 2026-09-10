@@ -111,6 +111,8 @@ services:
     volumes:
       # 挂载手动生成的证书目录（certbot 生成，宿主机路径通过 CERT_DIR 配置）
       - ${CERT_DIR:-/serve/nginx/cert}:/etc/caddy/cert:ro
+      # 挂载官网静态站点目录（默认路由 / 指向此目录的 file_server）
+      - ${WWW_ROOT:-/www/wwwroot/www.bjyyxx.com}:/www/wwwroot/www.bjyyxx.com:ro
       - caddy-data:/data
       - caddy-config:/config
 
