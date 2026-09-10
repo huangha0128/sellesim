@@ -1,5 +1,33 @@
 <template>
   <view class="od-page">
+    <!-- 骨架屏：订单数据加载中 -->
+    <view v-if="loading && !order" class="od-sk">
+      <!-- Hero 骨架 -->
+      <view class="sk-hero">
+        <view class="sk-hero-top">
+          <view class="sk-hero-main">
+            <view class="sk sk-line sk-hero-overline"></view>
+            <view class="sk sk-line sk-hero-title"></view>
+            <view class="sk sk-line sk-hero-meta"></view>
+          </view>
+          <view class="sk sk-flag-card"></view>
+        </view>
+        <view class="sk-hero-bottom">
+          <view class="sk sk-chip"></view>
+          <view class="sk sk-price-num"></view>
+        </view>
+      </view>
+      <!-- 信息卡骨架（首卡上浮叠压 Hero） -->
+      <view class="sk-card sk-card--overlap">
+        <view class="sk sk-line sk-card-title"></view>
+        <view class="sk sk-row" v-for="i in 5" :key="'a' + i"></view>
+      </view>
+      <view class="sk-card">
+        <view class="sk sk-line sk-card-title"></view>
+        <view class="sk sk-row" v-for="i in 4" :key="'b' + i"></view>
+      </view>
+    </view>
+
     <view v-if="error" class="empty">
       <text class="empty-title">{{ error }}</text>
       <view class="empty-btn" hover-class="empty-btn--hover" @click="load">{{ fmt('orders.retry') }}</view>
@@ -174,6 +202,7 @@ export default {
       order: null,
       esim: null,
       error: '',
+      loading: true,
       showRefundForm: false,
       refundReasonInput: '',
       submitting: false
@@ -226,6 +255,7 @@ export default {
       }
       console.log('[order-detail] load orderNo:', this.orderNo)
       this.error = ''
+      this.loading = true
       try {
         const res = await api.getOrder(this.orderNo)
         console.log('[order-detail] response code:', res && res.code, 'message:', res && res.message)
@@ -246,6 +276,8 @@ export default {
         // 网络异常：有缓存则保留展示，否则提示重试
         if (this.order) return
         this.error = this.fmt('orders.networkError')
+      } finally {
+        this.loading = false
       }
     },
     statusText(order) {
@@ -343,6 +375,108 @@ export default {
   min-height: 100vh;
   background: $bg-page;
   padding: 0 $page-pad 40rpx;
+}
+
+/* ========== 骨架屏 ========== */
+.od-sk .sk {
+  background: linear-gradient(100deg, $brand-lighter 25%, #E6EBFF 37%, $brand-lighter 63%);
+  background-size: 400% 100%;
+  animation: skShimmer 1.4s ease infinite;
+}
+
+.sk-hero {
+  margin: 0 (-$page-pad);
+  background: $gradient-canvas;
+  padding: 40rpx $page-pad 100rpx;
+  border-radius: 0 0 48rpx 48rpx;
+}
+
+.sk-hero-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sk-hero-main {
+  flex: 1;
+  padding-right: 24rpx;
+}
+
+.sk-line {
+  height: 26rpx;
+  margin: 10rpx 0;
+}
+
+.sk-hero-overline {
+  width: 180rpx;
+  border-radius: 6rpx;
+}
+
+.sk-hero-title {
+  width: 70%;
+  height: 40rpx;
+  margin-top: 18rpx;
+  border-radius: 12rpx;
+}
+
+.sk-hero-meta {
+  width: 45%;
+  border-radius: 6rpx;
+}
+
+.sk-flag-card {
+  width: 144rpx;
+  height: 144rpx;
+  border-radius: 36rpx;
+  flex-shrink: 0;
+}
+
+.sk-hero-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 28rpx;
+}
+
+.sk-chip {
+  width: 200rpx;
+  height: 56rpx;
+  border-radius: 28rpx;
+}
+
+.sk-price-num {
+  width: 150rpx;
+  height: 44rpx;
+  border-radius: 10rpx;
+}
+
+.sk-card {
+  margin-top: 24rpx;
+  background: $bg-card;
+  border-radius: $radius-lg;
+  padding: 28rpx;
+}
+
+.sk-card-title {
+  width: 200rpx;
+  height: 30rpx;
+  margin-bottom: 18rpx;
+}
+
+.sk-row {
+  height: 24rpx;
+  margin: 18rpx 0;
+}
+
+.sk-card--overlap {
+  margin-top: -48rpx;
+  position: relative;
+  z-index: 2;
+}
+
+@keyframes skShimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
 }
 
 .empty {

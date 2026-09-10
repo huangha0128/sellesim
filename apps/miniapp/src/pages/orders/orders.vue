@@ -7,7 +7,24 @@
       <text class="hero-sub">{{ fmt('orders.heroSub', { n: store.orders.length }) }}</text>
     </view>
 
-    <view v-if="!store.orders.length" class="empty">
+    <!-- 骨架屏：订单数据加载中 -->
+    <view v-if="loading && !store.orders.length" class="sk-list">
+      <view v-for="i in 3" :key="i" class="sk-oc-card">
+        <view class="sk-oc-head">
+          <view class="sk sk-flag"></view>
+          <view class="sk-oc-main">
+            <view class="sk sk-line sk-oc-title"></view>
+            <view class="sk sk-line sk-oc-meta"></view>
+          </view>
+          <view class="sk sk-price-short"></view>
+        </view>
+        <view class="sk-oc-info">
+          <view class="sk sk-line" v-for="j in 3" :key="j"></view>
+        </view>
+      </view>
+    </view>
+
+    <view v-if="!loading && !store.orders.length" class="empty">
       <image class="empty-icon" src="/static/icons/prof-order.png" mode="aspectFit" />
       <text class="empty-title">{{ fmt('orders.emptyTitle') }}</text>
       <text class="empty-sub">{{ fmt('orders.emptySub') }}</text>
@@ -115,7 +132,8 @@ export default {
   data() {
     return {
       store,
-      activeTab: 'all'
+      activeTab: 'all',
+      loading: true
     }
   },
   computed: {
@@ -163,6 +181,7 @@ export default {
       return fmtNamed(translate(key, params), params)
     },
     async refresh() {
+      this.loading = true
       try {
         const res = await api.getOrders()
         if (res.code === 401) {
@@ -173,7 +192,9 @@ export default {
         if (res.data.orders) {
           store.setOrders(res.data.orders)
         }
-      } catch (e) {}
+      } catch (e) {} finally {
+        this.loading = false
+      }
     },
     getFlagImage(order) {
       const code = order.countryCode || order.flag
@@ -543,5 +564,74 @@ export default {
 
 .footer-safe {
   height: calc(40rpx + env(safe-area-inset-bottom));
+}
+
+/* ========== 骨架屏 ========== */
+.sk-list {
+  padding: 28rpx 0 0;
+}
+
+.sk-oc-card {
+  background: $bg-card;
+  border-radius: $radius-lg;
+  padding: 28rpx;
+  margin-bottom: 24rpx;
+}
+
+.sk {
+  background: linear-gradient(100deg, $brand-lighter 25%, #E6EBFF 37%, $brand-lighter 63%);
+  background-size: 400% 100%;
+  border-radius: 8rpx;
+  animation: skShimmer 1.4s ease infinite;
+}
+
+.sk-oc-head {
+  display: flex;
+  align-items: center;
+}
+
+.sk-flag {
+  width: 84rpx;
+  height: 84rpx;
+  border-radius: 22rpx;
+  flex-shrink: 0;
+}
+
+.sk-oc-main {
+  flex: 1;
+  margin-left: 22rpx;
+}
+
+.sk-line {
+  height: 26rpx;
+  margin: 8rpx 0;
+}
+
+.sk-oc-title {
+  width: 65%;
+  border-radius: 12rpx;
+}
+
+.sk-oc-meta {
+  width: 50%;
+}
+
+.sk-price-short {
+  width: 100rpx;
+  height: 32rpx;
+  border-radius: 8rpx;
+  margin-left: 16rpx;
+  flex-shrink: 0;
+}
+
+.sk-oc-info {
+  margin-top: 22rpx;
+  border-top: 1rpx solid $line;
+  padding-top: 20rpx;
+}
+
+@keyframes skShimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
 }
 </style>

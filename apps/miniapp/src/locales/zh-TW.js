@@ -31,7 +31,9 @@ export default {
     email: '我的郵箱地址',
     faq: '常見問題',
     esimDetail: 'eSIM 詳情',
-    about: '關於我們'
+    about: '關於我們',
+    supportedModels: '支援 eSIM 機型彙總',
+    usageNotice: 'eSIM 使用須知'
   },
   index: {
     slogan: '全球 200+ 地區流量',
@@ -43,11 +45,11 @@ export default {
     heroTitle: '全球流量',
     heroSub: '一卡搞定',
     heroFeature1: '即時啟用',
-    heroFeature2: '無需實名',
+    heroFeature2: '掃碼即裝',
     heroFeature3: '190+ 目的地',
     plan: '流量套餐',
     instant: '即時啟用',
-    noRealName: '無需實名',
+    noRealName: '掃碼即裝',
     soldCount: '已售 {n}',
     hotCountries: '熱門目的地',
     allCountries: '全部國家 ›',
@@ -92,7 +94,7 @@ export default {
     version: '當前版本',
     introTitle: '關於 YYeSim',
     introText:
-      'YYeSim 提供 200+ 國家與地區的 eSIM 流量套餐，掃碼即裝、落地即用，無需實體卡與繁瑣實名，讓全球上網像本地流量一樣簡單。',
+      'YYeSim 提供 200+ 國家與地區的 eSIM 流量套餐，掃碼即裝、落地即用，無需實體卡，讓全球上網像本地流量一樣簡單。',
     tagRegions: '覆蓋地區',
     tagSpeed: '網路速率',
     tagSupport: '線上支援',
@@ -479,10 +481,10 @@ export default {
     plan: '流量套餐',
     sold: '已售 1000+',
     instant: '即時啟用',
-    noRealName: '免實名'
+    noRealName: '掃碼即裝'
   },
   packages: {
-    noRealName: '免實名',
+    noRealName: '掃碼即裝',
     instant: '即買即用',
     daysSelectable: '{min}-{max}天可選',
     daysValid: '{days}天有效',
@@ -504,7 +506,7 @@ export default {
     feature1: '即買即用，掃碼秒啟用',
     feature2: '全程高速 4G/5G 網路',
     feature3: '可開熱點，多人共享',
-    feature4: '無需實名，無需換卡',
+    feature4: '無需換卡，即買即用',
     // 安裝步驟
     step1: '購買後複製二維碼下方的啟用碼',
     step2: '手機設定 → 行動網路 → 加入 eSIM',
@@ -519,7 +521,7 @@ export default {
     nameSuffix: '{name}流量套餐',
     sold: '已售 {n}',
     instant: '即時啟用',
-    noRealName: '無需實名',
+    noRealName: '掃碼即裝',
     globalApp: '支援全球app',
     warn: '本套餐僅限在{name}境內使用，請謹慎購買！',
     selectDays: '選擇天數',
@@ -530,8 +532,6 @@ export default {
     unlimitedHint: '不限量套餐：含 {gb}GB 高速流量，用完後限速，仍可繼續使用',
     dataPriceHint: '{days}天僅需{price}元',
     coverage: '覆蓋地區：',
-    registration: '身份登記：',
-    noNeed: '不需要',
     detailTitle: '套餐詳情',
     descTitle: '套餐說明',
     installTitle: '安裝步驟',
@@ -850,6 +850,76 @@ export default {
       {
         q: '到了國外沒網怎麼辦？',
         a: '請確認已安裝 eSIM 並開啟「數據漫遊」開關；若仍無法上網，可嘗試手動選擇當地電信商網路。'
+      }
+    ]
+  },
+  supportedModels: {
+    eyebrow: 'COMPATIBILITY',
+    title: '支援 eSIM 機型彙總',
+    sub: '涵蓋主流品牌支援 eSIM 的手機型號，僅供參考，以手機系統設定中的「加入 eSIM」入口為準。'
+  },
+  usageNotice: {
+    eyebrow: 'USAGE NOTICE',
+    title: 'eSIM 使用須知',
+    sub: '使用前請仔細閱讀，保障您的出行順利',
+    sections: [
+      {
+        title: '基本說明',
+        items: [
+          'eSIM 是內建於手機的嵌入式 SIM 卡，無需實體插卡，掃碼或輸入啟動碼即可開通全球流量方案。',
+          '本平台提供的 eSIM 方案由合作的電信服務商提供，流量額度、有效期限、網路制式與涵蓋範圍以方案詳情頁展示為準。'
+        ]
+      },
+      {
+        title: '啟動說明',
+        items: [
+          '請於抵達目的地後再安裝啟用，有效期自啟用當日起算，過早啟用會提前消耗有效期限。',
+          '安裝時請保持網路連線（可使用 Wi-Fi），依安裝指南操作即可完成啟用。',
+          '同一台裝置可同時安裝多張 eSIM，但同一時間僅可啟用一張用於行動網路。'
+        ]
+      },
+      {
+        title: '數據漫遊',
+        items: [
+          '啟用後請務必於手機設定中開啟「數據漫遊」開關，否則無法正常上網。',
+          '抵達目的地後若無法上網，可嘗試於系統設定中手動選擇當地電信商網路。'
+        ]
+      },
+      {
+        title: '公平使用原則',
+        items: [
+          '方案遵循公平使用原則（Fair Usage），請用於正常個人用途。',
+          '異常高頻或惡意占用資源的行為，平台有權採取限速、停用等措施。',
+          '不限量方案在超出高速額度後會自動限速但不會斷網，仍可繼續使用。'
+        ]
+      },
+      {
+        title: '有效期與加值',
+        items: [
+          '方案有效期自啟用當日起算，為固定天數，到期後流量即失效。',
+          '可在「我的 eSIM」查看已購方案的剩餘流量與有效期。',
+          '方案到期後，可下單「加購到已到期的 eSIM」，流量疊加、有效期順延、啟動碼不變。'
+        ]
+      },
+      {
+        title: '裝置相容',
+        items: [
+          '請確認手機支援 eSIM 功能，可前往手機「設定」查看是否有「加入 eSIM」或「SIM 卡管理」入口。',
+          '支援機型彙總詳見「支援 eSIM 機型」頁面；國行部分機型可能不支援 eSIM。'
+        ]
+      },
+      {
+        title: '退款說明',
+        items: [
+          '未安裝、未啟用的 eSIM 支援申請全額退款；已啟用的 eSIM 有權不予退款。',
+          '詳細規則請閱讀《退款協議》與《購買服務協議》。'
+        ]
+      },
+      {
+        title: '聯絡我們',
+        items: [
+          '如遇任何問題，可透過「我的 → 聯絡客服」或 Email 與我們聯繫，我們將盡快為您處理。'
+        ]
       }
     ]
   }

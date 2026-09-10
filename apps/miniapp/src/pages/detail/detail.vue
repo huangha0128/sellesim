@@ -15,6 +15,50 @@
       <view class="tab-indicator" :style="indicatorStyle"></view>
     </view>
 
+    <!-- 骨架屏：数据加载中（真机不依赖原生 loading，改用页面内骨架占位） -->
+    <view v-if="loading" class="skeleton-body">
+      <!-- 套餐名称骨架 -->
+      <view class="sk-card">
+        <view class="sk sk-line sk-title"></view>
+        <view class="sk-tag-row">
+          <view class="sk sk-tag"></view>
+          <view class="sk sk-tag"></view>
+          <view class="sk sk-tag"></view>
+        </view>
+      </view>
+
+      <!-- 警告横幅骨架 -->
+      <view class="sk-banner">
+        <view class="sk sk-circle"></view>
+        <view class="sk sk-line sk-warn-line"></view>
+      </view>
+
+      <!-- 选择天数骨架 -->
+      <view class="sk-card">
+        <view class="sk sk-line sk-section-title"></view>
+        <view class="sk-grid">
+          <view class="sk sk-cell" v-for="i in 8" :key="'d' + i"></view>
+        </view>
+      </view>
+
+      <!-- 选择数据骨架 -->
+      <view class="sk-card">
+        <view class="sk sk-line sk-section-title"></view>
+        <view class="sk-grid">
+          <view class="sk sk-cell-data" v-for="i in 6" :key="'g' + i"></view>
+        </view>
+      </view>
+
+      <!-- 套餐详情骨架 -->
+      <view class="sk-card">
+        <view class="sk sk-line sk-section-title"></view>
+        <view class="sk sk-info-line" v-for="i in 3" :key="'l' + i"></view>
+        <view class="sk sk-short-line"></view>
+      </view>
+
+      <view class="footer-safe"></view>
+    </view>
+
     <!-- 页面原生滚动，onPageScroll 联动高亮 -->
     <view v-if="pkg" class="detail-body">
       <!-- ===== 套餐选择 ===== -->
@@ -94,11 +138,6 @@
           <text class="info-label">{{ fmt('detail.coverage') }}</text>
           <text class="info-value">{{ fmtPkgCoverage(pkg) }}</text>
         </view>
-        <view class="info-item">
-          <text class="info-icon-text">🪪</text>
-          <text class="info-label">{{ fmt('detail.registration') }}</text>
-          <text class="info-value">{{ fmt('detail.noNeed') }}</text>
-        </view>
         <view class="info-item" v-if="pkgDescText">
           <text class="info-icon-text">🌐</text>
           <text class="info-label">{{ fmt('detail.network') }}</text>
@@ -128,12 +167,12 @@
 
       <!-- 支持型号 & 使用须知 -->
       <view class="link-section">
-        <view class="link-row" @tap="goGuide">
+        <view class="link-row" @tap="goSupportedModels">
           <text class="link-text">{{ fmt('detail.supportModels') }}</text>
           <text class="link-arrow">›</text>
         </view>
         <view class="link-divider"></view>
-        <view class="link-row" @tap="goGuide">
+        <view class="link-row" @tap="goUsageNotice">
           <text class="link-text">{{ fmt('detail.usageNotice') }}</text>
           <text class="link-arrow">›</text>
         </view>
@@ -161,6 +200,12 @@
         <text class="price-main">{{ priceNum }}</text>
       </view>
       <view class="buy-btn" hover-class="buy-btn--hover" @tap="buy">{{ fmt('detail.buyNow') }}</view>
+    </view>
+
+    <!-- 底部价格栏骨架 -->
+    <view v-if="loading" class="bottom-bar skeleton-bottom-bar">
+      <view class="sk sk-line sk-price-short"></view>
+      <view class="sk sk-btn-short"></view>
     </view>
 
     <!-- 套餐选择抽屉 -->
@@ -263,6 +308,7 @@ export default {
       mode: '',
       esimId: '',
       pkg: null,
+      loading: true,
       allPackages: [],
       currentTab: 0,
       tabs: [
@@ -283,12 +329,11 @@ export default {
     }
   },
   computed: {
+    // 天数区固定展示所有可选天数的并集，不再随选中的流量变化
     dayCells() {
-      if (!this.allPackages.length || !this.selectedGb) return []
+      if (!this.allPackages.length) return []
       return Array.from(new Set(
-        this.allPackages
-          .filter(p => p.gb === this.selectedGb && !!p.isUnlimited === this.selectedIsUnlimited && p.days)
-          .map(p => p.days)
+        this.allPackages.filter(p => p.days).map(p => p.days)
       )).sort((a, b) => a - b)
     },
     dataCells() {
@@ -443,6 +488,14 @@ export default {
       this.selectedGb = best.gb
       this.selectedIsUnlimited = !!best.isUnlimited
     },
+    // 指定流量（含限量/不限量）下真实存在的天数集合（升序）
+    validDaysFor(gb, isUnlimited) {
+      return Array.from(new Set(
+        this.allPackages
+          .filter(p => p.gb === gb && !!p.isUnlimited === isUnlimited && p.days)
+          .map(p => p.days)
+      )).sort((a, b) => a - b)
+    },
     selectDays(d) {
       this.selectedDays = d
       if (!this.dataCells.some(c => c.gb === this.selectedGb && c.isUnlimited === this.selectedIsUnlimited)) {
@@ -455,13 +508,20 @@ export default {
     selectData(c) {
       this.selectedGb = c.gb
       this.selectedIsUnlimited = !!c.isUnlimited
-      if (!this.dayCells.includes(this.selectedDays)) {
-        this.selectedDays = this.dayCells[0] || 0
+      // 天数区固定展示所有可选天数，仅当所选流量不存在当前天数组合时，吸附到最接近的有效天数
+      const valid = this.validDaysFor(this.selectedGb, this.selectedIsUnlimited)
+      if (valid.length && !valid.includes(this.selectedDays)) {
+        const cur = this.selectedDays
+        this.selectedDays = valid.reduce(
+          (a, b) => (Math.abs(b - cur) < Math.abs(a - cur) ? b : a),
+          valid[0]
+        )
       }
       this.measureSections()
     },
     async load() {
-      uni.showLoading({ title: this.fmt('common.loading'), mask: true })
+      // 用页面内骨架屏代替原生 loading（真机原生 toast 常不显示）
+      this.loading = true
       try {
         if (this.country) {
           const allRes = await api.getPackagesByCountry(this.country)
@@ -478,7 +538,7 @@ export default {
         }
         setNavTitle('detail.navTitle')
       } finally {
-        uni.hideLoading()
+        this.loading = false
         this.measureSections()
       }
     },
@@ -508,6 +568,12 @@ export default {
     },
     goGuide() {
       uni.navigateTo({ url: '/pages/guide/guide' })
+    },
+    goSupportedModels() {
+      uni.navigateTo({ url: '/pages/supported-models/supported-models' })
+    },
+    goUsageNotice() {
+      uni.navigateTo({ url: '/pages/usage-notice/usage-notice' })
     },
     // 点击 Tab：滚动到对应区块
     switchTab(i) {
@@ -630,6 +696,139 @@ export default {
   padding: 20rpx $page-pad;
   padding-top: 100rpx;
   padding-bottom: 40rpx;
+}
+
+/* ========== 骨架屏 ========== */
+.skeleton-body {
+  padding: 20rpx $page-pad;
+  padding-top: 100rpx;
+  padding-bottom: 40rpx;
+}
+
+.sk-card {
+  background: $bg-card;
+  border-radius: 20rpx;
+  padding: 32rpx;
+  margin-top: 16rpx;
+}
+
+.sk {
+  background: linear-gradient(100deg, $brand-lighter 25%, #E6EBFF 37%, $brand-lighter 63%);
+  background-size: 400% 100%;
+  border-radius: 8rpx;
+  animation: skShimmer 1.4s ease infinite;
+}
+
+.sk-line {
+  height: 28rpx;
+}
+
+.sk-title {
+  height: 40rpx;
+  width: 55%;
+  border-radius: 12rpx;
+}
+
+.sk-tag-row {
+  display: flex;
+  margin-top: 24rpx;
+}
+
+.sk-tag {
+  width: 96rpx;
+  height: 36rpx;
+  border-radius: 10rpx;
+  margin-right: 16rpx;
+}
+
+.sk-banner {
+  display: flex;
+  align-items: center;
+  background: $bg-card;
+  border-radius: 16rpx;
+  padding: 26rpx 30rpx;
+  margin-top: 24rpx;
+}
+
+.sk-circle {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  margin-right: 16rpx;
+  flex-shrink: 0;
+}
+
+.sk-warn-line {
+  width: 70%;
+  height: 26rpx;
+}
+
+.sk-section-title {
+  width: 220rpx;
+  height: 32rpx;
+  margin-bottom: 24rpx;
+}
+
+.sk-grid {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+.sk-cell {
+  width: calc(25% - 12rpx);
+  height: 110rpx;
+  margin-right: 16rpx;
+  margin-bottom: 16rpx;
+  border-radius: 16rpx;
+
+  &:nth-child(4n) {
+    margin-right: 0;
+  }
+}
+
+.sk-cell-data {
+  width: calc(33.33% - 14rpx);
+  height: 110rpx;
+  margin-right: 20rpx;
+  margin-bottom: 16rpx;
+  border-radius: 16rpx;
+
+  &:nth-child(3n) {
+    margin-right: 0;
+  }
+}
+
+.sk-info-line {
+  height: 26rpx;
+  margin: 14rpx 0;
+}
+
+.sk-short-line {
+  width: 55%;
+  height: 26rpx;
+  margin-top: 20rpx;
+}
+
+.skeleton-bottom-bar {
+  padding: 28rpx $page-pad;
+  padding-bottom: calc(28rpx + env(safe-area-inset-bottom));
+  justify-content: space-between;
+}
+
+.sk-price-short {
+  width: 160rpx;
+  height: 44rpx;
+}
+
+.sk-btn-short {
+  width: 200rpx;
+  height: 72rpx;
+  border-radius: 999rpx;
+}
+
+@keyframes skShimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
 }
 
 /* ========== 套餐名称卡片 ========== */

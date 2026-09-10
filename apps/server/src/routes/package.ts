@@ -98,6 +98,7 @@ export default (prisma: PrismaClient) => {
             String(p.countryCode || '').toLowerCase().includes(kw) ||
             String(p.gb || '').includes(kw) ||
             String(p.days || '').includes(kw) ||
+            JSON.stringify(p.countryAliases || '').toLowerCase().includes(kw) ||
             JSON.stringify(p.coverageParams || '').toLowerCase().includes(kw)
           )
         : all;

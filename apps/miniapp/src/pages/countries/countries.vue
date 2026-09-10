@@ -351,8 +351,10 @@ export default {
       try {
         const res = await api.getCountries()
         const countries = res.data.countries || []
-        this.regions = countries.filter((c) => c.cat === '全球')
-        this.all = countries.filter((c) => c.cat !== '全球')
+        // 只展示小程序套餐中存在（已添加并定价）的国家/地区，packageCount 由后端实时统计
+        const withPkg = countries.filter((c) => (c.packageCount || 0) > 0)
+        this.regions = withPkg.filter((c) => c.cat === '全球')
+        this.all = withPkg.filter((c) => c.cat !== '全球')
       } finally {
         uni.hideLoading()
       }

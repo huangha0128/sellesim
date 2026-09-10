@@ -18,6 +18,17 @@ export const MULTI_REGION_CODE: Record<string, string> = {
 };
 export const MULTI_REGION_CODES = new Set(Object.values(MULTI_REGION_CODE));
 
+/**
+ * 多国组合区域 -> 组成国家（中文/英文），用作搜索别名：
+ * 例如「新马泰」是新加坡/马来西亚/泰国的缩写，搜索任一国家名都应命中该区域套餐。
+ * 洲际区域（GLOBAL/ASIA/EUROPE 等）覆盖面太广，不在此列，仍按区域名搜索。
+ */
+const REGION_COUNTRY_ALIASES: Record<string, { zh: string[]; en: string[] }> = {
+  SINGAPOREMALAYSIATHAILAND: { zh: ['新加坡', '马来西亚', '泰国'], en: ['Singapore', 'Malaysia', 'Thailand'] },
+  JAPANKOREA: { zh: ['日本', '韩国'], en: ['Japan', 'Korea'] },
+  CHINAMAINLANDHONGKONGMACAO: { zh: ['中国大陆', '中国香港', '中国澳门', '香港', '澳门'], en: ['China Mainland', 'Hong Kong', 'Macao'] },
+};
+
 const FEATURED_GB = [1, 3, 5, 10, 15, 20, 30];
 const FEATURED_DAYS = [7, 15, 30];
 
@@ -52,6 +63,11 @@ export function tigerToView(t: any): any {
   const regionNameCn = region.name_cn || region.name_en || code;
   // 英文名称
   const regionNameEn = region.name_en || region.name_cn || code;
+  // 多国组合区域的搜索别名：如「新马泰」可被「新加坡/马来西亚/泰国」搜到
+  const regionAlias = REGION_COUNTRY_ALIASES[code];
+  const countryAliases = regionAlias
+    ? Array.from(new Set([...regionAlias.zh, ...regionAlias.en, regionNameCn, regionNameEn]))
+    : [regionNameCn, regionNameEn];
   // 套餐名称：中文和英文版本
   const nameCn = t.name || `${regionNameCn} ${gb}GB ${days}天`;
   const nameEn = t.name || `${regionNameEn} ${gb}GB ${days} Days`;
@@ -67,6 +83,7 @@ export function tigerToView(t: any): any {
     countryCode: code,
     countryName: regionNameCn,
     countryNameEn: regionNameEn,
+    countryAliases,
     gb,
     days,
     price,

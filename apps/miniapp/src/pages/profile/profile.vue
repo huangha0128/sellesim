@@ -15,7 +15,20 @@
     </view>
 
     <!-- 我的购买 -->
-    <view class="order-card">
+    <!-- 骨架屏：订单统计加载中 -->
+    <view v-if="loading && !store.orders.length" class="order-card">
+      <view class="oc-header">
+        <view class="sk sk-line sk-oc-title"></view>
+      </view>
+      <view class="sk-oc-items">
+        <view v-for="i in 4" :key="i" class="sk-oc-item">
+          <view class="sk sk-oc-icon"></view>
+          <view class="sk sk-line sk-oc-label"></view>
+        </view>
+      </view>
+    </view>
+
+    <view v-else class="order-card">
       <view class="oc-header">
         <text class="oc-title">{{ $t('profile.myPurchases') }}</text>
         <view class="oc-all" hover-class="oc-all--hover" @click="goOrders">
@@ -130,7 +143,7 @@ function orderCategory(order) {
 
 export default {
   data() {
-    return { store, locale: getLocale(), currentTab: 'profile' }
+    return { store, locale: getLocale(), currentTab: 'profile', loading: true }
   },
   computed: {
     currentLocaleLabel() {
@@ -145,13 +158,20 @@ export default {
   methods: {
     maskEmail,
     async refreshOrders() {
-      if (!store.isLoggedIn) return
+      // 未登录则无数据可加载，直接结束骨架
+      if (!store.isLoggedIn) {
+        this.loading = false
+        return
+      }
+      this.loading = true
       try {
         const res = await api.getOrders()
         if (res.code === 0 && res.data.orders) {
           store.setOrders(res.data.orders)
         }
-      } catch (e) {}
+      } catch (e) {} finally {
+        this.loading = false
+      }
     },
     goLogin() {
       if (!store.isLoggedIn) {
@@ -480,5 +500,50 @@ export default {
 .tab-item.active .tab-label {
   color: $brand;
   font-weight: 700;
+}
+
+/* ========== 骨架屏（订单统计加载中） ========== */
+.sk {
+  background: linear-gradient(100deg, $brand-lighter 25%, #E6EBFF 37%, $brand-lighter 63%);
+  background-size: 400% 100%;
+  animation: skShimmer 1.4s ease infinite;
+}
+
+.sk-line {
+  height: 26rpx;
+  border-radius: 8rpx;
+}
+
+.sk-oc-title {
+  width: 40%;
+  height: 30rpx;
+}
+
+.sk-oc-items {
+  display: flex;
+  align-items: flex-start;
+}
+
+.sk-oc-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.sk-oc-icon {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 20rpx;
+}
+
+.sk-oc-label {
+  width: 60%;
+  margin-top: 14rpx;
+}
+
+@keyframes skShimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
 }
 </style>

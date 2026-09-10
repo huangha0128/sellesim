@@ -8,7 +8,23 @@
       <view class="hb-btn" hover-class="hb-btn--hover" @click="goBuy">{{ fmt('esims.buy') }}</view>
     </view>
 
-    <view v-if="!store.esims.length" class="empty">
+    <!-- 骨架屏：eSIM 数据加载中 -->
+    <view v-if="loading && !store.esims.length" class="esim-list">
+      <view v-for="i in 3" :key="i" class="sk-esim-card">
+        <view class="sk-top">
+          <view class="sk sk-flag"></view>
+          <view class="sk sk-status"></view>
+        </view>
+        <view class="sk sk-line sk-country"></view>
+        <view class="sk sk-line sk-spec"></view>
+        <view class="sk-bottom">
+          <view class="sk sk-line sk-iccid"></view>
+          <view class="sk sk-line sk-expire"></view>
+        </view>
+      </view>
+    </view>
+
+    <view v-if="!loading && !store.esims.length" class="empty">
       <image class="empty-icon" src="/static/icons/prof-esim.png" mode="aspectFit" />
       <text class="empty-title">{{ fmt('esims.emptyTitle') }}</text>
       <text class="empty-sub">{{ fmt('esims.emptySub') }}</text>
@@ -89,7 +105,8 @@ export default {
   data() {
     return {
       store,
-      currentTab: 'esim'
+      currentTab: 'esim',
+      loading: true
     }
   },
   onShow() {
@@ -102,6 +119,7 @@ export default {
       return fmtNamed(translate(key, params), params)
     },
     async refresh() {
+      this.loading = true
       try {
         const res = await api.getMyEsims()
         if (res.code === 401) {
@@ -112,7 +130,9 @@ export default {
         if (res.data.esims) {
           store.setEsims(res.data.esims)
         }
-      } catch (e) {}
+      } catch (e) {} finally {
+        this.loading = false
+      }
     },
     statusText(esim) {
       if (esim.status === 'activated') return this.fmt('esims.activated')
@@ -435,5 +455,80 @@ export default {
 .tab-item.active .tab-label {
   color: $brand;
   font-weight: 700;
+}
+
+/* ========== 骨架屏（eSIM 加载中） ========== */
+.sk {
+  background: linear-gradient(100deg, $brand-lighter 25%, #E6EBFF 37%, $brand-lighter 63%);
+  background-size: 400% 100%;
+  animation: skShimmer 1.4s ease infinite;
+}
+
+.sk-esim-card {
+  background: #ffffff;
+  border-radius: 28rpx;
+  padding: 32rpx;
+  margin-bottom: 24rpx;
+  min-height: 260rpx;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  box-shadow: 0 4rpx 20rpx rgba(48, 48, 160, 0.08);
+}
+
+.sk-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sk-flag {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: 16rpx;
+}
+
+.sk-status {
+  width: 120rpx;
+  height: 36rpx;
+  border-radius: 999rpx;
+}
+
+.sk-line {
+  height: 24rpx;
+  border-radius: 8rpx;
+  margin: 10rpx 0;
+}
+
+.sk-country {
+  width: 60%;
+  height: 32rpx;
+  margin-top: 24rpx;
+}
+
+.sk-spec {
+  width: 40%;
+}
+
+.sk-bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24rpx;
+  padding-top: 20rpx;
+  border-top: 1rpx solid $line;
+}
+
+.sk-iccid {
+  width: 45%;
+}
+
+.sk-expire {
+  width: 28%;
+}
+
+@keyframes skShimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
 }
 </style>

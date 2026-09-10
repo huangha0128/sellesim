@@ -31,7 +31,9 @@ export default {
     email: '我的邮箱地址',
     faq: '常见问题',
     esimDetail: 'eSIM 详情',
-    about: '关于我们'
+    about: '关于我们',
+    supportedModels: '支持 eSIM 机型汇总',
+    usageNotice: 'eSIM 使用须知'
   },
   index: {
     slogan: '全球 200+ 地区流量',
@@ -43,11 +45,11 @@ export default {
     heroTitle: '全球流量',
     heroSub: '一卡搞定',
     heroFeature1: '即时激活',
-    heroFeature2: '无需实名',
+    heroFeature2: '扫码即装',
     heroFeature3: '190+ 目的地',
     plan: '流量套餐',
     instant: '即时激活',
-    noRealName: '无需实名',
+    noRealName: '扫码即装',
     soldCount: '已售 {n}',
     hotCountries: '热门目的地',
     allCountries: '全部国家 ›',
@@ -92,7 +94,7 @@ export default {
     version: '当前版本',
     introTitle: '关于 YYeSim',
     introText:
-      'YYeSim 提供 200+ 国家与地区的 eSIM 流量套餐，扫码即装、落地即用，无需实体卡与繁琐实名，让全球上网像本地流量一样简单。',
+      'YYeSim 提供 200+ 国家与地区的 eSIM 流量套餐，扫码即装、落地即用，无需实体卡，让全球上网像本地流量一样简单。',
     tagRegions: '覆盖地区',
     tagSpeed: '网络速率',
     tagSupport: '在线支持',
@@ -479,10 +481,10 @@ export default {
     plan: '流量套餐',
     sold: '已售 1000+',
     instant: '即时激活',
-    noRealName: '无需实名'
+    noRealName: '扫码即装'
   },
   packages: {
-    noRealName: '免实名',
+    noRealName: '扫码即装',
     instant: '即买即用',
     daysSelectable: '{min}-{max}天可选',
     daysValid: '{days}天有效',
@@ -504,7 +506,7 @@ export default {
     feature1: '即买即用，扫码秒激活',
     feature2: '全程高速 4G/5G 网络',
     feature3: '可开热点，多人共享',
-    feature4: '无需实名，无需换卡',
+    feature4: '无需换卡，即买即用',
     // 安装步骤
     step1: '购买后复制二维码下方的激活码',
     step2: '手机设置 → 蜂窝网络 → 添加 eSIM',
@@ -519,7 +521,7 @@ export default {
     nameSuffix: '{name}流量套餐',
     sold: '已售 {n}',
     instant: '即时激活',
-    noRealName: '无需实名',
+    noRealName: '扫码即装',
     globalApp: '支持全球app',
     warn: '本套餐仅限在{name}境内使用，请谨慎购买！',
     selectDays: '选择天数',
@@ -530,8 +532,6 @@ export default {
     unlimitedHint: '不限量套餐：含 {gb}GB 高速流量，用完后限速，仍可继续使用',
     dataPriceHint: '{days}天仅需{price}元',
     coverage: '覆盖地区：',
-    registration: '身份登记：',
-    noNeed: '不需要',
     detailTitle: '套餐详情',
     descTitle: '套餐说明',
     installTitle: '安装步骤',
@@ -852,6 +852,76 @@ export default {
       {
         q: '到了国外没网怎么办？',
         a: '请确认已安装 eSIM 并开启「数据漫游」开关；若仍无法上网，可尝试手动选择当地运营商网络。'
+      }
+    ]
+  },
+  supportedModels: {
+    eyebrow: 'COMPATIBILITY',
+    title: '支持 eSIM 机型汇总',
+    sub: '涵盖主流品牌支持 eSIM 的手机型号，仅供参考，以手机系统设置中的「添加 eSIM」入口为准。'
+  },
+  usageNotice: {
+    eyebrow: 'USAGE NOTICE',
+    title: 'eSIM 使用须知',
+    sub: '使用前请仔细阅读，保障您的出行顺利',
+    sections: [
+      {
+        title: '基本说明',
+        items: [
+          'eSIM 是一种内置于手机的嵌入式 SIM 卡，无需物理插卡，扫码或输入激活码即可开通全球流量套餐。',
+          '本平台提供的 eSIM 套餐由合作的电信服务商提供，流量额度、有效期、网络制式与覆盖范围以套餐详情页展示为准。'
+        ]
+      },
+      {
+        title: '激活说明',
+        items: [
+          '请在到达目的地后再安装激活，有效期自激活当日起算，过早激活会提前消耗有效期。',
+          '安装时请保持网络连接（可使用 Wi-Fi），按照安装指南操作即可完成激活。',
+          '同一台设备可同时安装多张 eSIM，但同一时间仅可启用一张用于蜂窝网络。'
+        ]
+      },
+      {
+        title: '数据漫游',
+        items: [
+          '激活后请务必在手机设置中开启「数据漫游」开关，否则无法正常上网。',
+          '到达目的地后若无法上网，可尝试在系统设置中手动选择当地运营商网络。'
+        ]
+      },
+      {
+        title: '公平使用原则',
+        items: [
+          '套餐遵循公平使用原则（Fair Usage），请用于正常个人用途。',
+          '异常高频或恶意占用资源的行为，平台有权采取限速、停用等措施。',
+          '不限量套餐在超出高速额度后会自动限速但不会断网，仍可继续使用。'
+        ]
+      },
+      {
+        title: '有效期与充值',
+        items: [
+          '套餐有效期为自激活当日起算的固定天数，到期后流量即失效。',
+          '可在「我的 eSIM」查看已购套餐的剩余流量与有效期。',
+          '套餐到期后，可下单「加购到已到期的 eSIM」，流量叠加、有效期顺延、激活码不变。'
+        ]
+      },
+      {
+        title: '设备兼容',
+        items: [
+          '请确认手机支持 eSIM 功能，可前往手机「设置」查看是否有「添加 eSIM」或「SIM 卡管理」入口。',
+          '支持机型汇总详见「支持 eSIM 机型」页面；国行部分机型可能不支持 eSIM。'
+        ]
+      },
+      {
+        title: '退款说明',
+        items: [
+          '未安装、未激活的 eSIM 支持申请全额退款；已激活的 eSIM 有权不予退款。',
+          '详细规则请阅读《退款协议》与《购买服务协议》。'
+        ]
+      },
+      {
+        title: '联系我们',
+        items: [
+          '如遇任何问题，可通过「我的 → 联系客服」或邮件联系我们，我们将尽快为您处理。'
+        ]
       }
     ]
   }

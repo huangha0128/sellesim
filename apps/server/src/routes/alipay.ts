@@ -132,7 +132,10 @@ export default (prisma: PrismaClient) => {
 
 /** 发送激活码邮件（安全包装，失败只打日志） */
 async function sendEsimEmailSafe(order: any, esimData: any) {
-  if (!order.email) return;
+  if (!order.email) {
+    console.warn(`[email] 订单 ${order.orderNo} 未填写邮箱，跳过邮件发送`);
+    return;
+  }
   const country = order.countryCode || '';
   await sendEsimEmail({
     to: order.email,

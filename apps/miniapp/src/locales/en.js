@@ -31,7 +31,9 @@ export default {
     email: 'My Email',
     faq: 'FAQ',
     esimDetail: 'eSIM Details',
-    about: 'About Us'
+    about: 'About Us',
+    supportedModels: 'Supported eSIM Devices',
+    usageNotice: 'eSIM Usage Notice'
   },
   index: {
     slogan: 'Data in 200+ destinations worldwide',
@@ -43,11 +45,11 @@ export default {
     heroTitle: 'Global Data',
     heroSub: 'One eSIM',
     heroFeature1: 'Instant Activation',
-    heroFeature2: 'No ID Required',
+    heroFeature2: 'Scan to install',
     heroFeature3: '190+ Destinations',
     plan: 'Data Plan',
     instant: 'Instant Activation',
-    noRealName: 'No Real-name',
+    noRealName: 'Scan to install',
     soldCount: '{n} sold',
     hotCountries: 'Popular Destinations',
     allCountries: 'All Countries ›',
@@ -477,10 +479,10 @@ export default {
     plan: 'Data Plans',
     sold: '{n} sold',
     instant: 'Instant Activation',
-    noRealName: 'No Real-Name Required'
+    noRealName: 'Scan to install'
   },
   packages: {
-    noRealName: 'No real-name required',
+    noRealName: 'Scan to install',
     instant: 'Buy & use instantly',
     daysSelectable: '{min}-{max} days selectable',
     daysValid: 'Valid for {days} days',
@@ -502,7 +504,7 @@ export default {
     feature1: 'Buy & use, instant activation',
     feature2: 'High-speed 4G/5G network',
     feature3: 'Hotspot sharing supported',
-    feature4: 'No registration, no SIM swap',
+    feature4: 'No SIM swap, buy & use instantly',
     // Installation steps
     step1: 'Copy activation code below QR code',
     step2: 'Settings → Cellular → Add eSIM',
@@ -517,7 +519,7 @@ export default {
     nameSuffix: '{name} Data Plan',
     sold: 'Sold 9999+',
     instant: 'Instant activation',
-    noRealName: 'No real-name required',
+    noRealName: 'Scan to install',
     globalApp: 'Works with global apps',
     warn: 'This plan can only be used within {name}. Please purchase with care!',
     selectDays: 'Select Duration',
@@ -528,8 +530,6 @@ export default {
     unlimitedHint: 'Unlimited plan: includes {gb}GB of high-speed data, then throttled but still usable',
     dataPriceHint: '{days} days for only ¥{price}',
     coverage: 'Coverage: ',
-    registration: 'Registration: ',
-    noNeed: 'Not required',
     detailTitle: 'Plan Details',
     descTitle: 'About this plan',
     installTitle: 'Installation Steps',
@@ -846,6 +846,76 @@ export default {
       {
         q: 'What if I have no network abroad?',
         a: 'Please make sure the eSIM is installed and "Data roaming" is on; if you still cannot get online, try manually selecting a local carrier network.'
+      }
+    ]
+  },
+  supportedModels: {
+    eyebrow: 'COMPATIBILITY',
+    title: 'Supported eSIM Devices',
+    sub: 'Covers eSIM-capable phones from major brands. For reference only; please check the "Add eSIM" option in your phone settings.'
+  },
+  usageNotice: {
+    eyebrow: 'USAGE NOTICE',
+    title: 'eSIM Usage Notice',
+    sub: 'Please read carefully before use to ensure a smooth trip',
+    sections: [
+      {
+        title: 'Overview',
+        items: [
+          'An eSIM is an embedded SIM built into your phone. No physical card is needed — scan a QR code or enter an activation code to activate worldwide data plans.',
+          'Plans provided on this platform are offered by partner telecom operators. Data allowance, validity, network type, and coverage are as shown on the plan detail page.'
+        ]
+      },
+      {
+        title: 'Activation',
+        items: [
+          'Please install and activate after arriving at your destination. Validity starts from the activation date; activating too early will consume your validity sooner.',
+          'Keep a network connection (e.g. Wi-Fi) while installing, and follow the setup guide to activate.',
+          'One device can hold multiple eSIMs at once, but only one can be used for cellular data at a time.'
+        ]
+      },
+      {
+        title: 'Data Roaming',
+        items: [
+          'After activation, make sure "Data Roaming" is enabled in your phone settings, otherwise you will not get online.',
+          'If you have no network at your destination, try manually selecting a local carrier in system settings.'
+        ]
+      },
+      {
+        title: 'Fair Usage',
+        items: [
+          'Plans follow the Fair Usage policy — please use them for normal personal purposes.',
+          'Abnormally high-frequency or malicious resource usage may result in speed throttling or suspension.',
+          'For unlimited plans, speed is throttled automatically after the high-speed quota is used, but service continues without being cut off.'
+        ]
+      },
+      {
+        title: 'Validity & Top-up',
+        items: [
+          'Plan validity is a fixed number of days from the activation date; data expires once the validity lapses.',
+          'You can view remaining data and validity of purchased plans under "My eSIMs".',
+          'After a plan expires, you can add a new plan to the expired eSIM — data accumulates, validity extends, and the activation code stays unchanged.'
+        ]
+      },
+      {
+        title: 'Device Compatibility',
+        items: [
+          'Please confirm your phone supports eSIM by checking for an "Add eSIM" or "SIM management" option in your phone settings.',
+          'See the "Supported eSIM Devices" page for a full list; some China-mainland models may not support eSIM.'
+        ]
+      },
+      {
+        title: 'Refund Policy',
+        items: [
+          'Installed-but-not-activated eSIMs can be refunded in full; activated eSIMs may not be refunded.',
+          'For details, please read the Refund Policy and Purchase Service Agreement.'
+        ]
+      },
+      {
+        title: 'Contact Us',
+        items: [
+          'If you run into any issues, please contact us via "Me → Contact Support" or email, and we will help you as soon as possible.'
+        ]
       }
     ]
   }

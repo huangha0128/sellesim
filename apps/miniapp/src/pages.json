@@ -133,6 +133,22 @@
         "navigationBarBackgroundColor": "#F5F7F8",
         "navigationBarTextStyle": "black"
       }
+    },
+    {
+      "path": "pages/supported-models/supported-models",
+      "style": {
+        "navigationBarTitleText": "支持 eSIM 机型汇总",
+        "navigationBarBackgroundColor": "#F5F7F8",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
+      "path": "pages/usage-notice/usage-notice",
+      "style": {
+        "navigationBarTitleText": "eSIM 使用须知",
+        "navigationBarBackgroundColor": "#F5F7F8",
+        "navigationBarTextStyle": "black"
+      }
     }
   ],
   "globalStyle": {

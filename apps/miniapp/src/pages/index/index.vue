@@ -42,6 +42,19 @@
       <view class="section-head">
         <text class="section-title">{{ fmt('index.hotPackages') }}</text>
       </view>
+
+      <!-- 骨架屏：热销套餐加载中 -->
+      <view v-if="loading && !hotPackages.length">
+        <view v-for="i in 3" :key="i" class="sk-pkg-card">
+          <view class="sk sk-cover"></view>
+          <view class="sk-pkg-info">
+            <view class="sk sk-line sk-pkg-title"></view>
+            <view class="sk sk-tag"></view>
+            <view class="sk sk-line sk-pkg-footer"></view>
+          </view>
+        </view>
+      </view>
+
       <view
         v-for="(pkg, idx) in hotPackages"
         :key="pkg.id"
@@ -122,7 +135,8 @@ export default {
       statusBarHeight: 44,
       hotPackages: [],
       displayCurrency: 'CNY',
-      currentTab: 'home'
+      currentTab: 'home',
+      loading: true
     }
   },
   onLoad() {
@@ -144,13 +158,14 @@ export default {
       return COVER_GRADIENTS[idx % COVER_GRADIENTS.length]
     },
     async loadData() {
-      uni.showLoading({ title: this.fmt('common.loading'), mask: true })
+      // 用页面内骨架屏代替原生 loading（真机原生 toast 常不显示）
+      this.loading = true
       try {
         const res = await api.getHomeData()
         this.hotPackages = res.data.hotPackages || []
         this.displayCurrency = res.data.displayCurrency || 'CNY'
       } finally {
-        uni.hideLoading()
+        this.loading = false
       }
     },
     goCountries() {
@@ -584,5 +599,64 @@ export default {
 .tab-item.active .tab-label {
   color: $brand;
   font-weight: 700;
+}
+
+/* ========== 骨架屏（热销套餐加载中） ========== */
+.sk {
+  background: linear-gradient(100deg, $brand-lighter 25%, #E6EBFF 37%, $brand-lighter 63%);
+  background-size: 400% 100%;
+  animation: skShimmer 1.4s ease infinite;
+}
+
+.sk-pkg-card {
+  display: flex;
+  background: #ffffff;
+  border-radius: 24rpx;
+  margin-bottom: 24rpx;
+  overflow: hidden;
+  box-shadow: $shadow-sm;
+}
+
+.sk-cover {
+  width: 280rpx;
+  min-height: 280rpx;
+  flex-shrink: 0;
+  border-radius: 0;
+}
+
+.sk-pkg-info {
+  flex: 1;
+  padding: 28rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.sk-line {
+  height: 28rpx;
+  border-radius: 8rpx;
+  margin: 8rpx 0;
+}
+
+.sk-pkg-title {
+  width: 70%;
+  height: 34rpx;
+  margin: 4rpx 0;
+}
+
+.sk-tag {
+  width: 160rpx;
+  height: 40rpx;
+  border-radius: 10rpx;
+  margin-top: 18rpx;
+}
+
+.sk-pkg-footer {
+  width: 55%;
+  margin-top: auto;
+}
+
+@keyframes skShimmer {
+  0% { background-position: 100% 50%; }
+  100% { background-position: 0 50%; }
 }
 </style>

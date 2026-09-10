@@ -100,7 +100,7 @@ export function getPackages(countryCode) {
         '即买即用，扫码秒激活',
         '全程高速 4G/5G 网络',
         '可开热点，多人共享',
-        '无需实名，无需换卡'
+        '无需换卡，即买即用'
       ],
       installSteps: [
         '购买后复制二维码下方的激活码',
