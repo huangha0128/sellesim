@@ -16,13 +16,18 @@ export interface ProvisionResult {
   pkgNameEn?: string;
   tigerPkgId?: number;
   tigerPid?: string;
+  tigerBindingId?: number;
+}
+
+function tigerBindingId(res: any): number | undefined {
+  const raw = res?.data?.id ?? res?.id;
+  const id = Number(raw);
+  return Number.isInteger(id) && id > 0 ? id : undefined;
 }
 
 /**
- * 支付成功后下发 eSIM。
- * 套餐数据不落本地库，全部来自订单快照（order 上的 countryCode/gb/days/tigerPkgId/tigerPid）：
- * - 已配置 Tiger 凭据 → 从卡片池取 ICCID，调用 Tiger 绑定套餐，保存真实激活信息
- * - 未配置 → 回退到本地模拟生成（演示用）
+ * Provision a new-purchase package. Every new purchase gets an unused ICCID.
+ * Renewals reuse the target ICCID and are handled by renewEsim.
  */
 export async function provisionEsim(prisma: PrismaClient, order: any): Promise<ProvisionResult> {
   const days = Number(order?.days || 7);
@@ -39,10 +44,13 @@ export async function provisionEsim(prisma: PrismaClient, order: any): Promise<P
   };
 
   if (tigerClient.configured) {
-    const iccid = await getAvailableIccid(prisma, () => fetchTigerIccids());
-    if (!iccid) {
+    const availableIccid = await getAvailableIccid(prisma, () => fetchTigerIccids());
+    if (!availableIccid) {
       throw new Error('Tiger 卡片池已用完，请到 TigerESIM 后台补充卡片库存');
     }
+    const iccid = availableIccid;
+    const smdp = process.env.TIGER_SMDP_ADDRESS || 'smdp.tigeresims.com';
+
     let tigerPkgId: number | null = snap.tigerPkgId || null;
     if (!tigerPkgId) {
       const listRes = await tigerClient.listPackages({ package_type: 'data', is_active: true, limit: 500 });
@@ -55,10 +63,12 @@ export async function provisionEsim(prisma: PrismaClient, order: any): Promise<P
       }
       tigerPkgId = Number(matched.pid || matched.id);
     }
+
     const bindRes = await tigerClient.bindPackage(iccid, tigerPkgId);
+    const bindingId = tigerBindingId(bindRes);
+
     let info = extractEsimInfo(bindRes?.data, process.env.TIGER_SMDP_ADDRESS);
     if (!info || !info.activationCode) {
-      // 官方新版：绑定响应可能不含激活码，回退从卡片查询接口（GET /api/card）获取 installation 二维码
       console.warn('[tiger] 绑定响应未含激活码，回退查询 GET /api/card 获取激活信息...');
       info = await tigerClient.getCardActivation(iccid);
     }
@@ -66,6 +76,7 @@ export async function provisionEsim(prisma: PrismaClient, order: any): Promise<P
       console.error('[tiger] 绑定成功但无法获取激活信息：', JSON.stringify(bindRes?.data));
       throw new Error('Tiger 绑定套餐成功，但无法获取激活码（绑定响应与卡片查询均无返回），请检查响应结构');
     }
+
     return {
       orderId: order.id,
       activationCode: info.activationCode,
@@ -75,10 +86,11 @@ export async function provisionEsim(prisma: PrismaClient, order: any): Promise<P
       expireAt,
       ...snap,
       tigerPkgId,
+      ...(bindingId ? { tigerBindingId: bindingId } : {}),
     };
   }
 
-  // ===== 模拟回退（未配置 Tiger）=====
+  // ===== Simulated fallback =====
   const rand = () =>
     Array.from({ length: 4 }, () =>
       'ABCDEFGHJKMNPQRSTUVWXYZ23456789'.charAt(Math.floor(Math.random() * 31)),

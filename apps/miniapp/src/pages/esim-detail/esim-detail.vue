@@ -54,7 +54,7 @@
     </view>
 
     <!-- 激活码区域 -->
-    <view class="qr-card">
+    <view v-if="esim?.activationCode" class="qr-card">
       <view class="qr-header">
         <text class="qr-title">{{ fmt('esimDetail.qrTitle') }}</text>
         <view class="qr-copy-btn" hover-class="qr-copy-btn--hover" @tap="copyCode">

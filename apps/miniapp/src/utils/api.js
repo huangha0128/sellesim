@@ -300,10 +300,13 @@ export const api = {
         : (e.pkgName || o.pkgName || e.countryCode || o.countryCode || '未知');
       return {
         id: e.id,
+        localEsimId: e.localEsimId,
         activationCode: e.activationCode,
         iccid: e.iccid,
         smdp: e.smdp,
         status: e.status,
+        activatedAt: e.activatedAt,
+        createdAt: e.createdAt,
         used: e.used,
         expireAt: e.expireAt,
         pkg: {

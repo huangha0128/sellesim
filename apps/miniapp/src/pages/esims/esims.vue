@@ -3,7 +3,7 @@
     <view class="head-banner">
       <view class="hb-left">
         <text class="hb-title">{{ fmt('esims.title') }}</text>
-        <text class="hb-sub">{{ fmt('esims.sub', { n: store.esims.length }) }}</text>
+        <text class="hb-sub">{{ fmt('esims.sub', { n: cardGroups.length }) }}</text>
       </view>
       <view class="hb-btn" hover-class="hb-btn--hover" @click="goBuy">{{ fmt('esims.buy') }}</view>
     </view>
@@ -33,12 +33,11 @@
 
     <view v-else class="esim-list">
       <view
-        v-for="esim in store.esims"
-        :key="esim.id"
+        v-for="card in cardGroups"
+        :key="card.iccid"
         class="esim-card"
-        :class="esim.status"
+        :class="card.status"
         hover-class="esim-card--hover"
-        @click="goEsimDetail(esim.id)"
       >
         <!-- 卡片背景装饰 -->
         <view class="card-deco">
@@ -49,21 +48,50 @@
         <!-- 顶部：国旗 + 国家名 + 状态 -->
         <view class="card-top">
           <view class="card-flag-wrap">
-            <image class="card-flag-img" :src="getFlagImage(esim.pkg.countryCode)" mode="aspectFit" />
+            <image class="card-flag-img" :src="getFlagImage(card.displayEsim.pkg.countryCode)" mode="aspectFit" />
           </view>
-          <text class="card-status-tag" :class="esim.status">{{ statusText(esim) }}</text>
+          <text class="card-status-tag" :class="card.status">{{ statusText(card) }}</text>
         </view>
 
-        <!-- 中部：套餐信息 -->
         <view class="card-body">
-          <text class="card-country">{{ esim.pkg.countryName }} eSIM</text>
-          <text class="card-spec">{{ esim.pkg.isUnlimited ? fmt('package.unlimited') : esim.pkg.gb + 'GB' }} · {{ esim.pkg.days }}天</text>
+          <text class="card-country">eSIM Card</text>
+          <text class="card-spec mono">{{ card.iccid }}</text>
+          <text class="card-package-count">{{ fmt('esims.packageCount', { n: card.esims.length }) }}</text>
+        </view>
+
+        <!-- 正在使用的套餐用量 -->
+        <view v-if="card.activeEsim" class="active-usage">
+          <view class="active-usage-head">
+            <text class="active-usage-title">{{ fmt('esims.currentPlan') }}</text>
+            <text class="active-usage-percent">{{ usagePercent(card.activeEsim) }}%</text>
+          </view>
+          <view class="usage-bar">
+            <view class="usage-fill" :style="{ width: usagePercent(card.activeEsim) + '%' }"></view>
+          </view>
+          <text class="active-usage-text">{{ usageText(card.activeEsim) }}</text>
+        </view>
+
+        <!-- 该 ICCID 下的所有套餐 -->
+        <view class="package-list">
+          <view
+            v-for="esim in card.esims"
+            :key="esim.id"
+            class="package-row"
+            :hover-class="esim.localEsimId ? 'package-row--hover' : 'none'"
+            @click="goEsimDetail(esim.id)"
+          >
+            <view class="package-main">
+              <text class="package-name">{{ esim.pkg.countryName }}</text>
+              <text class="package-spec">{{ esim.pkg.isUnlimited ? fmt('package.unlimited') : esim.pkg.gb + 'GB' }} · {{ esim.pkg.days }}天</text>
+            </view>
+            <text class="package-status" :class="esim.status">{{ statusText(esim) }}</text>
+          </view>
         </view>
 
         <!-- 底部：ICCID + 到期时间 -->
         <view class="card-bottom">
-          <text class="card-iccid">{{ esim.iccid }}</text>
-          <text class="card-expire">{{ formatDate(esim.expireAt) }}</text>
+          <text class="card-iccid">{{ fmt('esims.expireLabel') }}</text>
+          <text class="card-expire">{{ formatDate(card.displayEsim.expireAt) }}</text>
         </view>
       </view>
     </view>
@@ -113,6 +141,39 @@ export default {
     setNavTitle('pageTitle.esims')
     this.refresh()
   },
+  computed: {
+    cardGroups() {
+      const groups = new Map()
+      for (const esim of this.store.esims) {
+        if (!groups.has(esim.iccid)) {
+          groups.set(esim.iccid, {
+            iccid: esim.iccid,
+            esims: [],
+            activeEsim: null,
+            displayEsim: esim,
+            status: 'pending',
+            latestAt: 0
+          })
+        }
+        groups.get(esim.iccid).esims.push(esim)
+      }
+
+      const now = Date.now()
+      const result = [...groups.values()].map((group) => {
+        const activeEsims = group.esims
+          .filter((esim) => esim.status === 'activated' && new Date(esim.expireAt).getTime() >= now)
+          .sort((a, b) => new Date(b.activatedAt || b.expireAt) - new Date(a.activatedAt || a.expireAt))
+        group.activeEsim = activeEsims[0] || null
+        group.displayEsim = group.activeEsim || group.esims[0]
+        group.status = group.activeEsim
+          ? 'activated'
+          : (group.esims.some((esim) => esim.status === 'pending') ? 'pending' : 'activated')
+        group.latestAt = Math.max(...group.esims.map((esim) => new Date(esim.createdAt || esim.expireAt).getTime() || 0))
+        return group
+      })
+      return result.sort((a, b) => b.latestAt - a.latestAt)
+    }
+  },
   methods: {
     formatDate,
     fmt(key, params) {
@@ -138,6 +199,18 @@ export default {
       if (esim.status === 'activated') return this.fmt('esims.activated')
       return this.fmt('esims.pending')
     },
+    usagePercent(esim) {
+      const total = Number(esim?.pkg?.gb || 0)
+      const used = Number(esim?.used || 0)
+      if (!total) return 0
+      return Math.min(100, Math.round((used / total) * 100))
+    },
+    usageText(esim) {
+      return this.fmt('esims.usage', {
+        used: Number(esim?.used || 0).toFixed(1),
+        total: Number(esim?.pkg?.gb || 0).toFixed(1)
+      })
+    },
     getFlagImage(code) {
       if (!code) return '/static/icons/flag-unknown.png'
       return `/static/icons/flag-${code.toLowerCase()}.png`
@@ -146,6 +219,8 @@ export default {
       uni.reLaunch({ url: '/pages/index/index' })
     },
     goEsimDetail(id) {
+      const esim = this.store.esims.find((item) => item.id === id)
+      if (!esim?.localEsimId) return
       uni.navigateTo({ url: `/pages/esim-detail/esim-detail?id=${id}` })
     },
     switchTab(tab) {
@@ -387,6 +462,124 @@ export default {
   font-size: 26rpx;
   color: $ink-2;
   font-weight: 500;
+}
+
+.card-spec.mono {
+  font-family: monospace;
+  letter-spacing: 1rpx;
+}
+
+.card-package-count {
+  display: inline-block;
+  margin-top: 14rpx;
+  font-size: 22rpx;
+  color: $brand;
+  background: $brand-light;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+}
+
+.active-usage {
+  position: relative;
+  z-index: 1;
+  margin-top: 24rpx;
+  padding: 22rpx;
+  border-radius: 20rpx;
+  background: rgba(80, 80, 208, 0.06);
+}
+
+.active-usage-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.active-usage-title {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: $brand;
+}
+
+.active-usage-percent {
+  font-size: 24rpx;
+  font-weight: 700;
+  color: $ink;
+}
+
+.usage-bar {
+  height: 12rpx;
+  margin-top: 16rpx;
+  background: rgba(80, 80, 208, 0.12);
+  border-radius: 999rpx;
+  overflow: hidden;
+}
+
+.usage-fill {
+  height: 100%;
+  background: $gradient-brand;
+  border-radius: 999rpx;
+}
+
+.active-usage-text {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: $ink-2;
+}
+
+.package-list {
+  position: relative;
+  z-index: 1;
+  margin-top: 20rpx;
+}
+
+.package-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20rpx;
+  padding: 18rpx 0;
+  border-top: 1rpx solid $line;
+}
+
+.package-row--hover {
+  opacity: 0.72;
+}
+
+.package-main {
+  min-width: 0;
+}
+
+.package-name {
+  display: block;
+  font-size: 26rpx;
+  font-weight: 700;
+  color: $ink;
+}
+
+.package-spec {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 23rpx;
+  color: $ink-3;
+}
+
+.package-status {
+  flex-shrink: 0;
+  font-size: 21rpx;
+  font-weight: 600;
+  padding: 6rpx 16rpx;
+  border-radius: 999rpx;
+
+  &.activated {
+    color: $brand;
+    background: $brand-light;
+  }
+
+  &.pending {
+    color: $warn-deep;
+    background: $warn-bg;
+  }
 }
 
 /* 底部：ICCID + 到期时间 */

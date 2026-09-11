@@ -684,6 +684,8 @@ export default {
     goBuy: 'Go Buy',
     activated: 'Activated',
     pending: 'Pending Activation',
+    packageCount: '{n} plans',
+    currentPlan: 'Active Plan',
     meta: '{gb}GB · valid for {days} days',
     usage: 'Used {used}GB / {total}GB',
     usageUnlimited: 'Used {used}GB / {total}GB high-speed',

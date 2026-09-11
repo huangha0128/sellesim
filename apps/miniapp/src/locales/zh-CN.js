@@ -689,6 +689,8 @@ export default {
     goBuy: '去购买',
     activated: '已激活',
     pending: '待激活',
+    packageCount: '{n} 个套餐',
+    currentPlan: '使用中套餐',
     meta: '{gb}GB · {days}天有效',
     usage: '已用 {used}GB / {total}GB',
     expireLabel: '有效期至',

@@ -95,6 +95,7 @@ model Esim {
   countryCode    String?   @map("country_code")
   tigerPkgId     Int?      @map("tiger_pkg_id")
   tigerPid       String?   @map("tiger_pid")
+  tigerBindingId Int?      @map("tiger_binding_id")
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 }

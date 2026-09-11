@@ -1,69 +1,115 @@
 import { tigerClient } from './client';
 
 /**
- * 实时解析 eSIM 的「套餐激活状态」。
- *
- * 本地 esim.status 在下发时固定为 pending，只有手点「标记已激活」才会翻转为 activated，
- * 并不反映真实激活情况。这里改为从 Tiger `GET /api/card/package?iccid=` 查询该 ICCID
- * 已绑定的套餐列表，按 tigerPkgId / tigerPid 匹配出当前套餐，读取其激活状态：
- *   - 找到匹配套餐且未被激活（status 为 pending/未激活/空）→ 'pending'（待激活）
- *   - 找到匹配套餐且已激活（有激活时间/使用记录等非 pending 状态）→ 'activated'
- *   - 未匹配到套餐、Tiger 未配置、或查询失败 → 静默回退本地 esim.status，不改变现有行为
+ * Resolve the card package state from Tiger in real time.
+ * A pooled ICCID may contain several bindings for the same package, so prefer
+ * the binding that Tiger currently reports as activated instead of the first match.
  */
-const PENDING_LIKE = new Set(['pending', 'not_activated', 'notactivated', 'inactive', 'unused', 'never_activated']);
+const PENDING_LIKE = new Set([
+  'pending',
+  'not_activated',
+  'notactivated',
+  'inactive',
+  'unused',
+  'never_activated',
+]);
 
-function isPendingLike(raw: any): boolean {
-  const s = String(raw?.status ?? '').trim().toLowerCase();
-  if (!s) return true;
-  return PENDING_LIKE.has(s);
+function statusOf(item: any): string {
+  return String(item?.status ?? '').trim().toLowerCase();
 }
 
-/** 从一条卡套餐记录中收集可能与 tigerPkgId / tigerPid 匹配的套餐 id 集合 */
+function isPendingLike(item: any): boolean {
+  const status = statusOf(item);
+  return !status || PENDING_LIKE.has(status);
+}
+
+function toDate(value: any): Date | null {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function bindingPriority(item: any): number {
+  const status = statusOf(item);
+  if (status === 'activated') return 3;
+  if (status === 'used') return 2;
+  if (status === 'expired') return 1;
+  return 0;
+}
+
 function collectPkgIds(item: any): string[] {
   const ids = new Set<string>();
-  const push = (...vals: any[]) => {
-    for (const v of vals) {
-      if (v === undefined || v === null || v === '') continue;
-      ids.add(String(v));
+  const push = (...values: any[]) => {
+    for (const value of values) {
+      if (value === undefined || value === null || value === '') continue;
+      ids.add(String(value));
     }
   };
-  const p = item?.package && typeof item.package === 'object' ? item.package : item;
-  push(p?.id, p?.pid, p?.package_id, p?.tiger_pkg_id, item?.package_id, item?.id);
-  return Array.from(ids);
+  const pkg = item?.package && typeof item.package === 'object' ? item.package : item;
+  push(pkg?.id, pkg?.pid, pkg?.package_id, pkg?.tiger_pkg_id, item?.package_id, item?.id);
+  return [...ids];
 }
 
 export interface ActivationSource {
   iccid: string;
   status: string;
+  expireAt?: Date | string | null;
   tigerPkgId?: number | null;
   tigerPid?: string | null;
+  tigerBindingId?: number | null;
 }
 
-export async function resolveEsimActivationStatus(esim: ActivationSource): Promise<string> {
-  if (!tigerClient.configured) return esim.status;
+export interface ResolvedEsimActivation {
+  status: string;
+  activatedAt: Date | null;
+  expireAt: Date;
+  used: number;
+}
+
+export async function resolveEsimActivation(
+  esim: ActivationSource,
+): Promise<ResolvedEsimActivation | null> {
+  if (!tigerClient.configured) return null;
+
   const targetIds = new Set<string>();
   if (esim.tigerPkgId) targetIds.add(String(esim.tigerPkgId));
   if (esim.tigerPid) targetIds.add(String(esim.tigerPid));
-  if (targetIds.size === 0) return esim.status;
+  if (targetIds.size === 0) return null;
 
   try {
-    const res = await tigerClient.listCardPackages(esim.iccid);
+    const res = await tigerClient.listCardPackages(esim.iccid, { limit: 500 });
     const data = res?.data || res || {};
     const items: any[] = data.items || [];
-    // 卡片上已存在该套餐绑定：以状态判定激活与否
-    const best = items.find((it) =>
-      collectPkgIds(it).some((id) => targetIds.has(id)),
-    );
-    if (best) {
-      return isPendingLike(best) ? 'pending' : 'activated';
-    }
-    // 老数据可能没有记录 id 匹配；若该卡只有一条在绑套餐，则直接看它状态
-    if (items.length === 1) {
-      return isPendingLike(items[0]) ? 'pending' : 'activated';
-    }
-    return esim.status;
+    const matching = esim.tigerBindingId
+      ? items.filter((item) => Number(item?.id) === Number(esim.tigerBindingId))
+      : items.filter((item) =>
+          collectPkgIds(item).some((id) => targetIds.has(id)),
+        );
+
+    const best = matching
+      .slice()
+      .sort((left, right) => {
+        const byStatus = bindingPriority(right) - bindingPriority(left);
+        if (byStatus !== 0) return byStatus;
+        const leftAt = toDate(left?.updated_at || left?.activated_at)?.getTime() || 0;
+        const rightAt = toDate(right?.updated_at || right?.activated_at)?.getTime() || 0;
+        return rightAt - leftAt;
+      })
+      .at(0);
+    if (!best) return null;
+
+    const usageMb = Number(best.usage || 0);
+    return {
+      status: isPendingLike(best) ? 'pending' : 'activated',
+      activatedAt: toDate(best.activated_at || best.activatedAt),
+      expireAt: toDate(best.expired_at || best.expiredAt) || new Date(esim.expireAt ?? Date.now()),
+      used: Number.isFinite(usageMb) ? usageMb / 1024 : 0,
+    };
   } catch {
-    // Tiger 查询失败静默降级为本地状态
-    return esim.status;
+    return null;
   }
+}
+
+export async function resolveEsimActivationStatus(esim: ActivationSource): Promise<string> {
+  return (await resolveEsimActivation(esim))?.status || esim.status;
 }

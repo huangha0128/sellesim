@@ -5,7 +5,7 @@ import { tigerClient } from '../tiger';
 import { getPackageView } from '../tiger/view';
 import { provisionEsim } from '../services/provision';
 import { renewEsim } from '../services/topup';
-import { resolveEsimActivationStatus } from '../tiger/activation';
+import { resolveEsimActivation } from '../tiger/activation';
 import { sendEsimEmail, sendRenewEmail } from '../services/email';
 import { applyRefundRequest } from '../services/refund';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
@@ -152,7 +152,8 @@ export default (prisma: PrismaClient) => {
           throw new Error('目标 eSIM 不存在');
         }
         // renewEsim 内部会再次校验该卡当前套餐已到期
-        const esim = await renewEsim(prisma, updated, target);
+        const esimData = await renewEsim(prisma, updated, target);
+        const esim = await prisma.esim.create({ data: { ...esimData, userId: req.userId } });
 
         sendRenewEmailSafe(updated, target, esim).catch((e) =>
           console.error(`[email] 订单 ${updated.orderNo} 续费通知发送失败：`, e.message),
@@ -183,7 +184,8 @@ export default (prisma: PrismaClient) => {
     }
     // 激活状态改为 Tiger 实时套餐状态
     if (order.esim && tigerClient.configured) {
-      order.esim.status = await resolveEsimActivationStatus(order.esim);
+      const resolved = await resolveEsimActivation(order.esim);
+      if (resolved) Object.assign(order.esim, resolved);
     }
     res.json({ code: 0, data: { order } });
   });
@@ -255,14 +257,25 @@ export default (prisma: PrismaClient) => {
       where: { userId: req.userId },
       orderBy: { createdAt: 'desc' },
       include: {
-        esim: { select: { status: true, iccid: true, tigerPkgId: true, tigerPid: true } },
+        esim: {
+          select: {
+            status: true,
+            activatedAt: true,
+            expireAt: true,
+            used: true,
+            iccid: true,
+            tigerPkgId: true,
+            tigerPid: true,
+          },
+        },
       },
     });
     if (tigerClient.configured) {
       await Promise.all(
         orders.map(async (o) => {
           if (o.esim) {
-            o.esim.status = await resolveEsimActivationStatus(o.esim);
+            const resolved = await resolveEsimActivation(o.esim);
+            if (resolved) Object.assign(o.esim, resolved);
           }
         }),
       );
