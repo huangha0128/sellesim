@@ -2,7 +2,7 @@
 
 一个完整的 eSIM 上网卡商城系统，采用 pnpm monorepo 组织，包含：
 
-- **后端 API 服务**（Express + Prisma + SQLite）
+- **后端 API 服务**（Express + Prisma + MySQL）
 - **商城小程序**（uni-app + Vue 3，支持 H5 / 微信小程序 / 支付宝小程序）
 - **管理后台**（Vue 3 + Element Plus）
 - **资源生成工具脚本**（Python 3.10+）
@@ -14,7 +14,7 @@
 
 | 模块 | 技术 |
 | --- | --- |
-| 后端 `apps/server` | Node.js + TypeScript + Express + Prisma ORM + SQLite |
+| 后端 `apps/server` | Node.js + TypeScript + Express + Prisma ORM + MySQL |
 | 商城小程序 `apps/miniapp` | uni-app + Vue 3 + Vite + SCSS |
 | 管理后台 `apps/admin` | Vue 3 + TypeScript + Vite + Element Plus |
 | 工具脚本 `scripts` | Python 3.10+（标准库为主，Pillow 用于图标生成） |
@@ -60,7 +60,7 @@ sellsim/
 ```bash
 pnpm install
 
-# 初始化数据库（创建 SQLite 表结构）
+# 初始化数据库（创建 MySQL 表结构，需先在 .env 配置 DATABASE_URL）
 pnpm db:push
 
 # 填充种子数据：36 个国家 + 5 个区域 + 基础套餐
@@ -212,4 +212,4 @@ docker compose up -d --build
 
 - 支付接口 `POST /api/orders/:orderNo/pay` 当前为模拟实现（直接置为已支付并下发 eSIM），真实支付宝支付需要在此基础上接入当面付/小程序支付回调验签。
 - 管理后台接口目前未强制 JWT 鉴权，生产环境部署时建议通过网关、防火墙或补充鉴权中间件限制访问。
-- SQLite 数据库文件位于 `apps/server/prisma/data/dev.db`，Docker 部署时通过命名卷挂载在 `/app/apps/server/prisma/data` 持久化；备份/迁移时注意保留该文件。
+- MySQL 数据库运行在 Docker 容器（服务名 `mysql`，数据卷 `sellsim-mysql-data`），连接串通过 compose 的 `DATABASE_URL` 注入；数据库账号/密码在根目录 `.env` 的 `MYSQL_*` 变量中配置，备份可用 `docker compose exec mysql mysqldump`（deploy.sh 部署前也会自动备份到 `backups/`）。

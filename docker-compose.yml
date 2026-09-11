@@ -9,6 +9,31 @@
 name: sellsim
 
 services:
+  # ---------- 数据库（MySQL 8：持久化业务数据，替代原 SQLite）----------
+  mysql:
+    image: mysql:8.0
+    container_name: sellsim-mysql
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    environment:
+      TZ: Asia/Shanghai
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-sellsim-root-pass}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-sellsim}
+      MYSQL_USER: ${MYSQL_USER:-sellsim}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-sellsim-pass}
+    ports:
+      - "127.0.0.1:${MYSQL_PORT:-3306}:3306" # 仅本机可达，便于排查；应用走内部网络
+    volumes:
+      - sellsim-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
   # ---------- 套餐缓存（Redis：多实例共享套餐目录，前端秒读缓存）----------
   redis:
     image: redis:7-alpine
@@ -20,7 +45,7 @@ services:
     volumes:
       - sellsim-redis-data:/data
 
-  # ---------- 后端 API（Express + Prisma + SQLite）----------
+  # ---------- 后端 API（Express + Prisma + MySQL）----------
   server:
     build:
       context: .
@@ -28,11 +53,15 @@ services:
     container_name: sellsim-server
     restart: unless-stopped
     depends_on:
+      mysql:
+        condition: service_healthy
       redis:
         condition: service_started
     environment:
       TZ: Asia/Shanghai
       PORT: "6660"
+      # 数据库连接串（应用通过 Prisma 访问 MySQL）
+      DATABASE_URL: mysql://${MYSQL_USER:-sellsim}:${MYSQL_PASSWORD:-sellsim-pass}@mysql:3306/${MYSQL_DATABASE:-sellsim}
       # 套餐缓存 Redis 连接串（集群多实例共享缓存）
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       # JWT 签名密钥（生产环境务必在 .env 中修改）
@@ -58,9 +87,6 @@ services:
       ALIPAY_NOTIFY_HOST: ${ALIPAY_NOTIFY_HOST:-}
     ports:
       - "${SERVER_PORT:-6501}:6660"
-    volumes:
-      # 只持久化 SQLite 数据库文件，避免卷遮蔽镜像内的 schema.prisma
-      - sellsim-data:/app/apps/server/prisma/data
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:6660/health"]
       interval: 15s
@@ -117,7 +143,7 @@ services:
       - caddy-config:/config
 
 volumes:
-  sellsim-data:
+  sellsim-mysql-data:
   sellsim-redis-data:
   caddy-data:
   caddy-config:

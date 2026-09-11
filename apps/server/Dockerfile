@@ -27,6 +27,9 @@ RUN pnpm install --no-frozen-lockfile
 COPY . .
 
 # 生成 Prisma Client 并编译 TypeScript
+# 占位 DATABASE_URL：prisma generate 需要解析 datasource url 的 env，
+# 但 generate 不连接数据库，占位即可（真实连接串由 compose 运行期注入）
+ENV DATABASE_URL=mysql://placeholder:placeholder@localhost:3306/placeholder
 # 生成时显式请求 linux-musl 平台 engine，随产物一起打包进运行镜像，避免运行时联网下载
 RUN pnpm --filter @sellsim/server exec prisma generate --generator client \
     && pnpm --filter @sellsim/server build \

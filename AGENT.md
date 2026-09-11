@@ -8,7 +8,7 @@ SellSim (YYeSim) - 一个完整的 eSIM 上网卡商城系统，包含后端服�
 
 ### 后端服务 (apps/server)
 - Node.js + TypeScript
-- Prisma ORM + SQLite
+- Prisma ORM + MySQL
 - RESTful API
 
 ### 小程序前端 (apps/miniapp)
@@ -35,7 +35,6 @@ sellsim/
 │   ├── server/              # 后端服务
 │   │   ├── prisma/          # Prisma schema 和数据库
 │   │   │   ├── schema.prisma
-│   │   │   ├── dev.db       # SQLite 数据库
 │   │   │   └── seed.ts      # 数据填充脚本
 │   │   └── src/
 │   │       ├── routes/      # API 路由
