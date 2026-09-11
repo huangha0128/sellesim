@@ -17,6 +17,7 @@ model Country {
   flag          String
   pinyin        String
   hot           Int       @default(0)
+  priority      Int       @default(0) @map("display_priority")
   tier          Int       @default(1)
   cat           String
   intro         String

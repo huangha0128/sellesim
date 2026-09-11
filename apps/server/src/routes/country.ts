@@ -30,7 +30,10 @@ export default (prisma: PrismaClient) => {
         const hot = Number(c.hot) || packageCount;
         return { ...c, hot: Number(hot) || 0, packageCount };
       })
-      .sort((a: any, b: any) => b.hot - a.hot || a.code.localeCompare(b.code));
+      .sort(
+        (a: any, b: any) =>
+          b.priority - a.priority || b.hot - a.hot || a.code.localeCompare(b.code),
+      );
     res.json({ code: 0, data: { countries: limit ? enriched.slice(0, limit) : enriched } });
   });
 
@@ -44,7 +47,12 @@ export default (prisma: PrismaClient) => {
         return { ...c, hot: Number(c.hot || 0) || packageCount, packageCount };
       })
       .filter((c: any) => c.packageCount > 0)
-      .sort((a: any, b: any) => b.packageCount - a.packageCount || b.hot - a.hot)
+      .sort(
+        (a: any, b: any) =>
+          b.priority - a.priority ||
+          b.packageCount - a.packageCount ||
+          b.hot - a.hot,
+      )
       .slice(0, limit);
     res.json({ code: 0, data: { countries: enriched } });
   });

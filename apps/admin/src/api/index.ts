@@ -28,6 +28,7 @@ export interface Country {
   pinyin?: string;
   cat?: string;
   hot?: number;
+  priority?: number;
   tier?: number;
   intro?: string;
   _count?: { packages?: number };

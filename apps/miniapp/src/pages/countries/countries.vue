@@ -59,7 +59,6 @@
                 <text class="tag tag-secondary">{{ fmt('countries.noRealName') }}</text>
               </view>
               <view class="card-footer">
-                <text class="sales-count">{{ fmt('countries.sold', { n: pkg.soldCount ?? 0 }) }}</text>
                 <view class="price-block">
                   <text class="price-currency">{{ displayCurrency }}</text>
                   <text class="price-value">{{ fmtPrice(pkg.price) }}</text>
@@ -260,9 +259,13 @@ export default {
   },
   computed: {
     hotDestinations() {
-      return HOT_CODES
+      const priorityList = this.all
+        .filter((c) => (c.priority || 0) > 0)
+        .sort((a, b) => (b.priority || 0) - (a.priority || 0))
+      const fallbackList = HOT_CODES
         .map((code) => this.all.find((c) => c.code.toLowerCase() === code))
         .filter(Boolean)
+      return (priorityList.length ? priorityList : fallbackList).slice(0, 8)
     },
     letterIndex() {
       return this.activeCat === '' ? this.groupedCountries.map((g) => g.letter) : []
@@ -688,14 +691,8 @@ export default {
 .card-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin-top: 16rpx;
-}
-
-.sales-count {
-  font-size: 24rpx;
-  color: $ink-3;
-  font-weight: 500;
 }
 
 .price-block {

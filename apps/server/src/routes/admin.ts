@@ -167,7 +167,7 @@ export default (prisma: PrismaClient) => {
             ],
           }
         : undefined,
-      orderBy: [{ hot: 'desc' }, { code: 'asc' }],
+      orderBy: [{ priority: 'desc' }, { hot: 'desc' }, { code: 'asc' }],
     });
     let pkgCountMap = new Map<string, number>();
     if (tigerClient.configured) {

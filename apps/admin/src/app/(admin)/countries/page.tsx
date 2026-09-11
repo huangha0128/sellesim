@@ -45,6 +45,7 @@ interface FormState {
   pinyin: string;
   cat: string;
   hot: number;
+  priority: number;
   tier: number;
   intro: string;
 }
@@ -57,6 +58,7 @@ const emptyForm: FormState = {
   pinyin: '',
   cat: '',
   hot: 0,
+  priority: 0,
   tier: 1,
   intro: '',
 };
@@ -110,6 +112,7 @@ export default function CountriesPage() {
       pinyin: c.pinyin || '',
       cat: c.cat || '',
       hot: c.hot || 0,
+      priority: c.priority || 0,
       tier: c.tier || 1,
       intro: c.intro || '',
     });
@@ -188,6 +191,7 @@ export default function CountriesPage() {
                   <TableHead>英文</TableHead>
                   <TableHead>分类</TableHead>
                   <TableHead>热度</TableHead>
+                  <TableHead>优先级</TableHead>
                   <TableHead>价格等级</TableHead>
                   <TableHead>套餐数</TableHead>
                   <TableHead className="text-right">操作</TableHead>
@@ -201,6 +205,7 @@ export default function CountriesPage() {
                     <TableCell className="text-muted-foreground">{c.en || '—'}</TableCell>
                     <TableCell>{c.cat || '—'}</TableCell>
                     <TableCell>{c.hot ?? 0}</TableCell>
+                    <TableCell>{c.priority ?? 0}</TableCell>
                     <TableCell>T{c.tier ?? 1}</TableCell>
                     <TableCell>{c._count?.packages ?? c.packages?.length ?? 0}</TableCell>
                     <TableCell align="right">
@@ -246,6 +251,9 @@ export default function CountriesPage() {
             </Field>
             <Field label="热度">
               <NumberField value={form.hot} onChange={(v) => setForm({ ...form, hot: v })} min={0} max={100} />
+            </Field>
+            <Field label="显示优先级">
+              <NumberField value={form.priority} onChange={(v) => setForm({ ...form, priority: v })} min={0} max={999} />
             </Field>
             <Field label="价格等级">
               <NumberField value={form.tier} onChange={(v) => setForm({ ...form, tier: v })} min={1} max={4} />
