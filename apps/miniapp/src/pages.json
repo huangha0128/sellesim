@@ -87,6 +87,14 @@
       }
     },
     {
+      "path": "pages/esim-card-detail/esim-card-detail",
+      "style": {
+        "navigationBarTitleText": "eSIM 卡详情",
+        "navigationBarBackgroundColor": "#F5F7F8",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
       "path": "pages/profile/profile",
       "style": {
         "navigationBarTitleText": "我的",

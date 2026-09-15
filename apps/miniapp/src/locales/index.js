@@ -2,12 +2,20 @@ import { createI18n } from 'vue-i18n'
 import zhCN from './zh-CN'
 import zhTW from './zh-TW'
 import en from './en'
+import ja from './ja'
+import fr from './fr'
+import ko from './ko'
+import es from './es'
 
 const LOCALE_KEY = 'yy_locale'
 export const LOCALES = [
   { value: 'zh-CN', label: '简体中文', short: '简' },
   { value: 'zh-TW', label: '繁體中文', short: '繁' },
-  { value: 'en', label: 'English', short: 'EN' }
+  { value: 'en', label: 'English', short: 'EN' },
+  { value: 'ja', label: '日本語', short: 'JA' },
+  { value: 'fr', label: 'Français', short: 'FR' },
+  { value: 'ko', label: '한국어', short: 'KO' },
+  { value: 'es', label: 'Español', short: 'ES' }
 ]
 
 function getInitialLocale() {
@@ -26,7 +34,11 @@ const i18n = createI18n({
   messages: {
     'zh-CN': zhCN,
     'zh-TW': zhTW,
-    en
+    en,
+    ja,
+    fr,
+    ko,
+    es
   }
 })
 

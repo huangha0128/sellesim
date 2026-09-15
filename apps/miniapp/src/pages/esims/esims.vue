@@ -38,6 +38,7 @@
         class="esim-card"
         :class="card.status"
         hover-class="esim-card--hover"
+        @click="goCardDetail(card.iccid)"
       >
         <!-- 卡片背景装饰 -->
         <view class="card-deco">
@@ -54,9 +55,8 @@
         </view>
 
         <view class="card-body">
-          <text class="card-country">eSIM Card</text>
+          <text class="card-country">{{ card.activeEsim ? card.activeEsim.pkg.countryName : card.displayEsim.pkg.countryName }}</text>
           <text class="card-spec mono">{{ card.iccid }}</text>
-          <text class="card-package-count">{{ fmt('esims.packageCount', { n: card.esims.length }) }}</text>
         </view>
 
         <!-- 正在使用的套餐用量 -->
@@ -65,27 +65,13 @@
             <text class="active-usage-title">{{ fmt('esims.currentPlan') }}</text>
             <text class="active-usage-percent">{{ usagePercent(card.activeEsim) }}%</text>
           </view>
+          <text class="active-plan-spec">
+            {{ card.activeEsim.pkg.isUnlimited ? fmt('package.unlimited') : card.activeEsim.pkg.gb + 'GB' }} · {{ card.activeEsim.pkg.days }}天
+          </text>
           <view class="usage-bar">
             <view class="usage-fill" :style="{ width: usagePercent(card.activeEsim) + '%' }"></view>
           </view>
           <text class="active-usage-text">{{ usageText(card.activeEsim) }}</text>
-        </view>
-
-        <!-- 该 ICCID 下的所有套餐 -->
-        <view class="package-list">
-          <view
-            v-for="esim in card.esims"
-            :key="esim.id"
-            class="package-row"
-            :hover-class="esim.localEsimId ? 'package-row--hover' : 'none'"
-            @click="goEsimDetail(esim.id)"
-          >
-            <view class="package-main">
-              <text class="package-name">{{ esim.pkg.countryName }}</text>
-              <text class="package-spec">{{ esim.pkg.isUnlimited ? fmt('package.unlimited') : esim.pkg.gb + 'GB' }} · {{ esim.pkg.days }}天</text>
-            </view>
-            <text class="package-status" :class="esim.status">{{ statusText(esim) }}</text>
-          </view>
         </view>
 
         <!-- 底部：ICCID + 到期时间 -->
@@ -196,7 +182,8 @@ export default {
       }
     },
     statusText(esim) {
-      if (esim.status === 'activated') return this.fmt('esims.activated')
+      const key = { activated: 'activated', pending: 'pending', used: 'used', expired: 'expired' }[esim.status]
+      if (key) return this.fmt(`esims.${key}`)
       return this.fmt('esims.pending')
     },
     usagePercent(esim) {
@@ -218,10 +205,8 @@ export default {
     goBuy() {
       uni.reLaunch({ url: '/pages/index/index' })
     },
-    goEsimDetail(id) {
-      const esim = this.store.esims.find((item) => item.id === id)
-      if (!esim?.localEsimId) return
-      uni.navigateTo({ url: `/pages/esim-detail/esim-detail?id=${id}` })
+    goCardDetail(iccid) {
+      uni.navigateTo({ url: `/pages/esim-card-detail/esim-card-detail?iccid=${encodeURIComponent(iccid)}` })
     },
     switchTab(tab) {
       if (tab === this.currentTab) return

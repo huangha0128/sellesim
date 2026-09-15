@@ -343,14 +343,19 @@ export default {
     },
     async submitRefund() {
       if (this.submitting) return
+      const reason = this.refundReasonInput.trim()
+      if (!reason) {
+        uni.showToast({ title: this.fmt('orders.refundReasonRequired'), icon: 'none' })
+        return
+      }
       this.submitting = true
       try {
-        const res = await api.refundRequest(this.orderNo, this.refundReasonInput.trim() || undefined)
+        const res = await api.refundRequest(this.orderNo, reason)
         if (res.code === 0) {
-          this.closeRefundForm()
+          this.showRefundForm = false
           uni.showToast({ title: this.fmt('orders.refundAppliedToast'), icon: 'none' })
           this.order.refundStatus = 'requested'
-          this.order.refundReason = this.refundReasonInput.trim()
+          this.order.refundReason = reason
           this.load()
         } else if (res.code === 401) {
           uni.navigateTo({ url: '/pages/login/login' })

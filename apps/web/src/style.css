@@ -1,0 +1,106 @@
+/* Tailwind 指令：生成工具类（flex/gap/text-ink/bg-brand/rounded-2xl 等） */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* YYeSim 官网设计令牌 —— 映射自 apps/miniapp/src/uni.scss（深蓝紫星空体系） */
+
+:root {
+  /* 品牌色 */
+  --brand: #4050c0;
+  --brand-bright: #5050d0;
+  --brand-deep: #3030a0;
+  --brand-sky: #6cd5fa;
+  --brand-light: #e4eaff;
+  --brand-lighter: #f0f3ff;
+
+  /* 文字 */
+  --ink: #1a1d3a;
+  --ink-2: #4a5078;
+  --ink-3: #8b90b0;
+
+  /* 背景 / 卡片 */
+  --bg-page: #f5f7f8;
+  --bg-card: #ffffff;
+  --bg-soft: #eef0ff;
+  --line: #e1e8ec;
+
+  /* 圆角 */
+  --radius-sm: 16px;
+  --radius-md: 24px;
+  --radius-lg: 32px;
+  --radius-xl: 44px;
+
+  /* 阴影 */
+  --shadow-card: 0 4px 16px rgba(32, 32, 136, 0.08);
+  --shadow-float: 0 12px 40px rgba(32, 32, 136, 0.12);
+
+  /* 渐变 */
+  --gradient-brand: linear-gradient(135deg, #5050d0 0%, #4050c0 55%, #3030a0 100%);
+  --gradient-canvas: linear-gradient(168deg, #e4eaff 0%, #f0f3ff 52%, #f5f7f8 100%);
+  --gradient-text: linear-gradient(125deg, #3030a0 0%, #4050c0 34%, #5050d0 72%, #6cd5fa 100%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    'PingFang SC',
+    'HarmonyOS Sans SC',
+    'Segoe UI',
+    'Helvetica Neue',
+    Arial,
+    sans-serif;
+  color: var(--ink);
+  background: var(--bg-page);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* 通用渐变文字辅助类 */
+.text-gradient {
+  background: var(--gradient-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* 容器：与页面最大宽度一致 */
+.container-page {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* 区块标题节奏 */
+.eyebrow {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--brand);
+}
+
+.section-head {
+  margin-bottom: 40px;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}

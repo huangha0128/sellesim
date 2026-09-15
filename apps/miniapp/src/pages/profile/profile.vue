@@ -8,7 +8,7 @@
 <!--        <image v-else class="uh-avatar-img" src="/static/icons/hero-avatar.png" mode="aspectFit" />-->
       </view>
       <view class="uh-info">
-        <text class="uh-name">{{ store.isLoggedIn ? (store.user.nickname || store.user.email || $t('profile.traveler')) : $t('profile.clickLogin') }}</text>
+        <text class="uh-name">{{ store.isLoggedIn ? (store.user.nickname || $t('profile.traveler')) : $t('profile.clickLogin') }}</text>
         <text class="uh-sub" v-if="store.isLoggedIn && store.user.email">{{ maskEmail(store.user.email) }}</text>
         <text class="uh-sub" v-else-if="!store.isLoggedIn">{{ $t('profile.loginBenefits') }}</text>
       </view>

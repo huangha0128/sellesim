@@ -8,12 +8,21 @@ import esimRoutes from './routes/esim';
 import adminRoutes from './routes/admin';
 import authRoutes from './routes/auth';
 import alipayRoutes from './routes/alipay';
+import externalRoutes from './routes/external';
 import { refreshPackageCache, PACKAGE_REFRESH_INTERVAL_MS } from './tiger/view';
+import { retryPendingWebhooks } from './services/webhook';
 
 const app = express();
 
 app.use(cors());
-app.use(express.json());
+// verify 回调把原始 body 存到 req.rawBody，供外部开放 API 的 HMAC 签名校验使用（仅 application/json 触发）
+app.use(
+  express.json({
+    verify: (req: any, _res, buf: Buffer) => {
+      req.rawBody = buf.toString('utf-8');
+    },
+  }),
+);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -26,6 +35,7 @@ app.use('/api/orders', orderRoutes(prisma));
 app.use('/api/esims', esimRoutes(prisma));
 app.use('/api/admin', adminRoutes(prisma));
 app.use('/api/alipay', alipayRoutes(prisma));
+app.use('/api/external', externalRoutes(prisma));
 
 const PORT = process.env.PORT || 6660;
 
@@ -42,5 +52,11 @@ refreshPackageCache().catch(() => {
 setInterval(() => {
   refreshPackageCache();
 }, PACKAGE_REFRESH_INTERVAL_MS);
+
+// ---- 外部开放 API：webhook 失败重试定时器 ----
+// 支付成功但回调外部项目失败（网络/非 2xx）的订单，按退避策略每分钟扫描重试
+setInterval(() => {
+  retryPendingWebhooks(prisma);
+}, 60_000);
 
 export { prisma };

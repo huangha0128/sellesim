@@ -126,6 +126,33 @@ async function createTradeNo(
   return response.trade_no;
 }
 
+/**
+ * 支付宝 H5 网页支付（alipay.trade.wap.pay）。
+ * 返回可直接在浏览器打开的收银台链接（302 后进入支付宝收银台）。
+ * 注意与 createTradeNo 的区别：wap 返回 HTML 页面而非 JSON，故不走 request()，
+ * 而是构造 gateway.do 完整 URL 后交给前端浏览器跳转。
+ */
+async function wapPay(
+  outTradeNo: string,
+  subject: string,
+  totalAmount: string,
+  notifyUrl: string,
+  returnUrl: string,
+): Promise<string> {
+  const bizContent: Record<string, any> = {
+    subject,
+    out_trade_no: outTradeNo,
+    total_amount: totalAmount,
+    product_code: 'QUICK_WAP_WAY',
+  };
+  const params = buildParams('alipay.trade.wap.pay', bizContent, {
+    notify_url: notifyUrl,
+    return_url: returnUrl,
+  });
+  const signStr = sign(params);
+  return `${config.alipay.gateway}?${querystring.stringify({ ...params, sign: signStr })}`;
+}
+
 async function refund(
   outTradeNo: string,
   refundAmount: string,
@@ -172,6 +199,7 @@ export const alipay = {
   verifySign,
   request,
   createTradeNo,
+  wapPay,
   buildParams,
   refund,
 };

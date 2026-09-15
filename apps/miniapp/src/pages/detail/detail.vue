@@ -72,7 +72,6 @@
           </view>
         </view>
         <view class="pkg-tags">
-          <text class="pkg-tag sold">{{ fmt('detail.sold', { n: pkg.soldCount ?? 0 }) }}</text>
           <text class="pkg-tag normal">{{ fmt('detail.instant') }}</text>
           <text class="pkg-tag normal">{{ fmt('detail.noRealName') }}</text>
           <text class="pkg-tag normal">{{ fmt('detail.globalApp') }}</text>
@@ -347,7 +346,7 @@ export default {
         if (!cur || p.price < cur.price) byGb.set(key, { gb: p.gb, isUnlimited: !!p.isUnlimited, price: p.price, currency: p.currency })
       }
       return Array.from(byGb.values())
-        .sort((a, b) => a.gb - b.gb || (a.isUnlimited ? 1 : 0) - (b.isUnlimited ? 1 : 0))
+        .sort((a, b) => (a.isUnlimited ? 1 : 0) - (b.isUnlimited ? 1 : 0) || a.gb - b.gb)
         .map(c => ({
           ...c,
           priceDisplay: Number(c.price).toFixed(2)

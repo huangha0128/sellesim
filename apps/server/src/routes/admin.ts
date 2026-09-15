@@ -1,10 +1,12 @@
 import { Router, Request, Response } from 'express';
+import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { tigerClient, iccidPoolCount, getIccidPool, fetchTigerIccids } from '../tiger';
 import { syncAllFromTiger, syncRegionsFromTiger, syncPackagesFromTiger } from '../tiger/sync';
 import { refundOrder, rejectRefundRequest } from '../services/refund';
 import { sendRefundEmail } from '../services/email';
-import { alipay } from '../utils/alipay';
+import { buildRefundDeps } from '../services/payment';
+import { genAppSecret } from '../utils/hmac';
 import { clearWhitelistCache, clearSettingsCache } from '../pricing/priceOverride';
 
 /** 白名单/汇率（添加/移出/改价/停售/设置）变更后的即时生效：清缓存 → 失效套餐缓存 → 同步重拉一次（等待完成） */
@@ -77,25 +79,7 @@ export default (prisma: PrismaClient) => {
     const { reason } = req.body || {};
     try {
       const result = await refundOrder(
-        {
-          findOrder: (orderNo) => prisma.order.findUnique({ where: { orderNo } }),
-          findUserOrder: (userId, orderNo) =>
-            prisma.order.findFirst({ where: { orderNo, userId } }),
-          updateOrder: (orderNo, data) => prisma.order.update({ where: { orderNo }, data }),
-          findEsimByOrderId: (orderId) => prisma.esim.findUnique({ where: { orderId } }),
-          deleteEsimByOrderId: async (orderId) => {
-            await prisma.esim.delete({ where: { orderId } });
-          },
-          alipayRefund: async (params) => {
-            // 只要订单有 alipayTradeNo，说明是真实支付宝支付过的，必须调用支付宝真实退款接口
-            // outTradeNo 已经由 refundOrder 确保为商户单号 order.orderNo，直接使用即可
-            const order = await prisma.order.findUnique({ where: { orderNo: req.params.orderNo } });
-            if (!order?.alipayTradeNo) {
-              return { code: '10000', tradeNo: `RF${Date.now()}` };
-            }
-            return alipay.refund(params.outTradeNo, params.refundAmount, params.outRequestNo, params.refundReason);
-          },
-        },
+        buildRefundDeps(prisma, req.params.orderNo),
         req.params.orderNo,
         reason,
       );
@@ -126,17 +110,7 @@ export default (prisma: PrismaClient) => {
     const { reason } = req.body || {};
     try {
       const result = await rejectRefundRequest(
-        {
-          findOrder: (orderNo) => prisma.order.findUnique({ where: { orderNo } }),
-          findUserOrder: (userId, orderNo) =>
-            prisma.order.findFirst({ where: { orderNo, userId } }),
-          updateOrder: (orderNo, data) => prisma.order.update({ where: { orderNo }, data }),
-          findEsimByOrderId: (orderId) => prisma.esim.findUnique({ where: { orderId } }),
-          deleteEsimByOrderId: async (orderId) => {
-            await prisma.esim.delete({ where: { orderId } });
-          },
-          alipayRefund: async () => ({ code: '10000' }),
-        },
+        buildRefundDeps(prisma, req.params.orderNo),
         req.params.orderNo,
         typeof reason === 'string' ? reason : '',
       );
@@ -655,6 +629,124 @@ export default (prisma: PrismaClient) => {
       res.json({ code: 0, data: { tigerTotal: unique.size, items: Array.from(unique.values()) } });
     } catch (e: any) {
       res.json({ code: 2, message: `同步失败：${e.message}` });
+    }
+  });
+
+  // ===== 外部开放支付 API：应用凭据管理 =====
+
+  /** GET /api/admin/external-apps 外部应用列表（含各应用订单数） */
+  router.get('/external-apps', async (_req: Request, res: Response) => {
+    try {
+      const apps = await prisma.externalApp.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: {
+          user: {
+            select: {
+              id: true,
+              nickname: true,
+              _count: { select: { orders: true } },
+            },
+          },
+        },
+      });
+      res.json({
+        code: 0,
+        data: {
+          apps: apps.map((a) => ({
+            id: a.id,
+            appId: a.appId,
+            name: a.name,
+            callbackUrl: a.callbackUrl,
+            enabled: a.enabled,
+            createdAt: a.createdAt,
+            updatedAt: a.updatedAt,
+            orderCount: a.user?._count?.orders || 0,
+          })),
+        },
+      });
+    } catch (e: any) {
+      res.status(500).json({ code: 1, message: '列表获取失败：' + e.message });
+    }
+  });
+
+  /**
+   * POST /api/admin/external-apps 创建外部应用（appSecret 仅此一次返回，请立即保存）
+   * body: { name, callbackUrl? }
+   * 事务内创建合成用户（alipayUserId='ext_<appId>'）并关联，其后续订单挂在合成用户下。
+   */
+  router.post('/external-apps', async (req: Request, res: Response) => {
+    const { name, callbackUrl } = req.body || {};
+    if (!name) {
+      return res.json({ code: 1, message: '缺少应用名称' });
+    }
+    if (callbackUrl !== undefined && callbackUrl !== null && !/^https?:\/\//.test(String(callbackUrl))) {
+      return res.json({ code: 1, message: '回调地址必须以 http(s):// 开头' });
+    }
+    const appId = crypto.randomBytes(12).toString('hex');
+    const appSecret = genAppSecret();
+    try {
+      const app = await prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: { alipayUserId: `ext_${appId}`, nickname: `外部应用-${name}` },
+        });
+        return tx.externalApp.create({
+          data: {
+            appId,
+            appSecret,
+            name: String(name),
+            callbackUrl: callbackUrl ? String(callbackUrl) : null,
+            userId: user.id,
+          },
+        });
+      });
+      res.json({
+        code: 0,
+        data: {
+          id: app.id,
+          appId: app.appId,
+          appSecret: app.appSecret, // 仅创建时返回一次
+          name: app.name,
+          callbackUrl: app.callbackUrl,
+        },
+      });
+    } catch (e: any) {
+      console.error('[external-apps] 创建失败：', e.message);
+      res.status(500).json({ code: 1, message: '创建失败：' + e.message });
+    }
+  });
+
+  /** DELETE /api/admin/external-apps/:id 删除外部应用（软删：enabled=false 停止鉴权，保留订单历史与合成用户） */
+  router.delete('/external-apps/:id', async (req: Request, res: Response) => {
+    try {
+      const app = await prisma.externalApp.findUnique({ where: { id: req.params.id } });
+      if (!app) {
+        return res.json({ code: 1, message: '应用不存在' });
+      }
+      await prisma.externalApp.update({
+        where: { id: app.id },
+        data: { enabled: false },
+      });
+      res.json({ code: 0, data: { id: app.id, disabled: true } });
+    } catch (e: any) {
+      res.status(500).json({ code: 1, message: '删除失败：' + e.message });
+    }
+  });
+
+  /** POST /api/admin/external-apps/:id/reset-secret 重置应用密钥（新 secret 仅此一次返回，请立即保存） */
+  router.post('/external-apps/:id/reset-secret', async (req: Request, res: Response) => {
+    try {
+      const app = await prisma.externalApp.findUnique({ where: { id: req.params.id } });
+      if (!app) {
+        return res.json({ code: 1, message: '应用不存在' });
+      }
+      const appSecret = genAppSecret();
+      await prisma.externalApp.update({ where: { id: app.id }, data: { appSecret } });
+      res.json({
+        code: 0,
+        data: { id: app.id, appId: app.appId, appSecret }, // 新密钥仅返回一次
+      });
+    } catch (e: any) {
+      res.status(500).json({ code: 1, message: '重置失败：' + e.message });
     }
   });
 

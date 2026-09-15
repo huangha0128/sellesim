@@ -1,5 +1,7 @@
 const BASE_URL = 'https://www.bjyyxx.com/api';
 
+import { pickCountryName } from './countryLocales';
+
 // 获取当前语言
 function getCurrentLang() {
   try {
@@ -71,8 +73,8 @@ function flattenPkg(p) {
 
   return {
     ...p,
-    // 根据语言选择国家名称
-    countryName: isEn ? (p.countryNameEn || p.countryName || c.name) : (p.countryName || c.name),
+    // 根据语言选择地区名称：zh 用中文、en 用英文、ja/fr/ko/es 用 code 映射表
+    countryName: pickCountryName(p.countryCode, p.countryName || c.name, p.countryNameEn || c.name, getCurrentLang()),
     // 根据语言选择套餐名称
     name: isEn ? (p.nameEn || p.name) : p.name,
     // 根据语言选择描述（已处理）

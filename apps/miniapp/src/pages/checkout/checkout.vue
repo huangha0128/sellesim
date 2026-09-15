@@ -130,14 +130,6 @@
             <image v-if="payMethod === 'alipay'" src="/static/icons/co-check.png" mode="aspectFit" class="check-icon" />
           </view>
         </view>
-        <view class="pay-item disabled">
-          <view class="pay-logo wechat">微</view>
-          <view class="pay-info">
-            <text class="pay-name">{{ fmt('checkout.wechatName') }}</text>
-            <text class="pay-desc">{{ fmt('checkout.wechatDesc') }}</text>
-          </view>
-          <view class="pay-soon">{{ fmt('checkout.soon') }}</view>
-        </view>
       </view>
 
       <view class="section-card">
@@ -602,9 +594,6 @@ export default {
     background: $alipay;
   }
 
-  &.wechat {
-    background: $wechat;
-  }
 }
 
 .pay-info {
@@ -646,14 +635,6 @@ export default {
 .check-icon {
   width: 24rpx;
   height: 24rpx;
-}
-
-.pay-soon {
-  font-size: 22rpx;
-  color: $ink-3;
-  background: $bg-soft;
-  padding: 8rpx 18rpx;
-  border-radius: 999rpx;
 }
 
 /* ========== 购买方式（新购 / 加购到已过期 eSIM） ========== */

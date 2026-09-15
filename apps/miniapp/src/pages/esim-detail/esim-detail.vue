@@ -23,6 +23,10 @@
     <!-- 卡片信息（上浮叠压 Hero 底部） -->
     <view class="info-card">
       <view class="info-row">
+        <text class="info-label">{{ fmt('esims.activationDate') }}</text>
+        <text class="info-value">{{ formatDateTime(esim?.activatedAt) }}</text>
+      </view>
+      <view class="info-row">
         <text class="info-label">{{ fmt('esims.expireLabel') }}</text>
         <text class="info-value">{{ formatDate(esim?.expireAt) }}</text>
       </view>
@@ -30,10 +34,14 @@
         <text class="info-label">ICCID</text>
         <text class="info-value iccid">{{ esim?.iccid }}</text>
       </view>
+      <view class="info-row">
+        <text class="info-label">{{ fmt('esims.bindingId') }}</text>
+        <text class="info-value iccid">{{ esim?.tigerBindingId || '-' }}</text>
+      </view>
     </view>
 
     <!-- 流量使用情况 -->
-    <view v-if="esim?.status === 'activated'" class="usage-card">
+    <view v-if="['activated', 'used', 'expired'].includes(esim?.status)" class="usage-card">
       <view class="usage-header">
         <text class="usage-title">{{ fmt('esimDetail.usageTitle') }}</text>
         <text class="usage-percent">{{ usagePercent }}%</text>
@@ -70,7 +78,7 @@
     </view>
 
     <!-- 操作按钮 -->
-    <view class="action-buttons">
+    <view v-if="esim?.localEsimId" class="action-buttons">
       <view v-if="esim?.status === 'pending'" class="action-btn primary" @tap="markActivated">
         <text>{{ fmt('esims.markActivated') }}</text>
       </view>
@@ -90,7 +98,7 @@
 import EsimQr from '@/components/EsimQr.vue'
 import { api } from '@/utils/api'
 import { store } from '@/store'
-import { formatDate } from '@/utils/format'
+import { formatDate, formatDateTime } from '@/utils/format'
 import { setNavTitle, t as translate } from '@/locales'
 
 // 命名占位符兜底替换（如 {gb}、{used}）
@@ -112,7 +120,13 @@ export default {
   computed: {
     statusText() {
       if (!this.esim) return ''
-      return this.fmt(this.esim.status === 'activated' ? 'esims.activated' : 'esims.pending')
+      const key = {
+        activated: 'activated',
+        pending: 'pending',
+        used: 'used',
+        expired: 'expired'
+      }[this.esim.status]
+      return this.fmt(`esims.${key || 'pending'}`)
     },
     specText() {
       if (!this.esim?.pkg) return ''
@@ -132,7 +146,7 @@ export default {
       return Number(this.esim.used || 0).toFixed(1)
     },
     canRenew() {
-      return this.esim?.status === 'activated' && new Date(this.esim.expireAt) < new Date()
+      return !!this.esim?.localEsimId && this.esim.status === 'activated' && new Date(this.esim.expireAt) < new Date()
     }
   },
   onLoad(options) {
@@ -142,6 +156,10 @@ export default {
   },
   methods: {
     formatDate,
+    formatDateTime(value) {
+      if (!value || Number.isNaN(new Date(value).getTime())) return '-'
+      return formatDateTime(value)
+    },
     fmt(key, params) {
       return fmtNamed(translate(key, params), params)
     },

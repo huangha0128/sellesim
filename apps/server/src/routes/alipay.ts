@@ -1,9 +1,8 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { alipay } from '../utils/alipay';
-import { provisionEsim } from '../services/provision';
-import { renewEsim } from '../services/topup';
-import { sendEsimEmail, sendRenewEmail } from '../services/email';
+import { fulfillPaidOrder } from '../services/payment';
+import { enqueueWebhook } from '../services/webhook';
 
 /**
  * 支付宝异步通知专用的表单解析器。
@@ -81,41 +80,20 @@ export default (prisma: PrismaClient) => {
         return res.status(200).send('success');
       }
 
-      const updated = await prisma.order.update({
-        where: { orderNo: outTradeNo },
-        data: {
-          status: 'paid',
-          paidAt: new Date(),
+      try {
+        // 统一履约：置已支付 + 记录支付宝交易号/实付金额 + 下发 eSIM（或续费）+ 发送邮件。
+        // 这里只保证订单标记为已支付，eSIM 下发失败可后续通过后台/订单查询兜底，故吞掉异常仍返回 success。
+        const fulfilled = await fulfillPaidOrder(prisma, order, {
           alipayTradeNo: params.trade_no || '',
           paidAmount: Number(params.buyer_pay_amount ?? params.total_amount ?? 0),
-        },
-      });
-
-      try {
-        if (updated.orderType === 'renew') {
-          const target = await prisma.esim.findFirst({
-            where: { id: updated.targetEsimId || '', userId: order.userId },
-          });
-          if (!target) {
-            throw new Error('目标 eSIM 不存在');
-          }
-          // renewEsim 内部会再次校验该卡当前套餐已到期
-          const esim = await renewEsim(prisma, updated, target);
-          console.log(`[alipay] 订单 ${outTradeNo} 支付成功，续费已执行`);
-
-          sendRenewEmailSafe(updated, target, esim).catch((e) =>
-            console.error(`[email] 订单 ${outTradeNo} 续费通知发送失败：`, e.message),
-          );
-        } else {
-          const esimData = await provisionEsim(prisma, updated);
-          await prisma.esim.create({ data: { ...esimData, userId: order.userId } });
-          console.log(`[alipay] 订单 ${outTradeNo} 支付成功，eSIM 已下发`);
-
-          // 发送激活码邮件（非阻塞，失败不影响下单结果）
-          sendEsimEmailSafe(order, esimData).catch((e) =>
-            console.error(`[email] 订单 ${outTradeNo} 邮件发送失败：`, e.message),
+        });
+        // 外部订单：入队支付成功 webhook 回调（失败不影响 success 返回，由后台定时器重试）
+        if (fulfilled.order.extOrderNo) {
+          enqueueWebhook(prisma, fulfilled.order).catch((e) =>
+            console.error(`[webhook] 订单 ${outTradeNo} 入队失败：`, e.message),
           );
         }
+        console.log(`[alipay] 订单 ${outTradeNo} 支付成功，eSIM 已下发`);
       } catch (e: any) {
         console.error(`[alipay] 订单 ${outTradeNo} 支付成功但 eSIM 操作失败：`, e.message);
       }
@@ -129,35 +107,3 @@ export default (prisma: PrismaClient) => {
 
   return router;
 };
-
-/** 发送激活码邮件（安全包装，失败只打日志） */
-async function sendEsimEmailSafe(order: any, esimData: any) {
-  if (!order.email) {
-    console.warn(`[email] 订单 ${order.orderNo} 未填写邮箱，跳过邮件发送`);
-    return;
-  }
-  const country = order.countryCode || '';
-  await sendEsimEmail({
-    to: order.email,
-    orderNo: order.orderNo,
-    countryName: country,
-    gb: order.gb || 0,
-    days: order.days || 0,
-    activationCode: esimData.activationCode,
-    iccid: esimData.iccid,
-    expireAt: esimData.expireAt,
-  });
-}
-
-/** 发送续费成功通知邮件（安全包装，失败只打日志） */
-async function sendRenewEmailSafe(order: any, targetEsim: any, updatedEsim: any) {
-  if (!order.email) return;
-  await sendRenewEmail({
-    to: order.email,
-    orderNo: order.orderNo,
-    countryName: order.pkgName || order.countryCode || '',
-    gb: updatedEsim.gb ?? order.gb ?? 0,
-    days: updatedEsim.days ?? order.days ?? 0,
-    expireAt: updatedEsim.expireAt,
-  });
-}

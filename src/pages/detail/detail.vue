@@ -21,7 +21,6 @@
           <text class="pkg-name-arrow">⌄</text>
         </view>
         <view class="pkg-tags">
-          <text class="pkg-tag sold">已售 9999+</text>
           <text class="pkg-tag normal">即时激活</text>
           <text class="pkg-tag normal">无需实名</text>
           <text class="pkg-tag normal">支持全球app</text>

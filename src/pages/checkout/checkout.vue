@@ -42,14 +42,6 @@
           </view>
           <view class="pay-check" :class="{ checked: payMethod === 'alipay' }">✓</view>
         </view>
-        <view class="pay-item disabled">
-          <view class="pay-logo wechat">微</view>
-          <view class="pay-info">
-            <text class="pay-name">微信支付</text>
-            <text class="pay-desc">即将上线</text>
-          </view>
-          <view class="pay-soon">敬请期待</view>
-        </view>
       </view>
 
       <view class="section-card">
@@ -360,14 +352,6 @@ export default {
     border-color: $brand;
     color: #ffffff;
   }
-}
-
-.pay-soon {
-  font-size: 22rpx;
-  color: $ink-3;
-  background: $bg-soft;
-  padding: 8rpx 18rpx;
-  border-radius: 999rpx;
 }
 
 .amount-row {

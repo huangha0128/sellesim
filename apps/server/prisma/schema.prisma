@@ -28,15 +28,32 @@ model Country {
 }
 
 model User {
-  id           String   @id @default(uuid())
-  alipayUserId String   @unique @map("alipay_user_id")
-  nickname     String   @default("")
-  avatar       String   @default("")
-  email        String   @default("")
+  id           String        @id @default(uuid())
+  alipayUserId String        @unique @map("alipay_user_id")
+  nickname     String        @default("")
+  avatar       String        @default("")
+  email        String        @default("")
   orders       Order[]
   esims        Esim[]
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  externalApp  ExternalApp?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+}
+
+// External app credentials for the open payment API.
+// Each app maps to an internal synthetic user (alipayUserId='ext_<appId>').
+// Orders created by the app are attached to that user for admin management.
+model ExternalApp {
+  id          String    @id @default(uuid())
+  appId       String    @unique
+  appSecret   String
+  name        String
+  callbackUrl String?   @map("callback_url")
+  userId      String?   @unique @map("user_id")
+  user        User?     @relation(fields: [userId], references: [id])
+  enabled     Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model Order {
@@ -70,9 +87,15 @@ model Order {
   refundAmount  Float?    @map("refund_amount")
   refundTradeNo String?   @map("refund_trade_no")
   refundedAt    DateTime? @map("refunded_at")
+  extOrderNo    String?   @map("ext_order_no") // external order no for reconciliation
+  webhookStatus String?   @default("none") @map("webhook_status") // none/pending/success/failed
+  webhookSentAt DateTime? @map("webhook_sent_at")
+  webhookRetryCount Int   @default(0) @map("webhook_retry_count")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   esim          Esim?
+
+  @@index([userId, extOrderNo])
 }
 
 model Esim {

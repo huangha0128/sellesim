@@ -113,6 +113,17 @@ services:
       retries: 5
       start_period: 10s
 
+  # ---------- 官网静态站（构建后同步到 Caddy 挂载的 WWW_ROOT 目录）----------
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: sellsim-web
+    restart: "no"                                   # 一次性铺盘任务，退出后由部署流程控制
+    volumes:
+      # 与 caddy 共享同一目录：web 可写用于铺盘，caddy 只读服务
+      - ${WWW_ROOT:-/www/wwwroot/www.bjyyxx.com}:/www:rw
+
   # ---------- Caddy 反向代理（/backend → 后台，/api → 后端）----------
   caddy:
     build:

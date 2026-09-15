@@ -57,3 +57,11 @@ Thumbs.db
 __pycache__
 *.pyc
 outputs/
+
+# ===== 调试临时产物（schema 二分排查用，非源码）=====
+apps/server/prisma/test-tmp/
+
+# ===== AI 编辑器 / Agent 工作目录（本地留存，不入库）=====
+.trae/
+apps/.trae/
+.workbuddy-ai/

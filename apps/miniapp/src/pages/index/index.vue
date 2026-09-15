@@ -86,7 +86,6 @@
             <text class="tag tag-secondary">{{ fmt('index.noRealName') }}</text>
           </view>
           <view class="card-footer">
-            <text class="sales-count">{{ fmt('index.soldCount', { n: pkg.soldCount ?? 0 }) }}</text>
             <view class="price-block">
               <text class="price-currency">{{ displayCurrency }}</text>
               <text class="price-value">{{ fmtPrice(pkg.price) }}</text>
@@ -521,14 +520,8 @@ export default {
 .card-footer {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   margin-top: 16rpx;
-}
-
-.sales-count {
-  font-size: 24rpx;
-  color: $ink-3;
-  font-weight: 500;
 }
 
 .price-block {

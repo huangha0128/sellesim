@@ -1,0 +1,182 @@
+// 地区名多语言映射：key 使用后端归一化的 countryCode（与 /countries 及套餐接口一致）。
+// 提供日/法/韩/西 4 语；zh（简/繁）、en 分别由后端 countryName / countryNameEn 直接提供。
+// 未收录的 code 将回退英文，再回退中文，保证任何语言下都有可用文案。
+
+const CODE_MAP = {
+  // ==== 洲际 / 全球 ====
+  GLOBAL160:  { ja: 'グローバル（160+か国）', fr: 'Global (160+ pays)', ko: '글로벌 (160+개국)', es: 'Global (160+ países)' },
+  ASIA:       { ja: 'アジア', fr: 'Asie', ko: '아시아', es: 'Asia' },
+  EUROPE:     { ja: 'ヨーロッパ', fr: 'Europe', ko: '유럽', es: 'Europa' },
+  AFRICA:     { ja: 'アフリカ', fr: 'Afrique', ko: '아프리카', es: 'África' },
+  NAMERICA:   { ja: '北アメリカ', fr: 'Amérique du Nord', ko: '북미', es: 'América del Norte' },
+  LAMERICA:   { ja: 'ラテンアメリカ', fr: 'Amérique latine', ko: '라틴 아메리카', es: 'Latinoamérica' },
+  CARIBBEAN:  { ja: 'カリブ', fr: 'Caraïbes', ko: '카리브해', es: 'Caribe' },
+  OCEANIA:    { ja: 'オセアニア', fr: 'Océanie', ko: '오세아니아', es: 'Oceanía' },
+
+  // ==== 多国组合 ====
+  CHINAMAINLANDHONGKONGMACAO: { ja: '中国大陸・香港・マカオ', fr: 'Chine continentale / Hong Kong / Macao', ko: '중국 본토 · 홍콩 · 마카오', es: 'China continental / Hong Kong / Macao' },
+  JAPANKOREA:  { ja: '日本・韓国', fr: 'Japon / Corée', ko: '일본 · 한국', es: 'Japón / Corea' },
+  SINGAPOREMALAYSIATHAILAND: { ja: 'シンガポール・マレーシア・タイ', fr: 'Singapour / Malaisie / Thaïlande', ko: '싱가포르 · 말레이시아 · 태국', es: 'Singapur / Malasia / Tailandia' },
+
+  // ==== 东亚 / 东南亚 ====
+  CN:  { ja: '中国大陸', fr: 'Chine continentale', ko: '중국 본토', es: 'China continental' },
+  HK:  { ja: '香港', fr: 'Hong Kong', ko: '홍콩', es: 'Hong Kong' },
+  MO:  { ja: 'マカオ', fr: 'Macao', ko: '마카오', es: 'Macao' },
+  JP:  { ja: '日本', fr: 'Japon', ko: '일본', es: 'Japón' },
+  KR:  { ja: '韓国', fr: 'Corée du Sud', ko: '대한민국', es: 'Corea del Sur' },
+  MN:  { ja: 'モンゴル', fr: 'Mongolie', ko: '몽골', es: 'Mongolia' },
+  KH:  { ja: 'カンボジア', fr: 'Cambodge', ko: '캄보디아', es: 'Camboya' },
+  LA:  { ja: 'ラオス', fr: 'Laos', ko: '라오스', es: 'Laos' },
+  MM:  { ja: 'ミャンマー', fr: 'Myanmar', ko: '미얀마', es: 'Myanmar' },
+  TH:  { ja: 'タイ', fr: 'Thaïlande', ko: '태국', es: 'Tailandia' },
+  VN:  { ja: 'ベトナム', fr: 'Vietnam', ko: '베트남', es: 'Vietnam' },
+  PH:  { ja: 'フィリピン', fr: 'Philippines', ko: '필리핀', es: 'Filipinas' },
+  ID:  { ja: 'インドネシア', fr: 'Indonésie', ko: '인도네시아', es: 'Indonesia' },
+  MY:  { ja: 'マレーシア', fr: 'Malaisie', ko: '말레이시아', es: 'Malasia' },
+  SG:  { ja: 'シンガポール', fr: 'Singapour', ko: '싱가포르', es: 'Singapur' },
+
+  // ==== 南亚 ====
+  IN:  { ja: 'インド', fr: 'Inde', ko: '인도', es: 'India' },
+  LK:  { ja: 'スリランカ', fr: 'Sri Lanka', ko: '스리랑카', es: 'Sri Lanka' },
+  NP:  { ja: 'ネパール', fr: 'Népal', ko: '네팔', es: 'Nepal' },
+  MV:  { ja: 'モルディブ', fr: 'Maldives', ko: '몰디브', es: 'Maldivas' },
+  BD:  { ja: 'バングラデシュ', fr: 'Bangladesh', ko: '방글라데시', es: 'Bangladés' },
+  PK:  { ja: 'パキスタン', fr: 'Pakistan', ko: '파키스탄', es: 'Pakistán' },
+
+  // ==== 中亚 / 高加索 ====
+  KZ:  { ja: 'カザフスタン', fr: 'Kazakhstan', ko: '카자흐스탄', es: 'Kazajistán' },
+  UZ:  { ja: 'ウズベキスタン', fr: 'Ouzbékistan', ko: '우즈베키스탄', es: 'Uzbekistán' },
+  GE:  { ja: 'ジョージア', fr: 'Géorgie', ko: '조지아', es: 'Georgia' },
+  AZ:  { ja: 'アゼルバイジャン', fr: 'Azerbaïdjan', ko: '아제르바이잔', es: 'Azerbaiyán' },
+  BY:  { ja: 'ベラルーシ', fr: 'Biélorussie', ko: '벨라루스', es: 'Bielorrusia' },
+
+  // ==== 中东 / 北非 ====
+  AE:  { ja: 'アラブ首長国連邦', fr: 'Émirats arabes unis', ko: '아랍에미리트', es: 'Emiratos Árabes Unidos' },
+  SA:  { ja: 'サウジアラビア', fr: 'Arabie saoudite', ko: '사우디아라비아', es: 'Arabia Saudita' },
+  QA:  { ja: 'カタール', fr: 'Qatar', ko: '카타르', es: 'Catar' },
+  BH:  { ja: 'バーレーン', fr: 'Bahreïn', ko: '바레인', es: 'Baréin' },
+  KW:  { ja: 'クウェート', fr: 'Koweït', ko: '쿠웨이트', es: 'Kuwait' },
+  OM:  { ja: 'オマーン', fr: 'Oman', ko: '오만', es: 'Omán' },
+  JO:  { ja: 'ヨルダン', fr: 'Jordanie', ko: '요르단', es: 'Jordania' },
+  LB:  { ja: 'レバノン', fr: 'Liban', ko: '레바논', es: 'Líbano' },
+  IQ:  { ja: 'イラク', fr: 'Irak', ko: '이라크', es: 'Irak' },
+  IL:  { ja: 'イスラエル', fr: 'Israël', ko: '이스라엘', es: 'Israel' },
+  TR:  { ja: 'トルコ', fr: 'Turquie', ko: '튀르키예', es: 'Turquía' },
+  EG:  { ja: 'エジプト', fr: 'Égypte', ko: '이집트', es: 'Egipto' },
+  IR:  { ja: 'イラン', fr: 'Iran', ko: '이란', es: 'Irán' },
+  SD:  { ja: 'スーダン', fr: 'Soudan', ko: '수단', es: 'Sudán' },
+  DZ:  { ja: 'アルジェリア', fr: 'Algérie', ko: '알제리', es: 'Argelia' },
+  MA:  { ja: 'モロッコ', fr: 'Maroc', ko: '모로코', es: 'Marruecos' },
+  TN:  { ja: 'チュニジア', fr: 'Tunisie', ko: '튀니지', es: 'Túnez' },
+
+  // ==== 欧洲 ====
+  GB:  { ja: 'イギリス', fr: 'Royaume-Uni', ko: '영국', es: 'Reino Unido' },
+  IE:  { ja: 'アイルランド', fr: 'Irlande', ko: '아일랜드', es: 'Irlanda' },
+  FR:  { ja: 'フランス', fr: 'France', ko: '프랑스', es: 'Francia' },
+  DE:  { ja: 'ドイツ', fr: 'Allemagne', ko: '독일', es: 'Alemania' },
+  IT:  { ja: 'イタリア', fr: 'Italie', ko: '이탈리아', es: 'Italia' },
+  ES:  { ja: 'スペイン', fr: 'Espagne', ko: '스페인', es: 'España' },
+  PT:  { ja: 'ポルトガル', fr: 'Portugal', ko: '포르투갈', es: 'Portugal' },
+  NL:  { ja: 'オランダ', fr: 'Pays-Bas', ko: '네덜란드', es: 'Países Bajos' },
+  BE:  { ja: 'ベルギー', fr: 'Belgique', ko: '벨기에', es: 'Bélgica' },
+  CH:  { ja: 'スイス', fr: 'Suisse', ko: '스위스', es: 'Suiza' },
+  AT:  { ja: 'オーストリア', fr: 'Autriche', ko: '오스트리아', es: 'Austria' },
+  SE:  { ja: 'スウェーデン', fr: 'Suède', ko: '스웨덴', es: 'Suecia' },
+  NO:  { ja: 'ノルウェー', fr: 'Norvège', ko: '노르웨이', es: 'Noruega' },
+  DK:  { ja: 'デンマーク', fr: 'Danemark', ko: '덴마크', es: 'Dinamarca' },
+  FI:  { ja: 'フィンランド', fr: 'Finlande', ko: '핀란드', es: 'Finlandia' },
+  IS:  { ja: 'アイスランド', fr: 'Islande', ko: '아이슬란드', es: 'Islandia' },
+  EE:  { ja: 'エストニア', fr: 'Estonie', ko: '에스토니아', es: 'Estonia' },
+  LV:  { ja: 'ラトビア', fr: 'Lettonie', ko: '라트비아', es: 'Letonia' },
+  LT:  { ja: 'リトアニア', fr: 'Lituanie', ko: '리투아니아', es: 'Lituania' },
+  PL:  { ja: 'ポーランド', fr: 'Pologne', ko: '폴란드', es: 'Polonia' },
+  CZ:  { ja: 'チェコ', fr: 'République tchèque', ko: '체코', es: 'Chequia' },
+  SK:  { ja: 'スロバキア', fr: 'Slovaquie', ko: '슬로바키아', es: 'Eslovaquia' },
+  HU:  { ja: 'ハンガリー', fr: 'Hongrie', ko: '헝가리', es: 'Hungría' },
+  RO:  { ja: 'ルーマニア', fr: 'Roumanie', ko: '루마니아', es: 'Rumanía' },
+  BG:  { ja: 'ブルガリア', fr: 'Bulgarie', ko: '불가리아', es: 'Bulgaria' },
+  GR:  { ja: 'ギリシャ', fr: 'Grèce', ko: '그리스', es: 'Grecia' },
+  HR:  { ja: 'クロアチア', fr: 'Croatie', ko: '크로아티아', es: 'Croacia' },
+  SI:  { ja: 'スロベニア', fr: 'Slovénie', ko: '슬로베니아', es: 'Eslovenia' },
+  RS:  { ja: 'セルビア', fr: 'Serbie', ko: '세르비아', es: 'Serbia' },
+  BA:  { ja: 'ボスニア・ヘルツェゴビナ', fr: 'Bosnie-Herzégovine', ko: '보스니아 헤르체고비나', es: 'Bosnia y Herzegovina' },
+  ME:  { ja: 'モンテネグロ', fr: 'Monténégro', ko: '몬테네그로', es: 'Montenegro' },
+  LU:  { ja: 'ルクセンブルク', fr: 'Luxembourg', ko: '룩셈부르크', es: 'Luxemburgo' },
+  MT:  { ja: 'マルタ', fr: 'Malte', ko: '몰타', es: 'Malta' },
+  CY:  { ja: 'キプロス', fr: 'Chypre', ko: '키프로스', es: 'Chipre' },
+  RU:  { ja: 'ロシア', fr: 'Russie', ko: '러시아', es: 'Rusia' },
+  UA:  { ja: 'ウクライナ', fr: 'Ukraine', ko: '우크라이나', es: 'Ucrania' },
+  MD:  { ja: 'モルドバ', fr: 'Moldavie', ko: '몰도바', es: 'Moldavia' },
+  GI:  { ja: 'ジブラルタル', fr: 'Gibraltar', ko: '지브롤터', es: 'Gibraltar' },
+  JE:  { ja: 'ジャージー', fr: 'Jersey', ko: '저지', es: 'Jersey' },
+  GG:  { ja: 'ガーンジー', fr: 'Guernesey', ko: '건지', es: 'Guernsey' },
+  LI:  { ja: 'リヒテンシュタイン', fr: 'Liechtenstein', ko: '리히텐슈타인', es: 'Liechtenstein' },
+  FO:  { ja: 'フェロー諸島', fr: 'Îles Féroé', ko: '페로 제도', es: 'Islas Feroe' },
+  PF:  { ja: 'フランス領ポリネシア', fr: 'Polynésie française', ko: '프랑스령 폴리네시아', es: 'Polinesia Francesa' },
+  GF:  { ja: 'フランス領ギアナ', fr: 'Guyane française', ko: '프랑스령 기아나', es: 'Guayana Francesa' },
+  RE:  { ja: 'レユニオン', fr: 'La Réunion', ko: '레위니옹', es: 'Reunión' },
+  GP:  { ja: 'グアドループ', fr: 'Guadeloupe', ko: '과들루프', es: 'Guadalupe' },
+
+  // ==== 大洋洲 ====
+  AU:  { ja: 'オーストラリア', fr: 'Australie', ko: '호주', es: 'Australia' },
+  NZ:  { ja: 'ニュージーランド', fr: 'Nouvelle-Zélande', ko: '뉴질랜드', es: 'Nueva Zelanda' },
+  FJ:  { ja: 'フィジー', fr: 'Fidji', ko: '피지', es: 'Fiyi' },
+
+  // ==== 美洲 ====
+  CA:  { ja: 'カナダ', fr: 'Canada', ko: '캐나다', es: 'Canadá' },
+  US:  { ja: 'アメリカ', fr: 'États-Unis', ko: '미국', es: 'Estados Unidos' },
+  MX:  { ja: 'メキシコ', fr: 'Mexique', ko: '멕시코', es: 'México' },
+  BR:  { ja: 'ブラジル', fr: 'Brésil', ko: '브라질', es: 'Brasil' },
+  AR:  { ja: 'アルゼンチン', fr: 'Argentine', ko: '아르헨티나', es: 'Argentina' },
+  CL:  { ja: 'チリ', fr: 'Chili', ko: '칠레', es: 'Chile' },
+  PE:  { ja: 'ペルー', fr: 'Pérou', ko: '페루', es: 'Perú' },
+  CO:  { ja: 'コロンビア', fr: 'Colombie', ko: '콜롬비아', es: 'Colombia' },
+  UY:  { ja: 'ウルグアイ', fr: 'Uruguay', ko: '우루과이', es: 'Uruguay' },
+  EC:  { ja: 'エクアドル', fr: 'Équateur', ko: '에콰도르', es: 'Ecuador' },
+  PA:  { ja: 'パナマ', fr: 'Panama', ko: '파나마', es: 'Panamá' },
+  CR:  { ja: 'コスタリカ', fr: 'Costa Rica', ko: '코스타리카', es: 'Costa Rica' },
+  GT:  { ja: 'グアテマラ', fr: 'Guatemala', ko: '과테말라', es: 'Guatemala' },
+  NI:  { ja: 'ニカラグア', fr: 'Nicaragua', ko: '니카라과', es: 'Nicaragua' },
+  SV:  { ja: 'エルサルバドル', fr: 'Salvador', ko: '엘살바도르', es: 'El Salvador' },
+  SR:  { ja: 'スリナム', fr: 'Suriname', ko: '수리남', es: 'Surinam' },
+  GY:  { ja: 'ガイアナ', fr: 'Guyana', ko: '가이아나', es: 'Guyana' },
+  DO:  { ja: 'ドミニカ共和国', fr: 'République dominicaine', ko: '도미니카 공화국', es: 'República Dominicana' },
+  JM:  { ja: 'ジャマイカ', fr: 'Jamaïque', ko: '자메이카', es: 'Jamaica' },
+  BS:  { ja: 'バハマ', fr: 'Bahamas', ko: '바하마', es: 'Bahamas' },
+  TT:  { ja: 'トリニダード・トバゴ', fr: 'Trinité-et-Tobago', ko: '트리니다드 토바고', es: 'Trinidad y Tobago' },
+  CW:  { ja: 'キュラソー', fr: 'Curaçao', ko: '퀴라소', es: 'Curazao' },
+  VG:  { ja: '英領ヴァージン諸島', fr: 'Îles Vierges britanniques', ko: '영국령 버진아일랜드', es: 'Islas Vírgenes Británicas' },
+
+  // ==== 非洲（其余） ====
+  ZA:  { ja: '南アフリカ', fr: 'Afrique du Sud', ko: '남아프리카공화국', es: 'Sudáfrica' },
+  KE:  { ja: 'ケニア', fr: 'Kenya', ko: '케냐', es: 'Kenia' },
+  NG:  { ja: 'ナイジェリア', fr: 'Nigeria', ko: '나이지리아', es: 'Nigeria' },
+  ET:  { ja: 'エチオピア', fr: 'Éthiopie', ko: '에티오피아', es: 'Etiopía' },
+  GH:  { ja: 'ガーナ', fr: 'Ghana', ko: '가나', es: 'Ghana' },
+  MZ:  { ja: 'モザンビーク', fr: 'Mozambique', ko: '모잠비크', es: 'Mozambique' },
+  MR:  { ja: 'モーリタニア', fr: 'Mauritanie', ko: '모리타니', es: 'Mauritania' },
+  BF:  { ja: 'ブルキナファソ', fr: 'Burkina Faso', ko: '부르키나파소', es: 'Burkina Faso' },
+  BJ:  { ja: 'ベナン', fr: 'Bénin', ko: '베냉', es: 'Benín' },
+  MG:  { ja: 'マダガスカル', fr: 'Madagascar', ko: '마다가스카르', es: 'Madagascar' },
+  MU:  { ja: 'モーリシャス', fr: 'Maurice', ko: '모리셔스', es: 'Mauricio' },
+  SN:  { ja: 'セネガル', fr: 'Sénégal', ko: '세네갈', es: 'Senegal' },
+  SL:  { ja: 'シエラレオネ', fr: 'Sierra Leone', ko: '시에라리온', es: 'Sierra Leona' },
+  NE:  { ja: 'ニジェール', fr: 'Niger', ko: '니제르', es: 'Níger' },
+  CF:  { ja: '中央アフリカ共和国', fr: 'République centrafricaine', ko: '중앙아프리카공화국', es: 'República Centroafricana' },
+  BW:  { ja: 'ボツワナ', fr: 'Botswana', ko: '보츠와나', es: 'Botsuana' },
+  CM:  { ja: 'カメルーン', fr: 'Cameroun', ko: '카메룬', es: 'Camerún' },
+  GN:  { ja: 'ギニア', fr: 'Guinée', ko: '기니', es: 'Guinea' },
+  GW:  { ja: 'ギニアビサウ', fr: 'Guinée-Bissau', ko: '기니비사우', es: 'Guinea-Bisáu' },
+  LS:  { ja: 'レソト', fr: 'Lesotho', ko: '레소토', es: 'Lesoto' },
+  PY:  { ja: 'パラグアイ', fr: 'Paraguay', ko: '파라과이', es: 'Paraguay' },
+};
+
+// 按当前语言选取地区名：en 用英文，zh（简/繁）用中文，ja/fr/ko/es 用 code 映射（未收录回退英文，再回退中文）
+export function pickCountryName(code, zhName, enName, lang) {
+  if (lang === 'en') return enName || zhName
+  if (lang === 'ja' || lang === 'fr' || lang === 'ko' || lang === 'es') {
+    const hit = CODE_MAP[code]
+    if (hit && hit[lang]) return hit[lang]
+  }
+  return zhName || enName
+}
