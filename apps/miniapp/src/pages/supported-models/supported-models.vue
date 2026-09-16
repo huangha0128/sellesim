@@ -34,7 +34,7 @@ export default {
         {
           id: 'apple',
           name: 'Apple iPhone',
-          note: '',
+          note: '海外 / 欧 / 港版；国行无 eSIM',
           models: [
             'iPhone XR', 'iPhone XS', 'iPhone XS Max', 'iPhone SE（第 2 代）',
             'iPhone 11', 'iPhone 11 Pro', 'iPhone 11 Pro Max',
