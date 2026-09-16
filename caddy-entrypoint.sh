@@ -26,6 +26,10 @@ $CADDY_DOMAIN {
         reverse_proxy admin:80
     }
 
+    handle /open-api* {
+        reverse_proxy server:6660
+    }
+
     # 默认路由 -> 官网静态站点
     handle {
         root * /www/wwwroot/www.bjyyxx.com
@@ -45,6 +49,10 @@ else
 
     handle /backend* {
         reverse_proxy admin:80
+    }
+
+    handle /open-api* {
+        reverse_proxy server:6660
     }
 
     # 默认路由 -> 官网静态站点
