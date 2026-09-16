@@ -28,8 +28,19 @@ if ! command -v git &>/dev/null; then
 fi
 
 echo "==> [2/7] 拉取最新代码 (master)"
+# 重要：本脚本自身也在仓库里，reset 会把它一起覆盖。bash 是流式读取脚本文件的，
+# 运行中被替换会导致后续行错乱/被跳过（新增的构建步骤曾因此静默失效，线上不更新）。
+# 这里对比 reset 前后的自身校验和，若已变化则用新版本重新执行（此时代码已是最新，
+# 再次 reset 不会变化，不会死循环）。
+SELF_PATH="${BASH_SOURCE[0]:-$0}"
+SELF_SUM_BEFORE="$(md5sum "$SELF_PATH" 2>/dev/null | awk '{print $1}')"
 git fetch origin master
 git reset --hard origin/master
+SELF_SUM_AFTER="$(md5sum "$SELF_PATH" 2>/dev/null | awk '{print $1}')"
+if [ -n "$SELF_SUM_BEFORE" ] && [ "$SELF_SUM_BEFORE" != "$SELF_SUM_AFTER" ]; then
+  echo "    部署脚本自身已更新，改用新版本重新执行..."
+  exec bash "$SELF_PATH" "$@"
+fi
 
 echo "==> [3/7] 备份 MySQL 数据"
 # 仅在 mysql 容器已运行时备份（首次部署尚无 mysql 时跳过），备份文件保留在 backups/
