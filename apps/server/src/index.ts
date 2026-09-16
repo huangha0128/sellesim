@@ -1,5 +1,6 @@
 import express from 'express';
 import crypto from 'crypto';
+import path from 'path';
 import cors from 'cors';
 import { prisma } from './db';
 import countryRoutes from './routes/country';
@@ -40,6 +41,9 @@ app.use('/api/admin', adminRoutes(prisma));
 app.use('/api/alipay', alipayRoutes(prisma));
 app.use('/api/external', externalRoutes(prisma));
 app.use('/api/open/v1', openRoutes(prisma));
+
+// 开放平台公开文档（免鉴权）：/open-api 浏览器直接访问
+app.use('/open-api', express.static(path.join(__dirname, '..', 'public', 'open-api')));
 
 // ---- 管理后台账号引导 ----
 // 首次启动时若账号不存在则自动创建：
