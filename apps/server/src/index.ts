@@ -10,8 +10,9 @@ import adminRoutes from './routes/admin';
 import authRoutes from './routes/auth';
 import alipayRoutes from './routes/alipay';
 import externalRoutes from './routes/external';
+import openRoutes from './routes/open';
 import { refreshPackageCache, PACKAGE_REFRESH_INTERVAL_MS } from './tiger/view';
-import { retryPendingWebhooks } from './services/webhook';
+import { retryPendingWebhooks, retryPendingSubjectWebhooks } from './services/webhook';
 import { genSalt, hashPassword } from './middleware/adminAuth';
 
 const app = express();
@@ -38,6 +39,7 @@ app.use('/api/esims', esimRoutes(prisma));
 app.use('/api/admin', adminRoutes(prisma));
 app.use('/api/alipay', alipayRoutes(prisma));
 app.use('/api/external', externalRoutes(prisma));
+app.use('/api/open/v1', openRoutes(prisma));
 
 // ---- 管理后台账号引导 ----
 // 首次启动时若账号不存在则自动创建：
@@ -91,6 +93,7 @@ setInterval(() => {
 // 支付成功但回调外部项目失败（网络/非 2xx）的订单，按退避策略每分钟扫描重试
 setInterval(() => {
   retryPendingWebhooks(prisma);
+  retryPendingSubjectWebhooks(prisma);
 }, 60_000);
 
 export { prisma };

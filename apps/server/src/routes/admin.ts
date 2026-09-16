@@ -828,5 +828,216 @@ export default (prisma: PrismaClient) => {
     }
   });
 
+  // ================= 主体 / 密钥 / 定价 管理（Open API v2）=================
+  // 主体与密钥生命周期完全由平台后台管理，无自助入口（docs/open-api-design.md §10）。
+
+  /** 生成一把主体 API 密钥 */
+  function genSubjectKey(mode: string) {
+    const keyId = `ak_${mode}_${crypto.randomBytes(4).toString('hex')}`;
+    const keySecret = genAppSecret(); // 32 字节 -> 64 位 hex
+    return { keyId, keySecret };
+  }
+  /** 脱敏 keyId：ak_live_7f3a…9c21（保留前段 + 末尾 4 位） */
+  function maskKeyId(keyId: string): string {
+    if (keyId.length <= 14) return keyId.slice(0, 6) + '…' + keyId.slice(-4);
+    return keyId.slice(0, 12) + '…' + keyId.slice(-4);
+  }
+
+  /** GET /api/admin/subjects 主体列表（含密钥数、订单数） */
+  router.get('/subjects', async (req: Request, res: Response) => {
+    try {
+      const subjects = await prisma.subject.findMany({
+        orderBy: { createdAt: 'desc' },
+        include: { _count: { select: { keys: true, orders: true } } },
+      });
+      res.json({ code: 0, data: { subjects } });
+    } catch (e: any) {
+      res.status(500).json({ code: 1, message: '查询失败：' + e.message });
+    }
+  });
+
+  /** POST /api/admin/subjects 创建主体（自动生成合成用户 + 第一把 live 密钥，密钥仅一次返回） */
+  router.post('/subjects', async (req: Request, res: Response) => {
+    const { name, contactName, contactPhone, callbackUrl, defaultMarkupPercent, remark } = req.body || {};
+    if (!name) return res.json({ code: 1, message: '请输入主体名称' });
+    try {
+      const result = await prisma.$transaction(async (tx) => {
+        const user = await tx.user.create({
+          data: { alipayUserId: `sub_${crypto.randomBytes(6).toString('hex')}`, nickname: `主体-${name}` },
+        });
+        const subject = await tx.subject.create({
+          data: {
+            name: String(name),
+            status: 'active',
+            contactName: contactName || null,
+            contactPhone: contactPhone || null,
+            callbackUrl: callbackUrl || null,
+            defaultMarkupPercent: defaultMarkupPercent != null ? Number(defaultMarkupPercent) : null,
+            remark: remark || null,
+            userId: user.id,
+          },
+        });
+        const { keyId, keySecret } = genSubjectKey('live');
+        const key = await tx.apiKey.create({
+          data: { subjectId: subject.id, keyId, keySecret, name: 'default', mode: 'live' },
+        });
+        return { subject, key };
+      });
+      res.json({
+        code: 0,
+        data: {
+          id: result.subject.id,
+          name: result.subject.name,
+          status: result.subject.status,
+          key: { keyId: result.key.keyId, keySecret: result.key.keySecret, mode: result.key.mode },
+        },
+      });
+    } catch (e: any) {
+      res.status(500).json({ code: 1, message: '创建主体失败：' + e.message });
+    }
+  });
+
+  /** GET /api/admin/subjects/:id 主体详情（含脱敏密钥与定价） */
+  router.get('/subjects/:id', async (req: Request, res: Response) => {
+    try {
+      const s = await prisma.subject.findUnique({
+        where: { id: req.params.id },
+        include: { keys: { orderBy: { createdAt: 'asc' } }, prices: true },
+      });
+      if (!s) return res.json({ code: 1, message: '主体不存在' });
+      res.json({
+        code: 0,
+        data: { subject: { ...s, keys: s.keys.map((k) => ({ ...k, keySecret: undefined, keyId: maskKeyId(k.keyId) })) } },
+      });
+    } catch (e: any) {
+      res.status(500).json({ code: 1, message: '查询失败：' + e.message });
+    }
+  });
+
+  /** PUT /api/admin/subjects/:id 改资料/状态/回调地址/默认加价 */
+  router.put('/subjects/:id', async (req: Request, res: Response) => {
+    const { name, contactName, contactPhone, callbackUrl, defaultMarkupPercent, remark, status } = req.body || {};
+    try {
+      const data: any = {};
+      if (name !== undefined) data.name = String(name);
+      if (contactName !== undefined) data.contactName = contactName || null;
+      if (contactPhone !== undefined) data.contactPhone = contactPhone || null;
+      if (callbackUrl !== undefined) data.callbackUrl = callbackUrl || null;
+      if (remark !== undefined) data.remark = remark || null;
+      if (defaultMarkupPercent !== undefined) data.defaultMarkupPercent = defaultMarkupPercent == null ? null : Number(defaultMarkupPercent);
+      if (status !== undefined && ['active', 'suspended'].includes(status)) data.status = status;
+      if (!Object.keys(data).length) return res.json({ code: 1, message: '没有需要更新的字段' });
+      const subject = await prisma.subject.update({ where: { id: req.params.id }, data });
+      res.json({ code: 0, data: { subject } });
+    } catch (e: any) {
+      res.status(500).json({ code: 1, message: '更新失败：' + e.message });
+    }
+  });
+
+  /** DELETE /api/admin/subjects/:id 停用主体（软删，保留订单） */
+  router.delete('/subjects/:id', async (req: Request, res: Response) => {
+    try {
+      const subject = await prisma.subject.update({ where: { id: req.params.id }, data: { status: 'suspended' } });
+      res.json({ code: 0, data: { subject } });
+    } catch (e: any) {
+      res.status(500).json({ code: 1, message: '停用失败：' + e.message });
+    }
+  });
+
+  /** GET /api/admin/subjects/:id/keys 密钥列表（secret 脱敏） */
+  router.get('/subjects/:id/keys', async (req: Request, res: Response) => {
+    try {
+      const keys = await prisma.apiKey.findMany({
+        where: { subjectId: req.params.id },
+        orderBy: { createdAt: 'asc' },
+      });
+      res.json({ code: 0, data: { keys: keys.map((k) => ({ ...k, keySecret: undefined, keyId: maskKeyId(k.keyId) })) } });
+    } catch (e: any) {
+      res.status(500).json({ code: 1, message: '查询失败：' + e.message });
+    }
+  });
+
+  /** POST /api/admin/subjects/:id/keys 追加密钥，secret 仅此一次返回。body { mode?, name? } */
+  router.post('/subjects/:id/keys', async (req: Request, res: Response) => {
+    const mode = req.body?.mode === 'test' ? 'test' : 'live';
+    const name = req.body?.name || 'default';
+    try {
+      const { keyId, keySecret } = genSubjectKey(mode);
+      const key = await prisma.apiKey.create({ data: { subjectId: req.params.id, keyId, keySecret, name, mode } });
+      res.json({ code: 0, data: { keyId: key.keyId, keySecret: key.keySecret, mode: key.mode, name: key.name } });
+    } catch (e: any) {
+      res.status(500).json({ code: 1, message: '追加密钥失败：' + e.message });
+    }
+  });
+
+  /** POST /api/admin/subjects/:id/keys/:keyId/revoke 吊销（立即失效） */
+  router.post('/subjects/:id/keys/:keyId/revoke', async (req: Request, res: Response) => {
+    try {
+      const { count } = await prisma.apiKey.updateMany({
+        where: { subjectId: req.params.id, keyId: req.params.keyId },
+        data: { enabled: false },
+      });
+      if (!count) return res.json({ code: 1, message: '密钥不存在' });
+      res.json({ code: 0, data: { keyId: req.params.keyId, enabled: false } });
+    } catch (e: any) {
+      res.status(500).json({ code: 1, message: '吊销失败：' + e.message });
+    }
+  });
+
+  /** POST /api/admin/subjects/:id/keys/:keyId/rotate 轮换 secret，新 secret 仅此一次返回 */
+  router.post('/subjects/:id/keys/:keyId/rotate', async (req: Request, res: Response) => {
+    try {
+      const key = await prisma.apiKey.findFirst({ where: { subjectId: req.params.id, keyId: req.params.keyId } });
+      if (!key) return res.json({ code: 1, message: '密钥不存在' });
+      const { keySecret } = genSubjectKey('live');
+      await prisma.apiKey.update({ where: { id: key.id }, data: { keySecret } });
+      res.json({ code: 0, data: { keyId: key.keyId, keySecret } });
+    } catch (e: any) {
+      res.status(500).json({ code: 1, message: '轮换失败：' + e.message });
+    }
+  });
+
+  /** GET /api/admin/subjects/:id/prices 查看该主体套餐定价 */
+  router.get('/subjects/:id/prices', async (req: Request, res: Response) => {
+    try {
+      const prices = await prisma.subjectPackagePrice.findMany({ where: { subjectId: req.params.id } });
+      res.json({ code: 0, data: { prices } });
+    } catch (e: any) {
+      res.status(500).json({ code: 1, message: '查询失败：' + e.message });
+    }
+  });
+
+  /** PUT /api/admin/subjects/:id/prices 批量设置/覆盖该主体套餐价。body { items: [{ pkgId, price?, markupPercent?, enabled? }] } */
+  router.put('/subjects/:id/prices', async (req: Request, res: Response) => {
+    const items = Array.isArray(req.body?.items) ? req.body.items : [];
+    if (!items.length) return res.json({ code: 1, message: '缺少 items' });
+    try {
+      const results: any[] = [];
+      for (const it of items) {
+        if (!it?.pkgId) continue;
+        results.push(
+          await prisma.subjectPackagePrice.upsert({
+            where: { subjectId_pkgId: { subjectId: req.params.id, pkgId: String(it.pkgId) } },
+            create: {
+              subjectId: req.params.id,
+              pkgId: String(it.pkgId),
+              price: it.price != null ? Number(it.price) : null,
+              markupPercent: it.markupPercent != null ? Number(it.markupPercent) : null,
+              enabled: it.enabled === undefined ? true : !!it.enabled,
+            },
+            update: {
+              price: it.price !== undefined ? (it.price == null ? null : Number(it.price)) : undefined,
+              markupPercent: it.markupPercent !== undefined ? (it.markupPercent == null ? null : Number(it.markupPercent)) : undefined,
+              enabled: it.enabled === undefined ? undefined : !!it.enabled,
+            },
+          }),
+        );
+      }
+      res.json({ code: 0, data: { updated: results.length } });
+    } catch (e: any) {
+      res.status(500).json({ code: 1, message: '设置失败：' + e.message });
+    }
+  });
+
   return router;
 };

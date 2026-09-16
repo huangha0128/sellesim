@@ -4,6 +4,8 @@ import {
   refundOrder,
   rejectRefundRequest,
   RefundDeps,
+  refundOrderSelfService,
+  SelfServiceRefundDeps,
 } from './refund';
 
 function makeOrder(overrides: any = {}) {
@@ -181,5 +183,103 @@ describe('rejectRefundRequest 后台拒绝退款', () => {
     });
     expect(data.refundRejectedAt).toBeInstanceOf(Date);
     expect(result.rejected).toBe(true);
+  });
+});
+
+// ================= Open API v2 主体自助退款 =================
+
+function makeSubjectOrder(overrides: any = {}) {
+  return {
+    id: 'order-1',
+    orderNo: 'DPHSUB123456',
+    subjectId: 'sub-1',
+    pkgId: 'pkg-1',
+    status: 'paid',
+    price: 100,
+    paidAmount: 100,
+    alipayTradeNo: '20260817220011119999',
+    paidAt: new Date('2026-09-01T00:00:00Z'),
+    extOrderNo: null,
+    ...overrides,
+  };
+}
+
+function makeSelfDeps(overrides: Partial<SelfServiceRefundDeps> = {}): SelfServiceRefundDeps {
+  const order = makeSubjectOrder();
+  const deps: SelfServiceRefundDeps = {
+    findOrderByNo: vi.fn().mockResolvedValue(order),
+    findEsimByOrderId: vi.fn().mockResolvedValue({ id: 'esim-1', orderId: 'order-1', status: 'pending' }),
+    deleteEsimByOrderId: vi.fn(async () => {}),
+    updateOrder: vi.fn(async (orderNo, data) => ({ ...order, ...data })),
+    listRefundsByOrder: vi.fn().mockResolvedValue([]),
+    findRefundByExtNo: vi.fn().mockResolvedValue(null),
+    createRefund: vi.fn(async (data) => ({ id: 'ref-1', createdAt: new Date(), ...data })),
+    alipayRefund: vi.fn(async () => ({ code: '10000', tradeNo: '20260817220011118888' })),
+    onRefunded: vi.fn(async () => {}),
+  };
+  return { ...deps, ...overrides };
+}
+
+describe('refundOrderSelfService 主体自助退款', () => {
+  it('extRefundNo 幂等：重复提交返回已有退款单', async () => {
+    const existing = { id: 'ref-existing', refundNo: 'RF1', extRefundNo: 'R-001' };
+    const deps = makeSelfDeps({ findRefundByExtNo: vi.fn().mockResolvedValue(existing) });
+    const result = await refundOrderSelfService(deps, 'sub-1', 'DPHSUB123456', { extRefundNo: 'R-001' });
+    expect(result.created).toBe(false);
+    expect(result.refund).toBe(existing);
+    expect(deps.alipayRefund).not.toHaveBeenCalled();
+  });
+
+  it('订单不属于本主体时抛出 404', async () => {
+    const deps = makeSelfDeps({ findOrderByNo: vi.fn().mockResolvedValue(makeSubjectOrder({ subjectId: 'sub-9' })) });
+    await expect(refundOrderSelfService(deps, 'sub-1', 'DPHSUB123456', {})).rejects.toThrow('订单不存在');
+  });
+
+  it('eSIM 已激活不可退款', async () => {
+    const deps = makeSelfDeps({
+      findEsimByOrderId: vi.fn().mockResolvedValue({ id: 'esim-1', orderId: 'order-1', status: 'activated' }),
+    });
+    await expect(refundOrderSelfService(deps, 'sub-1', 'DPHSUB123456', {})).rejects.toThrow('eSIM 已激活');
+  });
+
+  it('默认全额退款：调用支付宝 + 写 Refund(success) + 释放 eSIM + 发事件', async () => {
+    const deps = makeSelfDeps();
+    const result = await refundOrderSelfService(deps, 'sub-1', 'DPHSUB123456', { reason: '不想要了' });
+
+    expect(deps.alipayRefund).toHaveBeenCalledWith(
+      expect.objectContaining({ outTradeNo: 'DPHSUB123456', refundAmount: '100.00' }),
+    );
+    const refundData = (deps.createRefund as any).mock.calls[0][0];
+    expect(refundData).toMatchObject({ subjectId: 'sub-1', amount: 100, status: 'success', reason: '不想要了' });
+
+    const updateData = (deps.updateOrder as any).mock.calls[0][1];
+    expect(updateData).toMatchObject({ status: 'refunded', refundAmount: 100 });
+    expect(deps.deleteEsimByOrderId).toHaveBeenCalledWith('order-1');
+    expect(deps.onRefunded).toHaveBeenCalledWith(
+      expect.objectContaining({ refund: expect.objectContaining({ amount: 100 }), full: true }),
+    );
+    expect(result.full).toBe(true);
+  });
+
+  it('部分退款金额不可超额', async () => {
+    const deps = makeSelfDeps();
+    await expect(
+      refundOrderSelfService(deps, 'sub-1', 'DPHSUB123456', { amount: 999 }),
+    ).rejects.toThrow('退款金额超出可退金额');
+  });
+
+  it('累计已退后剩余不足时不可再退', async () => {
+    const deps = makeSelfDeps({ listRefundsByOrder: vi.fn().mockResolvedValue([{ status: 'success', amount: 100 }]) });
+    await expect(refundOrderSelfService(deps, 'sub-1', 'DPHSUB123456', {})).rejects.toThrow('订单已全额退款');
+  });
+
+  it('支付宝退款失败时写 Refund(failed) 并抛错', async () => {
+    const deps = makeSelfDeps({
+      alipayRefund: vi.fn(async () => ({ code: '40004', subMsg: '交易不存在' })),
+    });
+    await expect(refundOrderSelfService(deps, 'sub-1', 'DPHSUB123456', {})).rejects.toThrow('支付宝退款失败');
+    const refundData = (deps.createRefund as any).mock.calls[0][0];
+    expect(refundData).toMatchObject({ status: 'failed', failReason: '交易不存在' });
+    expect(deps.updateOrder).not.toHaveBeenCalled();
   });
 });

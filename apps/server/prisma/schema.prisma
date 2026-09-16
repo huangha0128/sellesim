@@ -52,6 +52,7 @@ model User {
   orders       Order[]
   esims        Esim[]
   externalApp  ExternalApp?
+  subject      Subject?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 }
@@ -72,6 +73,68 @@ model ExternalApp {
   updatedAt   DateTime  @updatedAt
 }
 
+// Open platform v2: an onboarded subject (individual reseller / agent).
+// Subjects are created only by the platform admin - there is no self signup.
+// Each subject owns one or more API keys, an optional price override set,
+// and all of its orders are scoped by subjectId.
+model Subject {
+  id                   String                 @id @default(uuid())
+  name                 String
+  status               String                 @default("active")
+  callbackUrl          String?                @map("callback_url")
+  defaultMarkupPercent Float?                 @map("default_markup_percent")
+  contactName          String?                @map("contact_name")
+  contactPhone         String?                @map("contact_phone")
+  remark               String?
+  userId               String?                @unique @map("user_id")
+  user                 User?                  @relation(fields: [userId], references: [id])
+  keys                 ApiKey[]
+  prices               SubjectPackagePrice[]
+  orders               Order[]
+  deliveries           WebhookDelivery[]
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+}
+
+// API credential issued to a subject. keyId is public and sent in X-Api-Key;
+// keySecret never leaves the server and is used to sign write requests.
+// keySecret must be stored in plain text because HMAC verification needs the
+// original secret (same as ExternalApp.appSecret).
+model ApiKey {
+  id          String    @id @default(uuid())
+  subjectId   String    @map("subject_id")
+  subject     Subject   @relation(fields: [subjectId], references: [id])
+  keyId       String    @unique @map("key_id")
+  keySecret   String    @map("key_secret")
+  name        String    @default("default")
+  mode        String    @default("live")
+  ipWhitelist String?   @map("ip_whitelist")
+  lastUsedAt  DateTime? @map("last_used_at")
+  expiresAt   DateTime?
+  enabled     Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([subjectId])
+}
+
+// Per-subject package price override. Missing row means platform price.
+// price wins over markupPercent; enabled=false hides the package from subject.
+model SubjectPackagePrice {
+  id            String   @id @default(uuid())
+  subjectId     String   @map("subject_id")
+  subject       Subject  @relation(fields: [subjectId], references: [id])
+  pkgId         String   @map("pkg_id")
+  price         Float?
+  markupPercent Float?   @map("markup_percent")
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([subjectId, pkgId])
+  @@index([subjectId])
+}
+
 model Order {
   id            String    @id @default(uuid())
   orderNo       String    @unique
@@ -86,6 +149,9 @@ model Order {
   tigerPid      String?   @map("tiger_pid")
   userId        String?   @map("user_id")
   user          User?     @relation(fields: [userId], references: [id])
+  subjectId     String?   @map("subject_id") // open platform v2: owning subject
+  subject       Subject?  @relation(fields: [subjectId], references: [id])
+  apiKeyId      String?   @map("api_key_id") // open platform v2: key id used to place the order (audit)
   email         String
   payMethod     String    @default("alipay")
   status        String    @default("pending")
@@ -110,8 +176,10 @@ model Order {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   esim          Esim?
+  refunds       Refund[]
 
   @@index([userId, extOrderNo])
+  @@index([subjectId])
 }
 
 model Esim {
@@ -165,4 +233,52 @@ model PackagePrice {
 model Setting {
   key   String @id
   value String
+}
+
+// Open platform v2: refund record. Supports full/partial and multiple refunds
+// on the same order, replacing scattered refund fields on Order. Refunds are
+// executed directly by the subject (self-service) after payment, no approval.
+model Refund {
+  id             String   @id @default(uuid())
+  refundNo       String   @unique @map("refund_no")
+  extRefundNo    String?  @map("ext_refund_no")
+  orderId        String   @map("order_id")
+  order          Order    @relation(fields: [orderId], references: [id])
+  subjectId      String   @map("subject_id")
+  amount         Float
+  status         String   @default("processing") // processing | success | failed
+  reason         String?
+  channelTradeNo String?  @map("channel_trade_no")
+  failReason     String?  @map("fail_reason")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([subjectId, extRefundNo])
+  @@index([orderId])
+}
+
+// Open platform v2: webhook delivery record for subject callbacks.
+// Replaces the single webhook* fields on Order so that multiple events
+// (order.paid / order.refunded) and per-event retry history can be tracked.
+// A delivery starts as pending, is attempted by the background poller with
+// exponential backoff, and ends as success or failed (manual resend allowed).
+model WebhookDelivery {
+  id          String   @id @default(uuid())
+  subjectId   String   @map("subject_id")
+  subject     Subject  @relation(fields: [subjectId], references: [id])
+  event       String   // order.paid | order.refunded
+  orderNo     String   @map("order_no")
+  extOrderNo  String?  @map("ext_order_no")
+  refundNo    String?  @map("refund_no") // set for order.refunded (multi-refund)
+  payload     String   @db.LongText // json webhook payload
+  status      String   @default("pending") // pending | success | failed
+  attempts    Int      @default(0)
+  nextRetryAt DateTime? @map("next_retry_at")
+  lastError   String?  @map("last_error") @db.Text
+  lastErrorAt DateTime? @map("last_error_at")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([subjectId])
+  @@index([status, nextRetryAt])
 }

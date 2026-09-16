@@ -70,6 +70,9 @@ function toExternalOrderView(order: any): any {
 /** 邮箱格式校验（激活码要发往该邮箱，格式错误会导致邮件无法送达） */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+/** 兼容提示只输出一次（进程内） */
+let migrateNoticeLogged = false;
+
 /** 仅允许 http(s) 地址，防 returnUrl 被注入 javascript:/data: 等协议造成开放重定向 */
 function isHttpUrl(url: string): boolean {
   try {
@@ -83,6 +86,23 @@ function isHttpUrl(url: string): boolean {
 export default (prisma: PrismaClient) => {
   const router = Router();
   router.use(externalAuth(prisma));
+
+  // P5 兼容期：/api/external 已被 Open API v2 取代，仅保留兼容转调。
+  // 对全部响应追加 Deprecation 头并输出一次迁移提示，引导接入方迁移到 /api/open/v1。
+  router.use((_req, res, next) => {
+    res.setHeader('Deprecation', 'true');
+    res.setHeader('Link', '</api/open/v1>; rel="successor-version"; title="Open API v2"');
+    next();
+  });
+
+  if (!migrateNoticeLogged) {
+    // 鉴权通过才会走到这里，只提示一次，避免刷日志
+    console.warn(
+      '[external] /api/external 已标记为废弃（Deprecation），响应结构保持不变。' +
+        '新接入请使用 /api/open/v1（Subject + ApiKey）；存量应用可运行 scripts/migrate-external-apps.mjs 迁移。',
+    );
+    migrateNoticeLogged = true;
+  }
 
   /**
    * POST /api/external/orders 创建订单并返回 H5 支付链接

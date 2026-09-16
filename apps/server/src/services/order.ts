@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import { tigerClient } from '../tiger';
 import { getPackageView } from '../tiger/view';
+import { resolveSubjectPrice } from './subjectPricing';
 
 /**
  * 订单创建公共逻辑：内部（小程序/管理端）与外部开放 API 共用的下单入口。
@@ -90,6 +91,75 @@ export async function createOrder(prisma: PrismaClient, params: CreateOrderParam
       tigerPid: pkg.tigerPid,
       orderType,
       targetEsimId: targetEsimId || null,
+      ...(extOrderNo ? { extOrderNo } : {}),
+    },
+  });
+}
+
+/**
+ * Open platform v2: create an order for a subject (placing a new order).
+ * - resoles the Tiger package and the subject's own selling price (visibility)
+ * - attaches the order to the subject (subjectId) and to its synthetic user
+ *   (userId) for admin aggregation, records the calling key (apiKeyId)
+ * - throws OrderCreateError with the proper status on hidden/unknown packages
+ */
+export async function createSubjectOrder(
+  prisma: PrismaClient,
+  params: {
+    pkgId: string;
+    email: string;
+    subject: { id: string; userId?: string | null; defaultMarkupPercent?: number | null };
+    apiKeyId: string;
+    extOrderNo?: string;
+  },
+): Promise<any> {
+  const { pkgId, email, subject, apiKeyId, extOrderNo } = params;
+
+  if (!pkgId || !email) {
+    throw new OrderCreateError('缺少必要参数');
+  }
+  if (!tigerClient.configured) {
+    throw new OrderCreateError(
+      '未配置 TIGER_CLIENT_ID / TIGER_CLIENT_SECRET，套餐实时来自 TigerESIM，请先在后台配置密钥',
+    );
+  }
+  let pkg: any;
+  try {
+    pkg = await getPackageView(String(pkgId));
+  } catch (e: any) {
+    throw new OrderCreateError('Tiger 套餐获取失败：' + e.message, 502);
+  }
+  if (!pkg) {
+    throw new OrderCreateError('套餐不存在（TigerESIM 未找到该套餐）');
+  }
+
+  // subject visibility + selling price
+  const resolved = await resolveSubjectPrice(prisma, pkg, subject);
+  if (!resolved.visible) {
+    throw new OrderCreateError('该套餐对本主体不可用', 404);
+  }
+
+  const orderNo = `DPH${Date.now()}${Math.floor(Math.random() * 90) + 10}`;
+  return prisma.order.create({
+    data: {
+      orderNo,
+      pkgId: String(pkg.tigerPkgId || pkg.id || pkgId),
+      email,
+      payMethod: 'alipay',
+      price: resolved.price,
+      status: 'pending',
+      userId: subject.userId || null,
+      subjectId: subject.id,
+      apiKeyId,
+      countryCode: pkg.countryCode,
+      pkgName: pkg.name || `${pkg.countryCode} ${pkg.gb}GB/${pkg.days}天`,
+      pkgNameEn: pkg.nameEn || `${pkg.countryCode} ${pkg.gb}GB/${pkg.days} Days`,
+      gb: pkg.gb,
+      days: pkg.days,
+      isUnlimited: !!pkg.isUnlimited,
+      tigerPkgId: pkg.tigerPkgId,
+      tigerPid: pkg.tigerPid,
+      orderType: 'new',
       ...(extOrderNo ? { extOrderNo } : {}),
     },
   });

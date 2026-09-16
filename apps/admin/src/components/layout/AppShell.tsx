@@ -14,6 +14,7 @@ import {
   Zap,
   Bell,
   Settings,
+  UsersRound,
   LogOut,
   type LucideIcon,
 } from 'lucide-react';
@@ -34,6 +35,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/esims', label: 'eSIM 管理', icon: Smartphone },
   { href: '/cards', label: '卡片管理', icon: CreditCard },
   { href: '/tiger-sync', label: 'Tiger 同步', icon: RefreshCw },
+  { href: '/subjects', label: '开放平台主体', icon: UsersRound },
   { href: '/settings', label: '系统设置', icon: Settings },
 ];
 
@@ -45,6 +47,7 @@ const TITLE_MAP: Record<string, string> = {
   '/esims': 'eSIM 管理',
   '/cards': '卡片管理',
   '/tiger-sync': 'Tiger 同步',
+  '/subjects': '开放平台主体',
   '/settings': '系统设置',
 };
 

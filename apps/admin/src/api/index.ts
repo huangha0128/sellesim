@@ -169,6 +169,43 @@ export interface Settings {
   usdCnyRate: number;
 }
 
+// ---- Open API v2：主体 / 密钥 / 定价 ----
+export interface SubjectKey {
+  id: string;
+  keyId: string; // 已脱敏（ak_live_7f3a…9c21）
+  name?: string;
+  mode?: string;
+  ipWhitelist?: string | null;
+  lastUsedAt?: string | null;
+  expiresAt?: string | null;
+  enabled?: boolean;
+  createdAt?: string;
+}
+
+export interface SubjectPackagePrice {
+  id: string;
+  pkgId: string;
+  price?: number | null;
+  markupPercent?: number | null;
+  enabled?: boolean;
+  createdAt?: string;
+}
+
+export interface Subject {
+  id: string;
+  name: string;
+  status: string;
+  callbackUrl?: string | null;
+  defaultMarkupPercent?: number | null;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  remark?: string | null;
+  createdAt?: string;
+  keys?: SubjectKey[];
+  prices?: SubjectPackagePrice[];
+  _count?: { keys?: number; orders?: number };
+}
+
 // ---------- 接口 ----------
 export const adminApi = {
   // 登录与账号（/login 免鉴权，其余需 Bearer token）
@@ -221,4 +258,43 @@ export const adminApi = {
   getSettings: () => http.get('/admin/settings'),
   updateSettings: (data: { displayCurrency?: 'CNY' | 'USD'; usdCnyRate?: number }) =>
     http.put('/admin/settings', data),
+
+  // ---- Open API v2：主体 / 密钥 / 定价 ----
+  getSubjects: () => http.get('/admin/subjects'),
+  createSubject: (data: {
+    name: string;
+    contactName?: string;
+    contactPhone?: string;
+    callbackUrl?: string;
+    defaultMarkupPercent?: number;
+    remark?: string;
+  }) => http.post('/admin/subjects', data),
+  getSubject: (id: string) => http.get(`/admin/subjects/${id}`),
+  updateSubject: (
+    id: string,
+    data: {
+      name?: string;
+      contactName?: string | null;
+      contactPhone?: string | null;
+      callbackUrl?: string | null;
+      defaultMarkupPercent?: number | null;
+      remark?: string | null;
+      status?: string;
+    },
+  ) => http.put(`/admin/subjects/${id}`, data),
+  suspendSubject: (id: string) => http.delete(`/admin/subjects/${id}`),
+
+  getSubjectKeys: (id: string) => http.get(`/admin/subjects/${id}/keys`),
+  addSubjectKey: (id: string, data: { mode?: string; name?: string }) =>
+    http.post(`/admin/subjects/${id}/keys`, data),
+  revokeSubjectKey: (id: string, keyId: string) =>
+    http.post(`/admin/subjects/${id}/keys/${keyId}/revoke`),
+  rotateSubjectKey: (id: string, keyId: string) =>
+    http.post(`/admin/subjects/${id}/keys/${keyId}/rotate`),
+
+  getSubjectPrices: (id: string) => http.get(`/admin/subjects/${id}/prices`),
+  setSubjectPrices: (
+    id: string,
+    items: { pkgId: string; price?: number | null; markupPercent?: number | null; enabled?: boolean }[],
+  ) => http.put(`/admin/subjects/${id}/prices`, { items }),
 };

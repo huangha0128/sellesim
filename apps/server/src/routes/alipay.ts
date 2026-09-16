@@ -2,7 +2,7 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { alipay } from '../utils/alipay';
 import { fulfillPaidOrder } from '../services/payment';
-import { enqueueWebhook } from '../services/webhook';
+import { enqueueSubjectWebhook, enqueueWebhook } from '../services/webhook';
 
 /**
  * 支付宝异步通知专用的表单解析器。
@@ -91,6 +91,19 @@ export default (prisma: PrismaClient) => {
         if (fulfilled.order.extOrderNo) {
           enqueueWebhook(prisma, fulfilled.order).catch((e) =>
             console.error(`[webhook] 订单 ${outTradeNo} 入队失败：`, e.message),
+          );
+        }
+        // open platform v2 主体订单：入队 order.paid 投递（同样由后台定时器投递/退避重试）
+        if (fulfilled.order.subjectId) {
+          enqueueSubjectWebhook(prisma, fulfilled.order.subjectId, 'order.paid', {
+            event: 'order.paid',
+            orderNo: fulfilled.order.orderNo,
+            extOrderNo: fulfilled.order.extOrderNo || null,
+            status: fulfilled.order.status,
+            paidAt: fulfilled.order.paidAt ? new Date(fulfilled.order.paidAt).toISOString() : null,
+            totalAmount: Number(fulfilled.order.paidAmount ?? fulfilled.order.price ?? 0),
+          }).catch((e) =>
+            console.error(`[webhook] 主体订单 ${outTradeNo} 入队失败：`, e.message),
           );
         }
         console.log(`[alipay] 订单 ${outTradeNo} 支付成功，eSIM 已下发`);
