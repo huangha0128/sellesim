@@ -10,6 +10,9 @@ fi
 
 # 确保目标目录存在
 mkdir -p /www
-rsync -a --delete /dist/ /www/
+
+# .user.ini 是宝塔的防跨站配置，且带 chattr +i（immutable）属性，不属于官网构建产物。
+# 必须排除：否则 rsync 删除它会失败并以 code 23 退出，导致容器每次都是「异常退出」状态。
+rsync -a --delete --exclude='.user.ini' /dist/ /www/
 
 echo "==> official website deployed to /www"

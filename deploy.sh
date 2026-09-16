@@ -52,8 +52,13 @@ echo "==> [4/7] 构建并启动容器"
 # admin 也一并构建：后台已迁移到 Next.js(shadcn/ui)，产物打进 admin 镜像，
 # 不重建则线上会一直停留在旧的 Vue 页面
 # 注意：admin 不加 --no-cache，依赖安装层可复用缓存，避免全量重装依赖占用磁盘与时间
+# 官网静态站（web）：一次性铺盘容器（restart: "no"），必须先删除旧容器再重建镜像。
+# 否则 compose 会复用绑定旧镜像的旧容器（只是 start 而非 recreate），
+# rsync 铺的仍是旧 dist，线上官网永远停在第一次部署的那一版。
 docker compose build --no-cache server
 docker compose build admin
+docker compose rm -f web 2>/dev/null || true
+docker compose build web
 docker compose up -d
 
 echo "==> [5/7] 等待后端健康检查通过"
