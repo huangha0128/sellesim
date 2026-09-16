@@ -138,6 +138,11 @@ export default {
     gbUnit: 'GB',
     data0: '{gb}GB high-speed data',
     dataU: 'Unlimited high-speed data',
+    selectDays: 'Select days',
+    selectData: 'Select data',
+    totalGb: '{gb}GB',
+    onlyNeed: 'only ¥{price}',
+    unlimitedHint: '{gb}GB high-speed, then throttled but still usable',
   },
   faq: {
     eyebrow: 'FAQ',

@@ -138,6 +138,11 @@ export default {
     gbUnit: 'GB',
     data0: '高速 {gb}GB 流量',
     dataU: '不限量高速流量',
+    selectDays: '选择天数',
+    selectData: '选择数据用量',
+    totalGb: '{gb}GB',
+    onlyNeed: '仅需 ¥{price}',
+    unlimitedHint: '高速额度 {gb}GB，超出后降速但仍可继续上网',
   },
   faq: {
     eyebrow: 'FAQ',
