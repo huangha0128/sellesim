@@ -1,6 +1,7 @@
 // 简体中文文案（复刻自小程序 locales/zh-CN.js，并按官网场景精简扩展）
 export default {
   nav: {
+    home: '返回首页',
     features: '特色',
     countries: '国家/地区',
     how: '使用方法',
@@ -89,8 +90,17 @@ export default {
     title: '现在就去覆盖全球的网络',
     sub1: '打开支付宝扫一扫，进入 YYeSim 小程序',
     sub2: '即可选择目的地套餐，即刻下单',
-    tip: '打开支付宝 · 扫一扫上方小程序码',
+    tip: '打开支付宝 · 扫一扫小程序码',
     miniappQr: '想先看看价格？可先在官网浏览国家与套餐',
+    scanQr: '扫码进入小程序',
+  },
+  qrModal: {
+    title: '打开支付宝扫一扫',
+    tip: '扫码进入 YYeSim 小程序，选购目的地套餐',
+    hint1: ' ① 保存图片或直接在支付宝内打开',
+    hint2: ' ② 进入小程序后选择对应国家与流量下单',
+    openAlipay: '在支付宝中打开',
+    close: '关闭',
   },
   packages: {
     backToHome: '返回首页',
@@ -167,6 +177,7 @@ export default {
     about: '关于',
     aboutLinks: ['用户协议', '隐私政策', '退款协议'],
     support: '支持',
+    qrZoom: '点击放大扫码',
     miniappTip: '购买与发卡请前往支付宝小程序',
     rights: '© 2026 YYeSim. All rights reserved.',
   },

@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { PhArrowRight } from '@phosphor-icons/vue';
+import { PhArrowRight, PhQrCode } from '@phosphor-icons/vue';
 import { useI18n } from '../i18n';
+import { openQr } from '../qrModal';
 import { scrollToSection } from '../scrollTo';
 
 const { t } = useI18n();
@@ -21,12 +22,19 @@ const { t } = useI18n();
         <p class="mx-auto mt-1 text-white/85">{{ t('qrcta.sub2') }}</p>
 
         <div class="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <button
+            type="button"
+            class="inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand shadow-card transition-transform hover:scale-[1.02]"
+            @click="openQr()"
+          >
+            <PhQrCode :size="18" weight="bold" /> {{ t('qrcta.scanQr') }}
+          </button>
           <span class="rounded-full bg-white/15 px-5 py-2.5 text-sm font-medium text-white">
             {{ t('qrcta.tip') }}
           </span>
           <a
             href="#"
-            class="group inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-brand shadow-card transition-transform hover:scale-[1.02]"
+            class="group inline-flex items-center gap-2 rounded-full bg-white/10 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-white/20"
             @click.prevent="scrollToSection('destinations')"
           >
             {{ t('qrcta.miniappQr') }}

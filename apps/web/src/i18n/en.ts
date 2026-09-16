@@ -1,6 +1,7 @@
 // English copy (mirrors miniapp locales/en.js, tuned for the official site)
 export default {
   nav: {
+    home: 'Back to home',
     features: 'Features',
     countries: 'Destinations',
     how: 'How it works',
@@ -89,8 +90,17 @@ export default {
     title: 'Get connected worldwide today',
     sub1: 'Open Alipay and scan to enter the YYeSim mini program',
     sub2: 'Pick your destination plan and place an order instantly',
-    tip: 'Open Alipay · Scan the mini-program code above',
+    tip: 'Open Alipay · Scan the mini-program code',
     miniappQr: 'Preview countries and plans on this site first',
+    scanQr: 'Scan to open mini program',
+  },
+  qrModal: {
+    title: 'Scan with Alipay',
+    tip: 'Scan to open the YYeSim mini program and pick a destination plan',
+    hint1: ' ① Save the code, or open it directly inside Alipay',
+    hint2: ' ② Choose your country and data allowance, then order',
+    openAlipay: 'Open in Alipay',
+    close: 'Close',
   },
   packages: {
     backToHome: 'Back to Home',
@@ -167,6 +177,7 @@ export default {
     about: 'About',
     aboutLinks: ['User Agreement', 'Privacy Policy', 'Refund Policy'],
     support: 'Support',
+    qrZoom: 'Tap to enlarge & scan',
     miniappTip: 'Buying & eSIM issuance happen in the Alipay mini program',
     rights: '© 2026 YYeSim. All rights reserved.',
   },

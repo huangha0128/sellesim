@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { PhList, PhX } from '@phosphor-icons/vue';
 import { useI18n } from '../i18n';
 import { scrollToSection } from '../scrollTo';
@@ -7,6 +8,8 @@ import LangSwitcher from './LangSwitcher.vue';
 import logoUrl from '../assets/logo.png';
 
 const { t, current, setLang } = useI18n();
+const route = useRoute();
+const router = useRouter();
 const scrolled = ref(false);
 const open = ref(false);
 
@@ -22,8 +25,15 @@ function onAnchorClick(anchor: string) {
   scrollToSection(anchor);
 }
 
-function goTop() {
+/**
+ * 点击 logo：非首页时先回到首页（并置顶），已在首页则平滑滚到顶部。
+ */
+function goHome() {
   open.value = false;
+  if (route.path !== '/') {
+    router.push('/').then(() => window.scrollTo({ top: 0 }));
+    return;
+  }
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -44,7 +54,12 @@ onUnmounted(() => window.removeEventListener('scroll', onScroll));
     :class="scrolled ? 'bg-white/85 shadow-card backdrop-blur-md' : 'bg-transparent'"
   >
     <div class="container-page flex h-16 items-center justify-between">
-      <a href="#" class="flex items-center gap-2.5" @click.prevent="goTop()">
+      <a
+        href="#/"
+        class="flex items-center gap-2.5"
+        :aria-label="t('nav.home')"
+        @click.prevent="goHome()"
+      >
         <img :src="logoUrl" alt="YYeSim" class="h-9 w-9 rounded-xl" />
         <span class="text-lg font-semibold tracking-tight text-ink">YYeSim</span>
       </a>

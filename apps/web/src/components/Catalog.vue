@@ -3,7 +3,7 @@ import { computed, ref } from 'vue';
 import { PhGlobeSimple } from '@phosphor-icons/vue';
 import { useData } from '../api/useData';
 import { useI18n } from '../i18n';
-import { scrollToSection } from '../scrollTo';
+import { openQr } from '../qrModal';
 import CountryCard from './CountryCard.vue';
 import type { Country } from '../api/types';
 
@@ -146,7 +146,7 @@ const groupList = computed(() => {
         <a
           href="#"
           class="inline-flex items-center gap-2 rounded-full border border-line bg-white px-6 py-3 text-sm font-semibold text-ink transition-colors hover:text-brand"
-          @click.prevent="scrollToSection('buy')"
+          @click.prevent="openQr()"
         >
           {{ current === 'zh' ? '本国查看更多与选购' : 'Browse all countries' }}
           ·
