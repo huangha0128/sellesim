@@ -1,4 +1,5 @@
 import express from 'express';
+import crypto from 'crypto';
 import cors from 'cors';
 import { prisma } from './db';
 import countryRoutes from './routes/country';
@@ -11,6 +12,7 @@ import alipayRoutes from './routes/alipay';
 import externalRoutes from './routes/external';
 import { refreshPackageCache, PACKAGE_REFRESH_INTERVAL_MS } from './tiger/view';
 import { retryPendingWebhooks } from './services/webhook';
+import { genSalt, hashPassword } from './middleware/adminAuth';
 
 const app = express();
 
@@ -37,10 +39,42 @@ app.use('/api/admin', adminRoutes(prisma));
 app.use('/api/alipay', alipayRoutes(prisma));
 app.use('/api/external', externalRoutes(prisma));
 
+// ---- 管理后台账号引导 ----
+// 首次启动时若账号不存在则自动创建：
+//   - 配了 ADMIN_PASSWORD 就用它（推荐，便于自动化部署）
+//   - 没配则生成随机口令并**打印到启动日志一次**（用 docker logs 查看），
+//     避免留下 admin123 这类众所周知的默认弱口令
+async function bootstrapAdminUser() {
+  const username = process.env.ADMIN_USERNAME || 'admin';
+  const envPassword = process.env.ADMIN_PASSWORD || '';
+  if (await prisma.adminUser.findUnique({ where: { username } })) return;
+
+  const password = envPassword || crypto.randomBytes(9).toString('base64url');
+  const salt = genSalt();
+  await prisma.adminUser.create({
+    data: { username, salt, passwordHash: hashPassword(password, salt), name: '管理员' },
+  });
+
+  if (envPassword) {
+    console.log(`[admin] 已创建管理员账号 ${username}（口令来自 ADMIN_PASSWORD）`);
+  } else {
+    console.warn('='.repeat(64));
+    console.warn(`[admin] 未配置 ADMIN_PASSWORD，已为账号 ${username} 生成随机初始口令：`);
+    console.warn(`[admin]    ${password}`);
+    console.warn('[admin] 请立即登录后修改，并在 .env 固化 ADMIN_USERNAME / ADMIN_PASSWORD。');
+    console.warn('='.repeat(64));
+  }
+}
+
 const PORT = process.env.PORT || 6660;
 
 app.listen(PORT, () => {
   console.log(` YYeSim 服务器运行在 http://localhost:${PORT}`);
+});
+
+// 引导管理员账号（失败不影响服务启动，仅无法登录后台）
+bootstrapAdminUser().catch((e) => {
+  console.error('[admin] 管理员账号引导失败：', e.message);
 });
 
 // ---- 套餐缓存：启动预热 + 定时后台刷新 ----

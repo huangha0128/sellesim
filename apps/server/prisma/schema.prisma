@@ -27,6 +27,22 @@ model Country {
   updatedAt     DateTime  @updatedAt
 }
 
+// Admin login account for the management console.
+// Password is stored as a salted scrypt hash, never in plain text.
+// Admin JWTs share the same secret as miniapp user JWTs, so they are
+// distinguished by type='admin' in the payload (see middleware/adminAuth.ts);
+// a miniapp token must never be accepted by admin endpoints.
+model AdminUser {
+  id           String    @id @default(uuid())
+  username     String    @unique
+  passwordHash String    @map("password_hash")
+  salt         String
+  name         String?
+  lastLoginAt  DateTime? @map("last_login_at")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
 model User {
   id           String        @id @default(uuid())
   alipayUserId String        @unique @map("alipay_user_id")

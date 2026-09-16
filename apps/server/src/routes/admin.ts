@@ -8,6 +8,14 @@ import { sendRefundEmail } from '../services/email';
 import { buildRefundDeps } from '../services/payment';
 import { genAppSecret } from '../utils/hmac';
 import { clearWhitelistCache, clearSettingsCache } from '../pricing/priceOverride';
+import {
+  adminAuth,
+  AdminAuthRequest,
+  signAdminToken,
+  genSalt,
+  hashPassword,
+  verifyPassword,
+} from '../middleware/adminAuth';
 
 /** 白名单/汇率（添加/移出/改价/停售/设置）变更后的即时生效：清缓存 → 失效套餐缓存 → 同步重拉一次（等待完成） */
 async function refreshAfterOverride() {
@@ -24,6 +32,76 @@ async function refreshAfterOverride() {
 
 export default (prisma: PrismaClient) => {
   const router = Router();
+
+  // ================= 登录（免鉴权，必须放在 router.use(adminAuth) 之前）=================
+
+  /**
+   * POST /api/admin/login 管理后台登录
+   * body: { username, password }
+   * 成功返回 JWT（有效期 12 小时），前端需在下述请求的 Authorization 头带上 Bearer <token>。
+   * 失败的通用文案不区分「用户不存在」与「口令错误」，避免账号枚举。
+   */
+  router.post('/login', async (req: Request, res: Response) => {
+    const { username, password } = req.body || {};
+    if (!username || !password) {
+      return res.json({ code: 1, message: '请输入用户名和密码' });
+    }
+    try {
+      const admin = await prisma.adminUser.findUnique({ where: { username: String(username) } });
+      if (!admin || !verifyPassword(String(password), admin.salt, admin.passwordHash)) {
+        return res.json({ code: 1, message: '用户名或密码错误' });
+      }
+      const token = signAdminToken(admin);
+      await prisma.adminUser.update({
+        where: { id: admin.id },
+        data: { lastLoginAt: new Date() },
+      });
+      res.json({
+        code: 0,
+        data: {
+          token,
+          admin: { id: admin.id, username: admin.username, name: admin.name },
+        },
+      });
+    } catch (e: any) {
+      console.error('[admin] 登录失败：', e.message);
+      res.json({ code: 1, message: '登录失败，请稍后重试' });
+    }
+  });
+
+  // ===== 以下所有接口均需管理员鉴权 =====
+  router.use(adminAuth(prisma));
+
+  /** GET /api/admin/me 当前登录管理员（前端用于校验 token 是否仍有效） */
+  router.get('/me', (req: AdminAuthRequest, res: Response) => {
+    res.json({ code: 0, data: { admin: req.admin } });
+  });
+
+  /** POST /api/admin/change-password 修改当前管理员密码 body: { oldPassword, newPassword } */
+  router.post('/change-password', async (req: AdminAuthRequest, res: Response) => {
+    const { oldPassword, newPassword } = req.body || {};
+    if (!oldPassword || !newPassword) {
+      return res.json({ code: 1, message: '请填写原密码与新密码' });
+    }
+    if (String(newPassword).length < 8) {
+      return res.json({ code: 1, message: '新密码至少 8 位' });
+    }
+    try {
+      const admin = await prisma.adminUser.findUnique({ where: { id: req.admin!.id } });
+      if (!admin || !verifyPassword(String(oldPassword), admin.salt, admin.passwordHash)) {
+        return res.json({ code: 1, message: '原密码不正确' });
+      }
+      const salt = genSalt();
+      await prisma.adminUser.update({
+        where: { id: admin.id },
+        data: { salt, passwordHash: hashPassword(String(newPassword), salt) },
+      });
+      res.json({ code: 0, data: { changed: true } });
+    } catch (e: any) {
+      console.error('[admin] 修改密码失败：', e.message);
+      res.json({ code: 1, message: '修改失败，请稍后重试' });
+    }
+  });
 
   router.get('/dashboard', async (req: Request, res: Response) => {
     const [countryCount, orderCount, esimCount] = await Promise.all([

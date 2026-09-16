@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import {
   LayoutDashboard,
   Globe,
@@ -13,9 +14,11 @@ import {
   Zap,
   Bell,
   Settings,
+  LogOut,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { clearAuth, getAdmin, LOGIN_PATH } from '@/lib/auth';
 
 interface NavItem {
   href: string;
@@ -48,6 +51,18 @@ const TITLE_MAP: Record<string, string> = {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const current = TITLE_MAP[pathname] || '管理后台';
+  // 登录态只在客户端可读，放 effect 里避免静态导出时的 hydration 不一致
+  const [username, setUsername] = useState('admin');
+
+  useEffect(() => {
+    const admin = getAdmin();
+    if (admin?.username) setUsername(admin.username);
+  }, []);
+
+  function handleLogout() {
+    clearAuth();
+    window.location.href = LOGIN_PATH;
+  }
 
   return (
     <div className="app-canvas flex min-h-screen">
@@ -100,7 +115,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </span>
             <div className="leading-tight">
               <div className="text-[13px] font-medium text-ink">管理员</div>
-              <div className="text-[11px] text-muted-foreground">admin</div>
+              <div className="text-[11px] text-muted-foreground">{username}</div>
             </div>
           </div>
         </div>
@@ -125,6 +140,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[12px] font-medium text-emerald-700">
               生产环境
             </span>
+            <button
+              onClick={handleLogout}
+              title="退出登录"
+              className="flex h-9 items-center gap-1.5 rounded-lg border border-border/70 bg-card px-3 text-[12.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-ink"
+            >
+              <LogOut className="h-4 w-4" />
+              退出
+            </button>
           </div>
         </header>
 

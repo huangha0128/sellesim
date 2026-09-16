@@ -1,9 +1,35 @@
 import axios from 'axios';
+import { clearAuth, getToken, LOGIN_PATH } from '@/lib/auth';
 
 export const http = axios.create({
   baseURL: '/api',
   timeout: 15000,
 });
+
+// 请求拦截：为管理端接口附上管理员 JWT
+http.interceptors.request.use((config) => {
+  const token = getToken();
+  if (token) {
+    config.headers = config.headers ?? {};
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// 响应拦截：401 说明未登录或登录已过期，清掉本地凭据并跳登录页
+http.interceptors.response.use(
+  (res) => res,
+  (error) => {
+    const status = error?.response?.status;
+    if (status === 401 && typeof window !== 'undefined') {
+      clearAuth();
+      if (!window.location.pathname.startsWith('/backend/login')) {
+        window.location.href = LOGIN_PATH;
+      }
+    }
+    return Promise.reject(error);
+  },
+);
 
 // 统一响应解包：后端返回 { code, message, data }
 export function unwrap<T>(res: { data: { code?: number; message?: string; data: T } }): { code: number; message: string; data: T } {
@@ -145,6 +171,13 @@ export interface Settings {
 
 // ---------- 接口 ----------
 export const adminApi = {
+  // 登录与账号（/login 免鉴权，其余需 Bearer token）
+  login: (username: string, password: string) =>
+    http.post('/admin/login', { username, password }),
+  me: () => http.get('/admin/me'),
+  changePassword: (oldPassword: string, newPassword: string) =>
+    http.post('/admin/change-password', { oldPassword, newPassword }),
+
   getTigerStatus: () => http.get('/admin/tiger/status'),
   syncTigerRegions: () => http.post('/admin/tiger/sync-regions'),
   syncTigerPackages: () => http.post('/admin/tiger/sync-packages'),
