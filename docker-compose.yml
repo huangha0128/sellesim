@@ -66,6 +66,9 @@ services:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       # JWT 签名密钥（生产环境务必在 .env 中修改）
       JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-key-change-in-production}
+      # 管理后台初始账号（首次启动建号用；已有账号密码请用 scripts/set-admin-password.mjs 重置）
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
       # ---- Tiger eSIM 真实下发（可选，留空则本地模拟下发）----
       TIGER_CLIENT_ID: ${TIGER_CLIENT_ID:-}
       TIGER_CLIENT_SECRET: ${TIGER_CLIENT_SECRET:-}
