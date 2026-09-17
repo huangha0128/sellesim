@@ -10,10 +10,14 @@ name: sellsim
 
 services:
   # ---------- 数据库（MySQL 8：持久化业务数据，替代原 SQLite）----------
+  # 内置 MySQL 容器挂到 internal-mysql profile：默认随 COMPOSE_PROFILES 启动；
+  # 若改用外部云 MySQL，删除 .env 中的 COMPOSE_PROFILES 行 + 把 MYSQL_HOST 改为云库地址即可，
+  # 此时本容器不会启动（server 的 depends_on 已设 required: false 以免报错）。
   mysql:
     image: mysql:8.0
     container_name: sellsim-mysql
     restart: unless-stopped
+    profiles: ["internal-mysql"]
     command:
       - --character-set-server=utf8mb4
       - --collation-server=utf8mb4_unicode_ci
@@ -53,15 +57,18 @@ services:
     container_name: sellsim-server
     restart: unless-stopped
     depends_on:
+      # required: false —— 使用外部云 MySQL 时关闭内置容器不报错；内置容器存在时仍等待其健康
       mysql:
         condition: service_healthy
+        required: false
       redis:
         condition: service_started
     environment:
       TZ: Asia/Shanghai
       PORT: "6660"
       # 数据库连接串（应用通过 Prisma 访问 MySQL）
-      DATABASE_URL: mysql://${MYSQL_USER:-sellsim}:${MYSQL_PASSWORD:-sellsim-pass}@mysql:3306/${MYSQL_DATABASE:-sellsim}
+      # MYSQL_HOST 默认 mysql（内置容器服务名）；改外部云 MySQL 时填 IP/域名，端口用 MYSQL_DB_PORT
+      DATABASE_URL: mysql://${MYSQL_USER:-sellsim}:${MYSQL_PASSWORD:-sellsim-pass}@${MYSQL_HOST:-mysql}:${MYSQL_DB_PORT:-3306}/${MYSQL_DATABASE:-sellsim}
       # 套餐缓存 Redis 连接串（集群多实例共享缓存）
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       # JWT 签名密钥（生产环境务必在 .env 中修改）
