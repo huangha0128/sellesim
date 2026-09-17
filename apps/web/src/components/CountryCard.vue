@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '../i18n';
+import { resolveFlag, onFlagError } from '../utils/flag';
 
 defineProps<{
   code: string;
@@ -20,7 +21,7 @@ const { current } = useI18n();
     class="group flex items-center gap-4 rounded-2xl border border-line bg-white p-3 shadow-card transition-all hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-float"
   >
     <div class="h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-surface-soft">
-      <img :src="flag" :alt="en" class="h-full w-full object-cover" loading="lazy" />
+      <img :src="resolveFlag(code, flag)" :alt="en" class="h-full w-full object-cover" loading="lazy" @error="onFlagError(code, $event)" />
     </div>
     <div class="min-w-0 flex-1">
       <div class="flex items-center gap-2">

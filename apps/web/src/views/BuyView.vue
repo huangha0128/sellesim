@@ -5,6 +5,7 @@ import { get } from '../api/client';
 import { useData } from '../api/useData';
 import { useI18n } from '../i18n';
 import { alipayMiniProgramUrl } from '../config';
+import { resolveFlag, onFlagError } from '../utils/flag';
 import miniappQr from '../assets/miniapp-qr.png';
 import type { PackageResp, PackageView } from '../api/types';
 
@@ -24,7 +25,11 @@ const region = computed(() => {
     countries.value.find((c) => c.code.toLowerCase() === code.toLowerCase())
   );
 });
-const flag = computed(() => region.value?.flag || `https://flagcdn.com/${pkg.value?.countryCode.toLowerCase() || ''}.png`);
+const flag = computed(() => {
+  const code = pkg.value?.countryCode || '';
+  const stored = region.value?.flag || '';
+  return resolveFlag(code, stored);
+});
 const title = computed(() => (current.value === 'zh' ? pkg.value?.name : pkg.value?.nameEn) || '');
 const descText = computed(() => (current.value === 'zh' ? pkg.value?.desc : pkg.value?.descEn) || '');
 const dataLine = computed(() =>
@@ -82,7 +87,7 @@ watch(() => props.id, load);
         <div class="rounded-[32px] border border-line bg-white p-8 shadow-card">
           <div class="flex items-center gap-4">
             <div class="h-14 w-14 overflow-hidden rounded-xl border border-line">
-              <img :src="flag" :alt="pkg.countryName" class="h-full w-full object-cover" loading="lazy" />
+              <img :src="flag" :alt="pkg.countryName" class="h-full w-full object-cover" loading="lazy" @error="onFlagError(pkg.countryCode, $event)" />
             </div>
             <div>
               <div class="flex items-center gap-2">

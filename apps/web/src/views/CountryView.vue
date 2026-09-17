@@ -14,6 +14,7 @@ import { get } from '../api/client';
 import { useData } from '../api/useData';
 import { useI18n } from '../i18n';
 import { alipayMiniProgramUrl } from '../config';
+import { resolveFlag, isoFlagUrl, flagPlaceholder, onFlagError } from '../utils/flag';
 import miniappQr from '../assets/miniapp-qr.png';
 import type { PackageView, PackagesResp } from '../api/types';
 
@@ -34,7 +35,9 @@ const country = computed(
     countries.value.find((c) => c.code.toUpperCase() === props.code.toUpperCase()) ??
     countries.value.find((c) => c.code.toLowerCase() === props.code.toLowerCase()),
 );
-const flag = computed(() => country.value?.flag || `https://flagcdn.com/${props.code.toLowerCase()}.png`);
+const flag = computed(() =>
+  country.value ? resolveFlag(country.value.code, country.value.flag) : isoFlagUrl(props.code) || flagPlaceholder(props.code),
+);
 const regionName = computed(() =>
   country.value ? (current.value === 'zh' ? country.value.name : country.value.en) : props.code,
 );
@@ -164,7 +167,7 @@ watch(() => props.code, load);
         </router-link>
         <div class="mt-6 flex items-center gap-5">
           <div class="h-20 w-20 overflow-hidden rounded-2xl border border-line bg-white shadow-card">
-            <img :src="flag" :alt="regionName" class="h-full w-full object-cover" loading="lazy" />
+            <img :src="flag" :alt="regionName" class="h-full w-full object-cover" loading="lazy" @error="onFlagError(code, $event)" />
           </div>
           <div>
             <span class="eyebrow">{{ t('catalog.eyebrow') }}</span>
@@ -191,7 +194,7 @@ watch(() => props.code, load);
         <div class="rounded-[32px] border border-line bg-white p-8 shadow-card">
           <div class="flex items-center gap-4">
             <div class="h-14 w-14 overflow-hidden rounded-xl border border-line">
-              <img :src="flag" :alt="regionName" class="h-full w-full object-cover" loading="lazy" />
+              <img :src="flag" :alt="regionName" class="h-full w-full object-cover" loading="lazy" @error="onFlagError(code, $event)" />
             </div>
             <div>
               <h1 class="text-2xl font-semibold tracking-[-0.02em] text-ink">{{ nameText }}</h1>
