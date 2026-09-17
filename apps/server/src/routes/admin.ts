@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { tigerClient, iccidPoolCount, getIccidPool, fetchTigerIccids } from '../tiger';
 import { syncAllFromTiger, syncRegionsFromTiger, syncPackagesFromTiger } from '../tiger/sync';
+import { enrichEsims } from '../tiger/esim-enrich';
 import { refundOrder, rejectRefundRequest } from '../services/refund';
 import { sendRefundEmail } from '../services/email';
 import { buildRefundDeps } from '../services/payment';
@@ -204,7 +205,9 @@ export default (prisma: PrismaClient) => {
       orderBy: { createdAt: 'desc' },
       include: { order: true },
     });
-    res.json({ code: 0, data: { esims } });
+    // 与小程序端一致：按 ICCID 实时向 Tiger 富化 usage/status（带 2 分钟 TTL 缓存）
+    const displayEsims = await enrichEsims(esims);
+    res.json({ code: 0, data: { esims: displayEsims } });
   });
 
   router.get('/countries', async (req: Request, res: Response) => {

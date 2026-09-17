@@ -232,9 +232,10 @@ export default {
       return currencySymbol(this.pkg ? this.pkg.currency : 'CNY')
     },
     expiredEsims() {
-      // 仅已激活且已过期的卡可作为加购目标，与后端 expireAt<now 校验一致
+      // 仅已到期的卡可作为加购目标，与后端 expireAt<now 校验一致
+      // 状态不硬性要求 activated：真正到期的卡 Tiger 可能返回 expired/used
       return this.renewEsims.filter(
-        e => e.status === 'activated' && new Date(e.expireAt) < new Date()
+        e => ['activated', 'used', 'expired'].includes(e.status) && new Date(e.expireAt) < new Date()
       )
     },
     selectedEsim() {
@@ -278,7 +279,7 @@ export default {
         const res = await api.getMyEsims()
         const all = res.data.esims || []
         this.renewEsims = all.filter(
-          e => e.status === 'activated' && new Date(e.expireAt) < new Date()
+          e => ['activated', 'used', 'expired'].includes(e.status) && new Date(e.expireAt) < new Date()
         )
         // 诊断：确认前端拿到的卡数量与过滤结果
         console.log('[checkout] esims total=', all.length, 'expired=', this.renewEsims.length, all.map(e => ({ s: e.status, exp: e.expireAt })))

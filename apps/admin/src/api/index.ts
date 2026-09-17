@@ -119,17 +119,36 @@ export interface Order {
 
 export interface Esim {
   id: string;
+  localEsimId?: string;
+  orderId?: string;
   iccid: string;
   activationCode?: string;
+  smdp?: string;
   status?: string;
+  activatedAt?: string;
   expireAt?: string;
   used?: number;
+  gb?: number | null;
+  days?: number | null;
+  isUnlimited?: boolean;
   // 套餐快照（不再嵌套 package）
   countryCode?: string | null;
   pkgName?: string | null;
-  gb?: number | null;
-  days?: number | null;
-  order?: { countryCode?: string | null; pkgName?: string | null; gb?: number | null; days?: number | null };
+  pkgNameEn?: string | null;
+  tigerPkgId?: number | null;
+  tigerPid?: string | null;
+  tigerBindingId?: number | null;
+  source?: string;
+  createdAt?: string;
+  order?: {
+    orderNo?: string;
+    countryCode?: string | null;
+    pkgName?: string | null;
+    gb?: number | null;
+    days?: number | null;
+    email?: string;
+    userId?: string | null;
+  } | null;
 }
 
 export interface Card {

@@ -79,9 +79,6 @@
 
     <!-- 操作按钮 -->
     <view v-if="esim?.localEsimId" class="action-buttons">
-      <view v-if="esim?.status === 'pending'" class="action-btn primary" @tap="markActivated">
-        <text>{{ fmt('esims.markActivated') }}</text>
-      </view>
       <view v-if="canRenew" class="action-btn renew" @tap="goRenew">
         <text>{{ fmt('esims.renew') }}</text>
       </view>
@@ -146,7 +143,8 @@ export default {
       return Number(this.esim.used || 0).toFixed(1)
     },
     canRenew() {
-      return !!this.esim?.localEsimId && this.esim.status === 'activated' && new Date(this.esim.expireAt) < new Date()
+      // 已到期即可续费：真正到期的卡 Tiger 可能返回 expired/used，不再硬性要求 activated
+      return !!this.esim?.localEsimId && ['activated', 'used', 'expired'].includes(this.esim.status) && new Date(this.esim.expireAt) < new Date()
     }
   },
   onLoad(options) {
@@ -187,15 +185,6 @@ export default {
           setTimeout(() => { this.copied = false }, 2000)
         }
       })
-    },
-    async markActivated() {
-      try {
-        await api.activateEsim(this.esimId)
-        uni.showToast({ title: this.fmt('esims.activateSuccess'), icon: 'success' })
-        this.loadEsim()
-      } catch (e) {
-        uni.showToast({ title: this.fmt('common.opFailed'), icon: 'none' })
-      }
     },
     goRenew() {
       uni.navigateTo({

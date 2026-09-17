@@ -144,7 +144,7 @@
         <view class="refund-btn" hover-class="refund-btn--hover" @click="openRefundForm">{{ fmt('orders.refundApply') }}</view>
       </view>
 
-      <view v-if="showRefundForm" class="popup-mask" @click.self="closeRefundForm">
+      <view v-if="showRefundForm" class="popup-mask" :style="refundMaskStyle" @click.self="closeRefundForm">
         <view class="popup">
           <view class="popup-title">{{ fmt('orders.refundApply') }}</view>
           <textarea
@@ -152,6 +152,7 @@
             v-model="refundReasonInput"
             :placeholder="fmt('orders.refundReasonPlaceholder')"
             :maxlength="200"
+            :adjust-position="false"
           />
           <view class="popup-actions">
             <view class="popup-btn cancel" @click="closeRefundForm">{{ fmt('orders.cancel') }}</view>
@@ -205,7 +206,8 @@ export default {
       loading: true,
       showRefundForm: false,
       refundReasonInput: '',
-      submitting: false
+      submitting: false,
+      kbHeight: 0
     }
   },
   onLoad(options) {
@@ -229,7 +231,24 @@ export default {
     }
     this.load()
   },
+  // 监听软键盘高度，避免键盘弹起把固定定位的退款弹窗顶出屏幕
+  onShow() {
+    this.kbListener = (res) => {
+      this.kbHeight = (res && res.height) || 0
+    }
+    uni.onKeyboardHeightChange(this.kbListener)
+  },
+  onHide() {
+    if (this.kbListener) uni.offKeyboardHeightChange(this.kbListener)
+  },
+  onUnload() {
+    if (this.kbListener) uni.offKeyboardHeightChange(this.kbListener)
+  },
   computed: {
+    // 键盘弹起时给遮罩底部留出键盘高度，让弹窗整体上移到键盘上方
+    refundMaskStyle() {
+      return this.kbHeight > 0 ? { paddingBottom: this.kbHeight + 'px' } : null
+    },
     // 待激活订单（已支付且 eSIM 未激活）且未发起过退款申请时可申请退款
     canApplyRefund() {
       const o = this.order
