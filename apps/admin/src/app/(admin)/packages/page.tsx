@@ -99,20 +99,21 @@ export default function PackagesPage() {
 
   const isOffSale = (p: PackageItem) => p.onSale === false;
 
-  // 单行改显示名（白名单内套餐，失焦触发；清空则还原 Tiger 默认名）
+  // 保存套餐组（国家/地区）显示名覆盖，失焦触发；清空则还原为默认国家名
   const saveRowName = async (p: PackageItem) => {
-    if (!p.tigerPkgId) return;
-    const draft = nameDrafts[String(p.tigerPkgId)] ?? p.nameOverride ?? '';
-    if (draft === (p.nameOverride ?? '')) return; // 未变更
-    setPriceSaving(p.tigerPkgId);
+    const code = p.countryCode || '';
+    if (!code) return;
+    const draft = nameDrafts[code] ?? p.countryOverride ?? '';
+    if (draft === (p.countryOverride ?? '')) return; // 未变更
+    setPriceSaving(p.tigerPkgId ?? null);
     try {
-      const res = await adminApi.updatePackagePrice(p.tigerPkgId, { name: draft.trim() || null });
+      const res = await adminApi.updatePackageGroupName(code, draft.trim());
       const body = unwrap<unknown>(res);
       if (body.code === 0) {
         toast.success(
           draft.trim()
-            ? `已更新「${p.country?.name || p.countryCode} ${p.gb}GB/${p.days}天」显示名为「${draft.trim()}」`
-            : `已还原「${p.country?.name || p.countryCode} ${p.gb}GB/${p.days}天」默认套餐名`,
+            ? `已将「${p.country?.name || code}」套餐组显示名改为「${draft.trim()}」（该组所有套餐生效）`
+            : `已还原「${p.country?.name || code}」套餐组为默认国家名`,
         );
         load();
       } else {
@@ -459,7 +460,7 @@ export default function PackagesPage() {
                       />
                     </TableHead>
                     <TableHead>国家</TableHead>
-                    <TableHead>显示名</TableHead>
+                    <TableHead>套餐组显示名</TableHead>
                     <TableHead>流量</TableHead>
                     <TableHead>有效期</TableHead>
                     <TableHead>售价</TableHead>
@@ -475,6 +476,7 @@ export default function PackagesPage() {
                     const tigerId = Number(p.tigerPkgId || 0);
                     const offSale = isOffSale(p);
                     const key = String(tigerId || p.id);
+                    const ckey = p.countryCode || key; // 套餐组显示名按国家/地区共享
                     const draft = priceDrafts[key] ?? String(p.price ?? '');
                     return (
                       <TableRow key={key} className={offSale ? 'opacity-60' : ''}>
@@ -505,22 +507,22 @@ export default function PackagesPage() {
                           <div className="flex items-center gap-1">
                             <Input
                               className="h-7 w-40 px-1.5 text-[12.5px]"
-                              value={nameDrafts[key] ?? p.nameOverride ?? ''}
-                              placeholder="默认套餐名"
+                              value={nameDrafts[ckey] ?? p.countryOverride ?? ''}
+                              placeholder="默认国家名"
                               disabled={!tigerId || priceSaving === tigerId}
                               onChange={(e) =>
-                                setNameDrafts((d) => ({ ...d, [key]: e.target.value }))
+                                setNameDrafts((d) => ({ ...d, [ckey]: e.target.value }))
                               }
                               onBlur={() => saveRowName(p)}
                               onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
                             />
                           </div>
                           <span className="mt-0.5 text-[11px] text-muted-foreground">
-                            {nameDrafts[key] != null && nameDrafts[key].trim() === ''
+                            {nameDrafts[ckey] != null && nameDrafts[ckey].trim() === ''
                               ? '将还原默认'
-                              : p.nameOverride
-                                ? '自定义名'
-                                : '默认名'}
+                              : p.countryOverride
+                                ? '已自定义（该组生效）'
+                                : '默认'}
                           </span>
                         </TableCell>
                         <TableCell>

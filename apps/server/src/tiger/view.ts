@@ -1,6 +1,42 @@
 import Redis from 'ioredis';
 import { tigerClient } from './client';
 import { applyWhitelist, applyDisplayCurrency } from '../pricing/priceOverride';
+import { prisma } from '../db';
+
+/**
+ * 套餐组（按 countryCode 聚合）的显示名覆盖。
+ * 小程序里"一套套餐卡片"= 同一个国家/地区的全部套餐组，卡片标题用 countryName。
+ * 后台可在 Country.displayName 自定义这一组的显示名，覆盖该组下所有套餐。
+ * 若无覆盖则保持默认国家名。
+ */
+async function loadCountryDisplayNameMap(): Promise<Map<string, string>> {
+  const rows = await prisma.country.findMany({
+    where: { displayName: { not: null } },
+    select: { code: true, displayName: true },
+  });
+  const map = new Map<string, string>();
+  for (const r of rows) {
+    const dn = String(r.displayName || '').trim();
+    if (dn) map.set(r.code, dn);
+  }
+  return map;
+}
+
+/** 纯函数：把某国家/地区的自定义显示名挂到该组的所有套餐视图上 */
+export function applyCountryDisplayNames(list: any[], map: Map<string, string>): any[] {
+  if (!Array.isArray(list) || list.length === 0 || !map.size) return list;
+  return list.map((p) => {
+    const dn = p.countryCode ? map.get(String(p.countryCode)) : undefined;
+    return dn ? { ...p, countryName: dn, countryOverride: dn } : p;
+  });
+}
+
+/** 白名单过滤 + 套餐组显示名覆盖，合成最终写入缓存的套餐视图 */
+export async function applyOverrides(list: any[]): Promise<any[]> {
+  const whitelisted = await applyWhitelist(list);
+  const map = await loadCountryDisplayNameMap();
+  return applyCountryDisplayNames(whitelisted, map);
+}
 
 /**
  * 实时套餐视图层：把 TigerESIM（/api/package）原包数据归一化为前端所需结构。
@@ -274,7 +310,7 @@ export async function refreshPackageCache(): Promise<void> {
   if (!tigerClient.configured) return;
   try {
     const data = await singleFlightFetch();
-    await writeCached(await applyWhitelist(data));
+    await writeCached(await applyOverrides(data));
   } catch (e: any) {
     console.error('[package-cache] 后台刷新失败：' + (e?.message || e));
   }
@@ -383,7 +419,7 @@ export async function listAllPackagesView(
   };
   if (!tigerClient.configured) return [];
   if (force) {
-    const data = await applyWhitelist(await singleFlightFetch());
+    const data = await applyOverrides(await singleFlightFetch());
     await writeCached(data);
     return finalize(data);
   }
@@ -396,7 +432,7 @@ export async function listAllPackagesView(
     return finalize(cached.data);
   }
   // 完全没有缓存：等待一次真实拉取
-  const data = await applyWhitelist(await singleFlightFetch());
+  const data = await applyOverrides(await singleFlightFetch());
   await writeCached(data);
   return finalize(data);
 }

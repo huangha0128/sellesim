@@ -71,7 +71,8 @@ export interface PackageItem {
   currency?: 'CNY' | 'USD';
   onSale?: boolean;
   name?: string;
-  nameOverride?: string;
+  countryName?: string;
+  countryOverride?: string; // 套餐组的自定义显示名（国家/地区维度覆盖）
   type?: string;
   network?: string;
   speed?: string;
@@ -265,9 +266,12 @@ export const adminApi = {
   // 套餐白名单（本地 PackagePrice：只有添加并设价的套餐才在小程序/后台展示）
   updatePackagePrice: (
     tigerPkgId: number,
-    data: { price?: number | null; onSale?: boolean; currency?: 'CNY' | 'USD'; name?: string | null },
+    data: { price?: number | null; onSale?: boolean; currency?: 'CNY' | 'USD' },
   ) => http.put(`/admin/packages/${tigerPkgId}/price`, data),
   clearPackagePrice: (tigerPkgId: number) => http.delete(`/admin/packages/${tigerPkgId}/price`),
+  // 设置/还原某套餐组（国家/地区）的显示名，空字符串还原默认
+  updatePackageGroupName: (code: string, displayName: string) =>
+    http.put(`/admin/package-groups/${encodeURIComponent(code)}`, { displayName }),
   batchUpdatePackagePrices: (
     items: { tigerPkgId: number; price?: number | null; onSale?: boolean; currency?: 'CNY' | 'USD' }[],
   ) => http.post('/admin/packages/prices/batch', { items }),

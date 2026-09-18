@@ -381,8 +381,8 @@ export default (prisma: PrismaClient) => {
       if (!Number.isInteger(tigerPkgId) || tigerPkgId <= 0) {
         return res.json({ code: 1, message: '非法套餐 ID' });
       }
-      const { price, onSale, currency, name } = req.body || {};
-      const data: { price?: number | null; onSale?: boolean; currency?: string; name?: string | null } = {};
+      const { price, onSale, currency } = req.body || {};
+      const data: { price?: number | null; onSale?: boolean; currency?: string } = {};
       if (price !== undefined && price !== null && price !== '') {
         const p = Number(price);
         if (!Number.isFinite(p) || p < 0) return res.json({ code: 1, message: '价格必须是大于等于 0 的数字' });
@@ -392,10 +392,6 @@ export default (prisma: PrismaClient) => {
       }
       if (onSale !== undefined) data.onSale = !!onSale;
       if (currency === 'CNY' || currency === 'USD') data.currency = currency;
-      if (name !== undefined) {
-        const trimmed = typeof name === 'string' ? name.trim() : '';
-        data.name = trimmed || null; // 空串 → null（回退 Tiger 默认名）
-      }
       const row = await prisma.packagePrice.upsert({
         where: { tigerPkgId },
         update: data,
@@ -421,6 +417,33 @@ export default (prisma: PrismaClient) => {
       res.json({ code: 0, data: {} });
     } catch (e: any) {
       console.error('[pricing] 移出白名单失败：', e.message);
+      res.status(400).json({ code: 1, message: '操作失败：' + e.message });
+    }
+  });
+
+  /**
+   * PUT /api/admin/package-groups/:code 设置某套餐组（国家/地区）的显示名
+   * body: { displayName: string } 值为空字符串则还原为默认国家名
+   * 该覆盖会应用到该国家/地区下的所有套餐（小程序卡片标题 = countryName）
+   */
+  router.put('/package-groups/:code', async (req: Request, res: Response) => {
+    try {
+      const code = String(req.params.code || '').trim();
+      if (!code) return res.json({ code: 1, message: '缺少国家/地区编码' });
+      const raw = ((req.body && req.body.displayName) as unknown) ?? '';
+      const displayName = typeof raw === 'string' ? raw.trim() : '';
+      const existing = await prisma.country.findUnique({ where: { code } });
+      if (!existing) {
+        return res.json({ code: 1, message: '该国家/地区无对应记录，无法设置显示名' });
+      }
+      await prisma.country.update({
+        where: { code },
+        data: { displayName: displayName || null },
+      });
+      await refreshAfterOverride();
+      res.json({ code: 0, data: { code, displayName: displayName || null } });
+    } catch (e: any) {
+      console.error('[pricing] 设置套餐组显示名失败：', e.message);
       res.status(400).json({ code: 1, message: '操作失败：' + e.message });
     }
   });

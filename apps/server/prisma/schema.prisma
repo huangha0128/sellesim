@@ -23,6 +23,7 @@ model Country {
   intro         String
   tigerRegionId Int?      @map("tiger_region_id")
   iconUrl       String?   @map("icon_url")
+  displayName   String?   @map("display_name") // custom group display-name; empty => default country name
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -225,7 +226,6 @@ model PackagePrice {
   price      Float?   @map("price")
   currency   String   @default("CNY") @map("currency")
   onSale     Boolean  @default(true) @map("on_sale")
-  name       String?  @map("display_name") // custom display-name override; empty => Tiger default
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }
