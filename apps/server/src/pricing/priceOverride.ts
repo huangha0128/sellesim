@@ -11,6 +11,8 @@ export interface WhitelistEntry {
   price: number;
   onSale: boolean;
   currency: string;
+  /** 后台自定义展示名覆盖；为空字符串则用 Tiger 默认名 */
+  name?: string;
 }
 
 /** 全局展示配置：展示货币 + USD⇄CNY 汇率 */
@@ -40,7 +42,7 @@ async function loadWhitelistMap(): Promise<WhitelistMap> {
   const map: WhitelistMap = new Map();
   for (const r of rows) {
     if (r.price == null) continue;
-    map.set(r.tigerPkgId, { price: r.price, onSale: r.onSale, currency: r.currency || 'CNY' });
+    map.set(r.tigerPkgId, { price: r.price, onSale: r.onSale, currency: r.currency || 'CNY', name: r.name || '' });
   }
   whitelistCache = { map, at: Date.now() };
   return whitelistCache.map;
@@ -66,7 +68,14 @@ export function applyWhitelistToItems(list: any[], map: WhitelistMap): any[] {
     const id = p.tigerPkgId != null ? Number(p.tigerPkgId) : NaN;
     const entry = map.get(id);
     if (!entry) continue; // not added -> hidden
-    out.push({ ...p, price: entry.price, onSale: entry.onSale, currency: entry.currency, originalPrice: undefined });
+    out.push({
+      ...p,
+      price: entry.price,
+      onSale: entry.onSale,
+      currency: entry.currency,
+      ...(entry.name ? { name: entry.name, nameOverride: entry.name } : {}), // 自定义展示名优先，空则保留 Tiger 默认名
+      originalPrice: undefined,
+    });
   }
   return out;
 }

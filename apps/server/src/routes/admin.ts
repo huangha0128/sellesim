@@ -381,8 +381,8 @@ export default (prisma: PrismaClient) => {
       if (!Number.isInteger(tigerPkgId) || tigerPkgId <= 0) {
         return res.json({ code: 1, message: '非法套餐 ID' });
       }
-      const { price, onSale, currency } = req.body || {};
-      const data: { price?: number | null; onSale?: boolean; currency?: string } = {};
+      const { price, onSale, currency, name } = req.body || {};
+      const data: { price?: number | null; onSale?: boolean; currency?: string; name?: string | null } = {};
       if (price !== undefined && price !== null && price !== '') {
         const p = Number(price);
         if (!Number.isFinite(p) || p < 0) return res.json({ code: 1, message: '价格必须是大于等于 0 的数字' });
@@ -392,6 +392,10 @@ export default (prisma: PrismaClient) => {
       }
       if (onSale !== undefined) data.onSale = !!onSale;
       if (currency === 'CNY' || currency === 'USD') data.currency = currency;
+      if (name !== undefined) {
+        const trimmed = typeof name === 'string' ? name.trim() : '';
+        data.name = trimmed || null; // 空串 → null（回退 Tiger 默认名）
+      }
       const row = await prisma.packagePrice.upsert({
         where: { tigerPkgId },
         update: data,

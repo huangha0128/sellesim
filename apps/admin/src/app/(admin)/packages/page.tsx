@@ -70,6 +70,7 @@ export default function PackagesPage() {
 
   // 价格草稿 / 行内保存中 / 多选
   const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
+  const [nameDrafts, setNameDrafts] = useState<Record<string, string>>({});
   const [priceSaving, setPriceSaving] = useState<number | null>(null);
   const [selected, setSelected] = useState<Set<number>>(new Set());
 
@@ -97,6 +98,32 @@ export default function PackagesPage() {
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const isOffSale = (p: PackageItem) => p.onSale === false;
+
+  // 单行改显示名（白名单内套餐，失焦触发；清空则还原 Tiger 默认名）
+  const saveRowName = async (p: PackageItem) => {
+    if (!p.tigerPkgId) return;
+    const draft = nameDrafts[String(p.tigerPkgId)] ?? p.nameOverride ?? '';
+    if (draft === (p.nameOverride ?? '')) return; // 未变更
+    setPriceSaving(p.tigerPkgId);
+    try {
+      const res = await adminApi.updatePackagePrice(p.tigerPkgId, { name: draft.trim() || null });
+      const body = unwrap<unknown>(res);
+      if (body.code === 0) {
+        toast.success(
+          draft.trim()
+            ? `已更新「${p.country?.name || p.countryCode} ${p.gb}GB/${p.days}天」显示名为「${draft.trim()}」`
+            : `已还原「${p.country?.name || p.countryCode} ${p.gb}GB/${p.days}天」默认套餐名`,
+        );
+        load();
+      } else {
+        toast.error(body.message || '保存失败');
+      }
+    } catch (e) {
+      toast.error(getErrorMessage(e, '保存失败'));
+    } finally {
+      setPriceSaving(null);
+    }
+  };
 
   // 单行改价（白名单内套餐，失焦触发）
   const saveRowPrice = async (p: PackageItem) => {
@@ -218,6 +245,7 @@ export default function PackagesPage() {
       setPackages(data.packages || []);
       setTotal(data.total || 0);
       setPriceDrafts({});
+      setNameDrafts({});
     } catch (e) {
       toast.error(getErrorMessage(e, '套餐列表加载失败'));
     } finally {
@@ -431,6 +459,7 @@ export default function PackagesPage() {
                       />
                     </TableHead>
                     <TableHead>国家</TableHead>
+                    <TableHead>显示名</TableHead>
                     <TableHead>流量</TableHead>
                     <TableHead>有效期</TableHead>
                     <TableHead>售价</TableHead>
@@ -471,6 +500,28 @@ export default function PackagesPage() {
                             )}
                             <span className="font-medium text-ink">{p.country?.name || p.countryCode}</span>
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Input
+                              className="h-7 w-40 px-1.5 text-[12.5px]"
+                              value={nameDrafts[key] ?? p.nameOverride ?? ''}
+                              placeholder="默认套餐名"
+                              disabled={!tigerId || priceSaving === tigerId}
+                              onChange={(e) =>
+                                setNameDrafts((d) => ({ ...d, [key]: e.target.value }))
+                              }
+                              onBlur={() => saveRowName(p)}
+                              onKeyDown={(e) => e.key === 'Enter' && (e.target as HTMLInputElement).blur()}
+                            />
+                          </div>
+                          <span className="mt-0.5 text-[11px] text-muted-foreground">
+                            {nameDrafts[key] != null && nameDrafts[key].trim() === ''
+                              ? '将还原默认'
+                              : p.nameOverride
+                                ? '自定义名'
+                                : '默认名'}
+                          </span>
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1.5">

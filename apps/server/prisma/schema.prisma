@@ -225,6 +225,7 @@ model PackagePrice {
   price      Float?   @map("price")
   currency   String   @default("CNY") @map("currency")
   onSale     Boolean  @default(true) @map("on_sale")
+  name       String?  @map("display_name") // custom display-name override; empty => Tiger default
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 }

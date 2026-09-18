@@ -71,6 +71,7 @@ export interface PackageItem {
   currency?: 'CNY' | 'USD';
   onSale?: boolean;
   name?: string;
+  nameOverride?: string;
   type?: string;
   network?: string;
   speed?: string;
@@ -264,7 +265,7 @@ export const adminApi = {
   // 套餐白名单（本地 PackagePrice：只有添加并设价的套餐才在小程序/后台展示）
   updatePackagePrice: (
     tigerPkgId: number,
-    data: { price?: number | null; onSale?: boolean; currency?: 'CNY' | 'USD' },
+    data: { price?: number | null; onSale?: boolean; currency?: 'CNY' | 'USD'; name?: string | null },
   ) => http.put(`/admin/packages/${tigerPkgId}/price`, data),
   clearPackagePrice: (tigerPkgId: number) => http.delete(`/admin/packages/${tigerPkgId}/price`),
   batchUpdatePackagePrices: (
