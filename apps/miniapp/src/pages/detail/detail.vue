@@ -309,6 +309,7 @@ export default {
       pkg: null,
       loading: true,
       allPackages: [],
+      _catalogLoaded: false,
       currentTab: 0,
       tabs: [
         { key: 'detail.tabSelect', anchor: 'sec-select' },
@@ -453,7 +454,6 @@ export default {
     this.mode = options.mode || ''
     this.esimId = options.esimId || ''
     this.load()
-    this.loadAllPackages()
   },
     onReady() {
       this.measureSections()
@@ -558,6 +558,7 @@ export default {
       if (!loaded && this.allPackages.length > 0) {
         this.drawerAllPackages = this.allPackages
       }
+      this._catalogLoaded = true
     },
     buy() {
       const pkgId = (this.selectedPkg && this.selectedPkg.id) || (this.pkg ? this.pkg.id : '')
@@ -607,6 +608,8 @@ export default {
     },
     openPackageDrawer() {
       this.showDrawer = true
+      // 抽屉数据懒加载：首次打开时才拉全量套餐，避免进详情页就触发全量请求
+      if (!this._catalogLoaded) this.loadAllPackages()
     },
     closePackageDrawer() {
       this.showDrawer = false

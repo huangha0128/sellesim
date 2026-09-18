@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { tigerClient } from '../tiger';
-import { listAllPackagesView, listPackagesByRegion, getPackageView, invalidatePackageCache, refreshPackageCache } from '../tiger/view';
+import { listAllPackagesView, listPackagesByRegion, getPackageView } from '../tiger/view';
 
 /** 按 tigerPkgId 统计已售数量（status='paid' 的订单数），并挂到套餐视图上 */
 async function attachSoldCounts(packages: any[], prisma: PrismaClient): Promise<any[]> {
@@ -71,9 +71,8 @@ export default (prisma: PrismaClient) => {
       return res.json({ code: 1, message: '未配置 TIGER_CLIENT_ID / TIGER_CLIENT_SECRET' });
     }
     try {
-      // 强制刷新缓存以确保使用最新的 tigerToView 逻辑
-      invalidatePackageCache();
-      await refreshPackageCache();
+      // 走共享缓存（stale-while-revalidate），绝不清缓存、不阻塞等待 Tiger 全量同步。
+      // 缓存新鲜度由启动预热 + 定时后台刷新 + 后台手动同步保障，详情页实时读即可。
       const all = await listAllPackagesView();
       res.json({ code: 0, data: { packages: all } });
     } catch (e: any) {
