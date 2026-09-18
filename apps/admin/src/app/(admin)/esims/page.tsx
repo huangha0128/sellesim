@@ -29,6 +29,45 @@ function statusBadge(status?: string) {
   return <Badge variant="info">待激活</Badge>;
 }
 
+function fmtGb(n?: number, unlimited = false) {
+  if (unlimited) return '无限';
+  if (n === undefined || n === null || !Number.isFinite(n)) return '0';
+  return n.toLocaleString('zh-CN', { maximumFractionDigits: 2 });
+}
+
+// 已用流量 / 总流量 → 进度条 + 百分比，悬停显示详细用量
+function usageCell(e: Esim) {
+  if (e.isUnlimited) {
+    return <span className="whitespace-nowrap text-[12.5px]">无限流量</span>;
+  }
+  const total = e.gb ?? 0;
+  const used = e.used ?? 0;
+  const hasTotal = total > 0;
+  const pct = hasTotal ? Math.min(100, (used / total) * 100) : 0;
+  const pctText = hasTotal ? ((used / total) * 100).toFixed(1) : '0';
+  const remaining = Math.max(0, total - used);
+
+  return (
+    <div className="group relative cursor-help whitespace-nowrap py-0.5">
+      <div className="flex items-center gap-2">
+        <div className="relative h-1.5 w-24 overflow-hidden rounded-full bg-muted">
+          <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+        </div>
+        <span className="text-[11px] text-muted-foreground">{pctText}%</span>
+      </div>
+      <div className="mt-0.5 text-[11px] text-muted-foreground">
+        已用 {fmtGb(used)} / {fmtGb(total)} GB
+      </div>
+      <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 hidden whitespace-nowrap -translate-x-1/2 rounded-md border bg-card px-2.5 py-1.5 text-[11px] text-ink shadow-lg group-hover:block">
+        <div>已用：{fmtGb(used)} GB</div>
+        <div>总流量：{fmtGb(total)} GB</div>
+        <div>剩余：{fmtGb(remaining)} GB</div>
+        <div>已用：{pctText}%</div>
+      </div>
+    </div>
+  );
+}
+
 export default function EsimsPage() {
   const [esims, setEsims] = useState<Esim[]>([]);
   const [loading, setLoading] = useState(true);
@@ -68,9 +107,9 @@ export default function EsimsPage() {
                     <TableHead>激活码</TableHead>
                     <TableHead>SM-DP+</TableHead>
                     <TableHead>状态</TableHead>
-                    <TableHead>流量</TableHead>
-                    <TableHead>已用</TableHead>
+                    <TableHead>用量</TableHead>
                     <TableHead>天数</TableHead>
+                    <TableHead>激活时间</TableHead>
                     <TableHead>到期时间</TableHead>
                     <TableHead>创建时间</TableHead>
                     <TableHead>来源</TableHead>
@@ -98,12 +137,9 @@ export default function EsimsPage() {
                         {e.smdp || '—'}
                       </TableCell>
                       <TableCell>{statusBadge(e.status)}</TableCell>
-                      <TableCell className="whitespace-nowrap">
-                        {e.isUnlimited ? '无限' : `${e.gb ?? 0}GB`}
-                        <span className="ml-1 text-[11px] text-muted-foreground">(Tiger id:{e.tigerPkgId ?? e.tigerPid ?? '—'})</span>
-                      </TableCell>
-                      <TableCell className="whitespace-nowrap">{e.used ?? 0}GB</TableCell>
+                      <TableCell>{usageCell(e)}</TableCell>
                       <TableCell>{e.days ?? 0}天</TableCell>
+                      <TableCell className="whitespace-nowrap text-[12.5px]">{fmtDate(e.activatedAt)}</TableCell>
                       <TableCell className="whitespace-nowrap text-[12.5px]">{fmtDate(e.expireAt)}</TableCell>
                       <TableCell className="whitespace-nowrap text-[12.5px]">{fmtDate(e.createdAt)}</TableCell>
                       <TableCell>{e.source === 'tiger' ? <Badge variant="info">Tiger</Badge> : <Badge variant="outline">本地</Badge>}</TableCell>
