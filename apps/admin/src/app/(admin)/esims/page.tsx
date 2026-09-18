@@ -29,23 +29,26 @@ function statusBadge(status?: string) {
   return <Badge variant="info">待激活</Badge>;
 }
 
-function fmtGb(n?: number, unlimited = false) {
-  if (unlimited) return '无限';
+function fmtGb(n?: number) {
   if (n === undefined || n === null || !Number.isFinite(n)) return '0';
   return n.toLocaleString('zh-CN', { maximumFractionDigits: 2 });
 }
 
-// 已用流量 / 总流量 → 进度条 + 百分比，悬停显示详细用量
+// 已用流量 / 总流量 → 进度条 + 百分比，悬停显示详细用量。
+// 无限流量套餐也展示：进度条代表「高速流量额度」，超额度后标记已降速。
 function usageCell(e: Esim) {
-  if (e.isUnlimited) {
-    return <span className="whitespace-nowrap text-[12.5px]">无限流量</span>;
-  }
   const total = e.gb ?? 0;
   const used = e.used ?? 0;
   const hasTotal = total > 0;
   const pct = hasTotal ? Math.min(100, (used / total) * 100) : 0;
   const pctText = hasTotal ? ((used / total) * 100).toFixed(1) : '0';
   const remaining = Math.max(0, total - used);
+  const throttled = e.isUnlimited && hasTotal && used >= total;
+
+  // 无限流量但缺高速额度数据时无法算进度，退化为纯文字
+  if (e.isUnlimited && !hasTotal) {
+    return <span className="whitespace-nowrap text-[12.5px]">无限流量</span>;
+  }
 
   return (
     <div className="group relative cursor-help whitespace-nowrap py-0.5">
@@ -54,15 +57,27 @@ function usageCell(e: Esim) {
           <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
         </div>
         <span className="text-[11px] text-muted-foreground">{pctText}%</span>
+        {throttled && (
+          <Badge variant="warning" className="px-1.5 py-0 text-[10px]">
+            已降速
+          </Badge>
+        )}
       </div>
       <div className="mt-0.5 text-[11px] text-muted-foreground">
-        已用 {fmtGb(used)} / {fmtGb(total)} GB
+        {e.isUnlimited
+          ? `高速 ${fmtGb(used)} / ${fmtGb(total)} GB`
+          : `已用 ${fmtGb(used)} / ${fmtGb(total)} GB`}
       </div>
       <div className="pointer-events-none absolute left-1/2 top-full z-10 mt-1 hidden whitespace-nowrap -translate-x-1/2 rounded-md border bg-card px-2.5 py-1.5 text-[11px] text-ink shadow-lg group-hover:block">
-        <div>已用：{fmtGb(used)} GB</div>
-        <div>总流量：{fmtGb(total)} GB</div>
+        <div>{e.isUnlimited ? `高速流量已用：${fmtGb(used)} GB` : `已用：${fmtGb(used)} GB`}</div>
+        <div>{e.isUnlimited ? `高速额度：${fmtGb(total)} GB` : `总流量：${fmtGb(total)} GB`}</div>
         <div>剩余：{fmtGb(remaining)} GB</div>
         <div>已用：{pctText}%</div>
+        {e.isUnlimited && (
+          <div className="mt-0.5 text-muted-foreground">
+            {throttled ? '高速流量已用尽，当前为降速后的低速无限流量' : '无限流量套餐，高速用尽后自动降速'}
+          </div>
+        )}
       </div>
     </div>
   );
