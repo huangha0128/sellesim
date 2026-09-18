@@ -1,0 +1,62 @@
+# ===== YYeSim 老服（edge）边缘节点 部署 =====
+# 仅部署一个后端实例，供老服 nginx 参与 /api 负载均衡。
+# - 本机不跑 MySQL / Redis / admin / web / caddy（这些都在主服 main）。
+# - 后端连接主服 MySQL（跨公网，走 MYSQL_EXT_PORT），共享同一数据库。
+# - 本机 .env 需配置：DEPLOY_ROLE=edge, MYSQL_HOST=<主服IP>, MYSQL_DB_PORT=1513,
+#   以及 MYSQL_USER/PASSWORD/DATABASE、JWT_SECRET、ADMIN_*、TIGER_*、SMTP_*、ALIPAY_*
+#   （密钥需与主服 .env 完全一致，token 才能互通）。可选 REDIS_URL 共享套餐缓存。
+# 使用：DEPLOY_ROLE=edge ./deploy.sh  （或 deploy.sh 自动读取 .env）
+# 访问：老服宿主 nginx（宝塔）按 deploy/nginx/edge.conf 代理，本容器仅监听 127.0.0.1:6501
+
+name: sellsim-edge
+
+services:
+  # ---------- 后端 API（Express + Prisma + MySQL，连接主服数据库）----------
+  server:
+    build:
+      context: .
+      dockerfile: apps/server/Dockerfile
+    container_name: ${EDGE_CONTAINER:-sellsim-server-edge}
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      PORT: "6660"
+      # 数据库连接主服（跨公网）。MYSQL_HOST 在 edge .env 里填主服公网 IP。
+      DATABASE_URL: mysql://${MYSQL_USER:-sellsim}:${MYSQL_PASSWORD:-sellsim-pass}@${MYSQL_HOST}:${MYSQL_DB_PORT:-1513}/${MYSQL_DATABASE:-sellsim}
+      # 套餐缓存 Redis：留空则用进程内存降级；共享缓存时填主服地址 redis://<主服IP>:6379
+      REDIS_URL: ${REDIS_URL:-}
+      # JWT 签名密钥（必须与主服 .env 完全一致）
+      JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-key-change-in-production}
+      # 管理后台账号（共享同一数据库，仅用于一致化引导，实际上主服已建）
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      # ---- Tiger eSIM（与主服一致）----
+      TIGER_CLIENT_ID: ${TIGER_CLIENT_ID:-}
+      TIGER_CLIENT_SECRET: ${TIGER_CLIENT_SECRET:-}
+      TIGER_BASE_URL: ${TIGER_BASE_URL:-https://partner.tigeresims.com}
+      TIGER_SMDP_ADDRESS: ${TIGER_SMDP_ADDRESS:-}
+      TIGER_ICCIDS: ${TIGER_ICCIDS:-}
+      # ---- SMTP 邮件（与主服一致）----
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_SECURE: ${SMTP_SECURE:-true}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-YYeSim}
+      # ---- 支付宝（与主服一致）----
+      ALIPAY_APP_ID: ${ALIPAY_APP_ID:-}
+      ALIPAY_PRIVATE_KEY: ${ALIPAY_PRIVATE_KEY:-}
+      ALIPAY_PUBLIC_KEY: ${ALIPAY_PUBLIC_KEY:-}
+      ALIPAY_NOTIFY_HOST: ${ALIPAY_NOTIFY_HOST:-}
+      # webhook 回调重试只在主服跑，edge 关闭避免对同一订单重复回调
+      ENABLE_WEBHOOK_RETRY: ${ENABLE_WEBHOOK_RETRY:-false}
+    ports:
+      # 仅本机回环：老服宿主 nginx（宝塔）proxy 到 127.0.0.1:6501
+      - "127.0.0.1:${SERVER_PORT:-6501}:6660"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:6660/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s

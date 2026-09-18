@@ -4,12 +4,24 @@
 # 用法:
 #   服务器上:   ./deploy.sh
 #   Windows 开发机 (通过 SSH):  ssh <user>@<服务器IP> "cd <仓库路径> && ./deploy.sh"
+# 角色（由 .env 中 DEPLOY_ROLE 控制，默认 main）:
+#   main  主服：全量栈（MySQL/Redis/后端/后台/官网/Caddy）
+#   edge  老服（出口节点）：仅部署一个后端实例，参与 /api 负载均衡
 # 流程: 拉取最新代码 → 备份 MySQL → 构建启动 → 等待健康 → 校验 bootstrap 同步 → 清理镜像
 # ============================================================
 set -euo pipefail
 
 DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DEPLOY_DIR"
+
+# 安全读取 DEPLOY_ROLE（不整文件 source，避免密钥等特殊字符破坏 shell）
+read_role() {
+  local v
+  v="$(grep -E '^DEPLOY_ROLE=' ./.env 2>/dev/null | tail -n1 | cut -d= -f2- | tr -d '\r' | xargs)"
+  echo "${v:-main}"
+}
+DEPLOY_ROLE="$(read_role)"
+echo "==> 部署角色: $DEPLOY_ROLE"
 
 echo "==> [1/7] 检查并安装 git"
 if ! command -v git &>/dev/null; then
@@ -41,6 +53,52 @@ if [ -n "$SELF_SUM_BEFORE" ] && [ "$SELF_SUM_BEFORE" != "$SELF_SUM_AFTER" ]; the
   echo "    部署脚本自身已更新，改用新版本重新执行..."
   exec bash "$SELF_PATH" "$@"
 fi
+
+# 备份/健康检查等用到的容器名（edge 用 EDGE_CONTAINER）
+read_env_val() { # $1=key
+  local v
+  v="$(grep -E "^${1}=" ./.env 2>/dev/null | tail -n1 | cut -d= -f2- | tr -d '\r' | xargs)"
+  printf '%s' "${v:-$2}"
+}
+SERVER_CONTAINER="sellsim-server"
+[ "$DEPLOY_ROLE" = "edge" ] && SERVER_CONTAINER="$(read_env_val EDGE_CONTAINER sellsim-server-edge)"
+
+echo "==> 按角色执行部署"
+
+if [ "$DEPLOY_ROLE" = "edge" ]; then
+  # ============ 老服（edge）：仅构建启动一个后端实例 ============
+  echo "==> [3/7] 构建并启动 edge 后端"
+  docker compose -f docker-compose.edge.yml build --no-cache server
+  docker compose -f docker-compose.edge.yml up -d
+
+  echo "==> [4/7] 等待 edge 后端健康检查通过"
+  for _ in $(seq 1 60); do
+    status="$(docker inspect -f '{{.State.Health.Status}}' "$SERVER_CONTAINER" 2>/dev/null || true)"
+    if [ "$status" = "healthy" ]; then
+      echo "    edge 后端已就绪"
+      break
+    fi
+    if [ "$status" = "unhealthy" ]; then
+      echo "    健康检查异常，请查看: docker logs $SERVER_CONTAINER" >&2
+      break
+    fi
+    sleep 2
+  done
+
+  echo "==> [5/7] 清理无用镜像与构建缓存"
+  docker image prune -f || true
+  docker builder prune -af || true
+
+  echo "==> [6/7] 提示：配置老服 nginx 出口"
+  echo "    请将 deploy/nginx/edge.conf 填入老服宿主 nginx/宝塔站点，完成出口负载均衡配置。"
+  echo "    （本脚本不会自动改写你的 nginx 配置，以避免覆盖已备案站点。）"
+
+  echo "==> edge 部署完成"
+  docker ps --filter name="$SERVER_CONTAINER"
+  exit 0
+fi
+
+# ============ 主服（main）：全量栈 ============
 
 echo "==> [3/7] 备份 MySQL 数据"
 # 仅在 mysql 容器已运行时备份（首次部署尚无 mysql 时跳过），备份文件保留在 backups/

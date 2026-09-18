@@ -28,7 +28,9 @@ services:
       MYSQL_USER: ${MYSQL_USER:-sellsim}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD:-sellsim-pass}
     ports:
-      - "127.0.0.1:${MYSQL_PORT:-3306}:3306" # 仅本机可达，便于排查；应用走内部网络
+      # MYSQL_EXT_BIND 默认 0.0.0.0：供老服（edge）后端跨公网连接；新服安全组应仅放行老服 IP。
+      # 若要仅本机可达，把 MYSQL_EXT_BIND 改为 127.0.0.1。
+      - "${MYSQL_EXT_BIND:-0.0.0.0}:${MYSQL_EXT_PORT:-1513}:3306"
     volumes:
       - sellsim-mysql-data:/var/lib/mysql
     healthcheck:
@@ -45,7 +47,8 @@ services:
     restart: unless-stopped
     command: ["redis-server", "--appendonly", "no", "--maxmemory-policy", "allkeys-lru"]
     ports:
-      - "127.0.0.1:${REDIS_PORT:-6379}:6379" # 仅本机可达，不对外暴露
+      # 默认仅本机可达；若需老服（edge）后端共享套餐缓存，把 REDIS_EXT_BIND 改为 0.0.0.0 并放行源 IP
+      - "${REDIS_EXT_BIND:-127.0.0.1}:${REDIS_PORT:-6379}:6379"
     volumes:
       - sellsim-redis-data:/data
 
@@ -149,6 +152,8 @@ services:
     environment:
       # 配置域名（如 www.example.com）后启用 HTTPS（使用手动生成的证书）；留空则监听 80 端口纯 HTTP
       CADDY_DOMAIN: ${CADDY_DOMAIN:-:80}
+      # 出口代理模式：设置后本机仅终止 TLS，所有流量反代到该地址（如 http://<主服IP>）
+      CADDY_UPSTREAM: ${CADDY_UPSTREAM:-}
       # 手动证书在容器内的路径（由 CERT_DIR 挂载）
       CADDY_CERT_FILE: ${CADDY_CERT_FILE:-}
       CADDY_KEY_FILE: ${CADDY_KEY_FILE:-}

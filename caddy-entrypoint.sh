@@ -4,10 +4,29 @@ set -e
 CADDYFILE="/etc/caddy/Caddyfile"
 
 # 根据环境变量动态生成 Caddyfile
+# 模式0：设置 CADDY_UPSTREAM → 出口代理模式。本机仅终止 TLS，所有流量反代到该地址
+#        （由上游 Caddy 内部分发 /api、/backend、/open-api 与官网静态）。适用于双机负载均衡
+#        场景下老服仅作为备案域名出口节点、后端承载在别服的情形。
 # 模式1：配置了域名 → 手动证书 HTTPS（证书路径未显式指定时按 certbot 标准目录自动拼接）
 # 模式2：其他 → HTTP 模式
 
-if [ -n "$CADDY_DOMAIN" ] && [ "$CADDY_DOMAIN" != ":80" ]; then
+if [ -n "$CADDY_UPSTREAM" ]; then
+    echo "==> 启用下游代理模式 (upstream: $CADDY_UPSTREAM)"
+    cat > "$CADDYFILE" << EOF
+{
+}
+$CADDY_DOMAIN {
+    tls ${CADDY_CERT_FILE:-/etc/caddy/cert/live/$CADDY_DOMAIN/fullchain.pem} ${CADDY_KEY_FILE:-/etc/caddy/cert/live/$CADDY_DOMAIN/privkey.pem}
+
+    encode gzip zstd
+
+    # 所有流量统一反代到上游出口（244 的 Caddy:80，由其内部分发）
+    handle {
+        reverse_proxy $CADDY_UPSTREAM
+    }
+}
+EOF
+elif [ -n "$CADDY_DOMAIN" ] && [ "$CADDY_DOMAIN" != ":80" ]; then
     # 未显式指定证书路径时，按 certbot 目录结构自动拼接
     CERT_FILE="${CADDY_CERT_FILE:-/etc/caddy/cert/live/$CADDY_DOMAIN/fullchain.pem}"
     KEY_FILE="${CADDY_KEY_FILE:-/etc/caddy/cert/live/$CADDY_DOMAIN/privkey.pem}"

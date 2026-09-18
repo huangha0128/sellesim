@@ -94,10 +94,14 @@ setInterval(() => {
 }, PACKAGE_REFRESH_INTERVAL_MS);
 
 // ---- 外部开放 API：webhook 失败重试定时器 ----
-// 支付成功但回调外部项目失败（网络/非 2xx）的订单，按退避策略每分钟扫描重试
-setInterval(() => {
-  retryPendingWebhooks(prisma);
-  retryPendingSubjectWebhooks(prisma);
-}, 60_000);
+// 支付成功但回调外部项目失败（网络/非 2xx）的订单，按退避策略每分钟扫描重试。
+// 双机部署时仅主服（main）承担重试，edge 后端设 ENABLE_WEBHOOK_RETRY=false 关闭，
+// 避免两个后端对同一批订单重复投递回调。
+if (process.env.ENABLE_WEBHOOK_RETRY !== 'false') {
+  setInterval(() => {
+    retryPendingWebhooks(prisma);
+    retryPendingSubjectWebhooks(prisma);
+  }, 60_000);
+}
 
 export { prisma };

@@ -1,4 +1,4 @@
-﻿name: Deploy Backend & Admin
+name: Deploy Backend & Admin
 
 on:
   push:
@@ -10,15 +10,16 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Deploy via Docker Compose
+  # ---------- 主服（新服）：全量栈 ----------
+  deploy-main:
+    name: Deploy Main (全量栈 via Docker Compose)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: SSH 到服务器并构建部署
+      - name: SSH 到主服并构建部署
         uses: appleboy/ssh-action@v1.2.0
         with:
           host: ${{ secrets.DEPLOY_HOST }}
@@ -29,7 +30,27 @@ jobs:
           script: |
             set -e
             cd "${{ vars.DEPLOY_DIR }}"
-            git fetch origin master
-            git reset --hard origin/master
-            docker compose up -d --build
-            docker image prune -f
+            ./deploy.sh
+
+  # ---------- 老服（edge）：仅后端，参与负载均衡 ----------
+  deploy-edge:
+    name: Deploy Edge (老服后端)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: deploy-main
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: SSH 到老服并构建部署（edge 角色）
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST_EDGE }}
+          username: ${{ secrets.DEPLOY_USER_EDGE }}
+          key: ${{ secrets.DEPLOY_SSH_KEY_EDGE }}
+          port: ${{ secrets.DEPLOY_PORT_EDGE }}
+          command_timeout: 25m
+          script: |
+            set -e
+            cd "${{ vars.EDGE_DEPLOY_DIR }}"
+            ./deploy.sh
