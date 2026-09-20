@@ -84,6 +84,10 @@ model Subject {
   status               String                 @default("active")
   callbackUrl          String?                @map("callback_url")
   defaultMarkupPercent Float?                 @map("default_markup_percent")
+  quotaLimit           Float?                 @map("quota_limit") // max DEVICE debt threshold, set by admin
+  usedQuota            Float                  @default(0) @map("used_quota") // cached used/unsettled quota (DEBT); source of truth is SubjectLedger
+  balance              Float                  @default(0) // prepaid wallet balance (CNY), first source for order settlement
+  splitPercent         Float?                 @map("split_percent") // partner split % placeholder (pending design decision, see docs/open-platform-v3-design.md L0/L1.3)
   contactName          String?                @map("contact_name")
   contactPhone         String?                @map("contact_phone")
   remark               String?
@@ -93,8 +97,36 @@ model Subject {
   prices               SubjectPackagePrice[]
   orders               Order[]
   deliveries           WebhookDelivery[]
+  ledger               SubjectLedger[]
+  recharges            SubjectRecharge[]
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
+}
+
+// Open platform v3: quota accounting (B2B credit distribution, see docs/open-platform-v3-design.md).
+// Source of truth for each partner's used/unsettled quota (DEBT) and prepaid BALANCE.
+// Direction is derived from type:
+//   balance_debit  -> balance -= amount       (order settled from wallet balance first)
+//   balance_refund -> balance += amount       (refund restores a balance-settled portion)
+//   deposit_credit -> usedQuota -=, then balance += leftover (top-up/deposit offsets DEBT first)
+//   order_debit    -> usedQuota += amount     (order placed on credit, over the balance)
+//   refund_credit  -> usedQuota -= amount     (refund restores credit / refund pays off DEBT)
+//   settle_credit  -> usedQuota -= amount     (partner paid off some credit)
+//   adjust         -> usedQuota +=/amount per sign (manual admin adjustment)
+model SubjectLedger {
+  id         String   @id @default(uuid())
+  subjectId  String   @map("subject_id")
+  subject    Subject  @relation(fields: [subjectId], references: [id])
+  type       String // order_debit | refund_credit | settle_credit | adjust | balance_debit | balance_refund | deposit_credit
+  orderNo    String?  @map("order_no") // linked order (empty for non-order entries)
+  refundNo   String?  @map("refund_no") // linked refund (for refund_credit)
+  rechargeNo String?  @map("recharge_no") // linked recharge (for deposit_credit)
+  amount     Float // absolute value; direction decided by type
+  note       String?
+  operatorId String?  @map("operator_id") // admin who performed a manual operation
+  createdAt  DateTime @default(now())
+
+  @@index([subjectId, createdAt])
 }
 
 // API credential issued to a subject. keyId is public and sent in X-Api-Key;
@@ -128,6 +160,7 @@ model SubjectPackagePrice {
   pkgId         String   @map("pkg_id")
   price         Float?
   markupPercent Float?   @map("markup_percent")
+  costPrice     Float?   @map("cost_price") // settle cost base for gross-profit split (pending design, docs/open-platform-v3-design.md L1.3)
   enabled       Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -170,6 +203,7 @@ model Order {
   refundAmount  Float?    @map("refund_amount")
   refundTradeNo String?   @map("refund_trade_no")
   refundedAt    DateTime? @map("refunded_at")
+  refundRejectCount Int   @default(0) @map("refund_reject_count") // refund requests rejected count (capped by settings maxRefundRejectCount)
   extOrderNo    String?   @map("ext_order_no") // external order no for reconciliation
   webhookStatus String?   @default("none") @map("webhook_status") // none/pending/success/failed
   webhookSentAt DateTime? @map("webhook_sent_at")
@@ -282,4 +316,23 @@ model WebhookDelivery {
 
   @@index([subjectId])
   @@index([status, nextRetryAt])
+}
+
+// Open platform v3: subject wallet top-up order (prepaid recharge via Alipay H5).
+// The partner pays CNY into the platform wallet; the credit is applied to the
+// DEBT first (usedQuota -), any leftover goes to BALANCE (balance +).
+// rechargeNo is the Alipay merchant order no (out_trade_no) for the deposit.
+model SubjectRecharge {
+  id            String    @id @default(uuid())
+  rechargeNo    String    @unique @map("recharge_no")
+  subjectId     String    @map("subject_id")
+  subject       Subject   @relation(fields: [subjectId], references: [id])
+  amount        Float // CNYC recharge amount
+  status        String    @default("pending") // pending | paid
+  alipayTradeNo String?   @map("alipay_trade_no")
+  paidAt        DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([subjectId, createdAt])
 }

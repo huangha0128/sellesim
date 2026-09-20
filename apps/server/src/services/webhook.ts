@@ -160,7 +160,7 @@ export async function resendWebhook(prisma: PrismaClient, order: any): Promise<{
 // =========================================================================
 
 export interface SubjectWebhookPayload {
-  event: 'order.paid' | 'order.refunded';
+  event: 'order.paid' | 'order.refunded' | 'order.delivered';
   orderNo: string;
   extOrderNo: string | null;
   status: string;
@@ -171,6 +171,8 @@ export interface SubjectWebhookPayload {
   extRefundNo?: string | null;
   amount?: number;
   refundedAt?: string;
+  // order.delivered (open platform v3)
+  esim?: { iccid?: string; expireAt?: string } | null;
 }
 
 /** 退避间隔（秒），下标 = attempts：立即 → 60s → 5min → 30min → 2h */

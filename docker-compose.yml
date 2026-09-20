@@ -126,6 +126,25 @@ services:
       retries: 5
       start_period: 10s
 
+  # ---------- 伙伴门户（开放平台 v3，Next.js 静态导出 + nginx）----------
+  partner:
+    build:
+      context: .
+      dockerfile: apps/partner/Dockerfile
+    container_name: sellsim-partner
+    restart: unless-stopped
+    depends_on:
+      server:
+        condition: service_healthy
+    ports:
+      - "${PARTNER_PORT:-6510}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/partner/"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   # ---------- 官网静态站（构建后同步到 Caddy 挂载的 WWW_ROOT 目录）----------
   web:
     build:
@@ -146,6 +165,8 @@ services:
     restart: unless-stopped
     depends_on:
       admin:
+        condition: service_healthy
+      partner:
         condition: service_healthy
       server:
         condition: service_healthy

@@ -1,25 +1,27 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import crypto from 'crypto';
 import { PrismaClient } from '@prisma/client';
 import { openAuth, OpenAuthRequest } from '../middleware/openAuth';
 import { listAllPackagesView, getPackageView } from '../tiger/view';
 import { resolveSubjectPrice, applySubjectPrices } from '../services/subjectPricing';
-import { createSubjectOrder, OrderCreateError } from '../services/order';
-import { createWapPaymentUrl, alipayProvider } from '../services/payment';
-import { refundOrderSelfService, SelfServiceRefundError } from '../services/refund';
+import { resolveSettlePricesForList, resolveSettlePrice, quotaView, restoreWallet, applyDeposit } from '../services/quota';
+import { createSubjectCreditOrder, OrderCreateError } from '../services/order';
+import { refundSubjectCreditOrder, SelfServiceRefundError } from '../services/refund';
 import { enqueueSubjectWebhook, resendSubjectWebhook } from '../services/webhook';
 import { resolveEsimActivation } from '../tiger/activation';
-import { tigerClient } from '../tiger';
-import { config } from '../config';
+import { createRechargeWapUrl } from '../services/recharge';
+import { tigerClient, fetchTigerIccids } from '../tiger';
 
 /**
- * Open platform v2 API (统一前缀 /api/open/v1).
- * Dual-mode auth: read requests need only X-Api-Key; write requests (order,
- * refund, webhook retry) additionally require X-Timestamp/X-Nonce/X-Sign.
+ * Open platform v3 API (统一前缀 /api/open/v1). B2B credit distribution.
+ * Paying is NOT exposed: orders are delivered on partner credit (quota), and
+ * refunds restore quota. See docs/open-platform-v3-design.md.
+ *
+ * Authentication is dual-mode:
+ *   - API integrators: read = X-Api-Key only; write adds X-Timestamp/X-Nonce/X-Sign.
+ *   - Partner portal: a Bearer portal JWT (type=partner) authenticates reads and writes.
  *
  * Response envelope: { code: 0, message: 'ok', data, requestId }.
- * eSIM sensitive info (activation code / ICCID / SMDP) is returned only when
- * the order is paid.
  */
 
 function genRequestId(): string {
@@ -32,12 +34,18 @@ function err(res: Response, status: number, code: number, message: string): void
   res.status(status).json({ code, message, requestId: genRequestId() });
 }
 
-/** order -> open view (esim sensitive only when paid) */
+/** Sensitive when the order was already delivered (delivered = eSIM sent out). */
+function isEsimDelivered(order: any): boolean {
+  return order.status === 'delivered' || order.status === 'refunded';
+}
+
+/** order -> open view */
 function toOpenOrderView(order: any, includeEsimSensitive = true): any {
   const base: any = {
     orderNo: order.orderNo,
     extOrderNo: order.extOrderNo || null,
     status: order.status,
+    payMethod: order.payMethod || 'quota',
     pkgId: order.pkgId,
     countryCode: order.countryCode || null,
     pkgName: order.pkgName || null,
@@ -45,7 +53,7 @@ function toOpenOrderView(order: any, includeEsimSensitive = true): any {
     gb: order.gb ?? null,
     days: order.days ?? null,
     isUnlimited: !!order.isUnlimited,
-    price: order.price,
+    cost: Number(order.price ?? 0), // settle price (amount debited from quota)
     paidAmount: order.paidAmount ?? null,
     paidAt: order.paidAt ? new Date(order.paidAt).toISOString() : null,
     createdAt: order.createdAt ? new Date(order.createdAt).toISOString() : null,
@@ -59,7 +67,7 @@ function toOpenOrderView(order: any, includeEsimSensitive = true): any {
       activatedAt: eSIM.activatedAt ? new Date(eSIM.activatedAt).toISOString() : null,
       expireAt: new Date(eSIM.expireAt).toISOString(),
       used: eSIM.used ?? 0,
-      ...(order.status === 'paid' && includeEsimSensitive
+      ...(isEsimDelivered(order) && includeEsimSensitive
         ? { activationCode: eSIM.activationCode, iccid: eSIM.iccid, smdp: eSIM.smdp }
         : {}),
     };
@@ -70,17 +78,6 @@ function toOpenOrderView(order: any, includeEsimSensitive = true): any {
 }
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-function isHttpUrl(url: string): boolean {
-  try {
-    const u = new URL(url);
-    return u.protocol === 'http:' || u.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
-function defaultReturnUrl(orderNo: string): string {
-  return `${config.alipay.notifyHost}/h5/pages/payment/payment?orderNo=${orderNo}`;
-}
 
 export default (prisma: PrismaClient) => {
   const router = Router();
@@ -88,9 +85,14 @@ export default (prisma: PrismaClient) => {
 
   // ==================== 读接口 ====================
 
-  /** GET /me 当前主体信息与密钥信息 */
-  router.get('/me', (req: OpenAuthRequest, res: Response) => {
-    const s = req.subject!;
+  /** GET /me 当前主体信息与额度信息 */
+  router.get('/me', async (req: OpenAuthRequest, res: Response) => {
+    const s = await prisma.subject.findUnique({
+      where: { id: req.subject!.id },
+      include: { keys: { where: { enabled: true }, select: { keyId: true, mode: true } } },
+    });
+    if (!s) return err(res, 404, 404, '主体不存在');
+    const q = quotaView(s);
     ok(res, {
       subject: {
         id: s.id,
@@ -98,16 +100,137 @@ export default (prisma: PrismaClient) => {
         status: s.status,
         callbackUrl: s.callbackUrl,
         defaultMarkupPercent: s.defaultMarkupPercent,
+        splitPercent: s.splitPercent ?? null,
       },
-      key: { keyId: req.apiKey!.keyId, mode: req.apiKey!.mode },
+      quota: { quotaLimit: q.quotaLimit, usedQuota: q.usedQuota, availableQuota: q.availableQuota, balance: q.balance },
+      keys: s.keys.map((k) => ({ keyId: k.keyId, mode: k.mode })),
     });
   });
 
-  /** GET /packages 套餐列表（返回主体售价）。参数 countryCode/keyword/page/pageSize */
+  /** GET /quota 额度总览 + 记账流水 */
+  router.get('/quota', async (req: OpenAuthRequest, res: Response) => {
+    const s = await prisma.subject.findUnique({ where: { id: req.subject!.id } });
+    if (!s) return err(res, 404, 404, '主体不存在');
+    const q = quotaView(s);
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || 20));
+    const [total, ledger] = await Promise.all([
+      prisma.subjectLedger.count({ where: { subjectId: s.id } }),
+      prisma.subjectLedger.findMany({
+        where: { subjectId: s.id },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+    ]);
+    ok(res, {
+      quota: q,
+      ledger: ledger.map((l) => ({
+        id: l.id,
+        type: l.type,
+        amount: l.amount,
+        orderNo: l.orderNo || null,
+        refundNo: l.refundNo || null,
+        rechargeNo: l.rechargeNo || null,
+        note: l.note || null,
+        createdAt: new Date(l.createdAt).toISOString(),
+      })),
+      total,
+      page,
+      pageSize,
+    });
+  });
+
+  /** GET /wallet 钱包总览（余额/欠款/授信阈值/充值记录） */
+  router.get('/wallet', async (req: OpenAuthRequest, res: Response) => {
+    const s = await prisma.subject.findUnique({ where: { id: req.subject!.id } });
+    if (!s) return err(res, 404, 404, '主体不存在');
+    const q = quotaView(s);
+    const [total, recharges] = await Promise.all([
+      prisma.subjectRecharge.count({ where: { subjectId: s.id } }),
+      prisma.subjectRecharge.findMany({
+        where: { subjectId: s.id },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+      }),
+    ]);
+    ok(res, {
+      wallet: {
+        balance: q.balance,
+        usedQuota: q.usedQuota,
+        quotaLimit: q.quotaLimit,
+        maxDebt: q.quotaLimit,
+        availableDebt: q.availableQuota,
+      },
+      recharges: recharges.map((r) => ({
+        rechargeNo: r.rechargeNo,
+        amount: r.amount,
+        status: r.status,
+        paidAt: r.paidAt ? new Date(r.paidAt).toISOString() : null,
+        createdAt: new Date(r.createdAt).toISOString(),
+      })),
+      total,
+    });
+  });
+
+  /** POST /wallet/topups 充值下单：body { amount, returnUrl? }，返回支付宝 H5 支付链接 */
+  router.post('/wallet/topups', async (req: OpenAuthRequest, res: Response) => {
+    const { amount, returnUrl } = req.body || {};
+    const amt = Number(amount);
+    if (!Number.isFinite(amt) || !(amt > 0)) return err(res, 400, 400, '充值金额必须大于 0');
+    let rUrl = String(returnUrl || '').trim();
+    if (rUrl && !/^https?:\/\//i.test(rUrl)) return err(res, 400, 400, 'returnUrl 需为 http(s) 地址');
+    try {
+      const result = await createRechargeWapUrl(prisma, req.subject!, amt, rUrl);
+      ok(res, { rechargeNo: result.rechargeNo, amount: Math.round(amt * 100) / 100, payUrl: result.payUrl });
+    } catch (e: any) {
+      console.error('[open] 充值下单失败：', e.message);
+      err(res, 500, 500, '充值下单失败，请稍后重试');
+    }
+  });
+
+  /**
+   * GET /iccid-pool 可用 ICCID 卡号池（只展示未激活/未使用的卡号）。
+   * 未激活 = 该 iccid 尚未写入 esim 表（已激活卡片对伙伴隐藏）。
+   */
+  router.get('/iccid-pool', async (_req: OpenAuthRequest, res: Response) => {
+    try {
+      const usedSet = new Set(
+        (await prisma.esim.findMany({ select: { iccid: true } })).map((e) => e.iccid),
+      );
+      if (tigerClient.configured) {
+        const all = await fetchTigerIccids();
+        const pool = all.filter((ic) => !usedSet.has(ic));
+        ok(res, {
+          mode: 'tiger',
+          stats: { total: all.length, available: pool.length, used: all.length - pool.length },
+          pool: pool.map((iccid) => ({ iccid })),
+        });
+        return;
+      }
+      const cards = await prisma.card.findMany({ orderBy: { createdAt: 'desc' } });
+      const pool = cards.filter((c) => !usedSet.has(c.iccid));
+      ok(res, {
+        mode: 'mock',
+        stats: { total: cards.length, available: pool.length, used: cards.length - pool.length },
+        pool: pool.map((c) => ({ iccid: c.iccid, remark: c.remark })),
+      });
+    } catch (e: any) {
+      console.error('[open] ICCID 卡池拉取失败：', e.message);
+      err(res, 502, 502, 'ICCID 卡池拉取失败：' + e.message);
+    }
+  });
+
+  /** GET /packages 套餐列表（含结算价 costPrice 与售价 price）。参数 countryCode/keyword/page/pageSize */
   router.get('/packages', async (req: OpenAuthRequest, res: Response) => {
     try {
       const all = await listAllPackagesView();
       let list = await applySubjectPrices(prisma, all, req.subject!);
+      const settle = await resolveSettlePricesForList(prisma, list, req.subject!);
+      list = list.map((p) => {
+        const key = String(p.tigerPkgId ?? p.tigerPid ?? p.id ?? p.pkgId ?? '');
+        return { ...p, costPrice: settle.get(key) ?? Number(p.price ?? 0) };
+      });
 
       const countryCode = String(req.query.countryCode || '').trim();
       const keyword = String(req.query.keyword || '').trim().toLowerCase();
@@ -125,15 +248,14 @@ export default (prisma: PrismaClient) => {
       const page = Math.max(1, Number(req.query.page) || 1);
       const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || 20));
       const total = list.length;
-      const paged = list.slice((page - 1) * pageSize, page * pageSize);
-      ok(res, { packages: paged, total, page, pageSize });
+      ok(res, { packages: list.slice((page - 1) * pageSize, page * pageSize), total, page, pageSize });
     } catch (e: any) {
       console.error('[open] 套餐列表失败：', e.message);
       err(res, 502, 502, '上游 Tiger 异常或套餐获取失败');
     }
   });
 
-  /** GET /packages/:pkgId 套餐详情（含主体售价与可见性） */
+  /** GET /packages/:pkgId 套餐详情（含结算价与售价） */
   router.get('/packages/:pkgId', async (req: OpenAuthRequest, res: Response) => {
     if (!tigerClient.configured) return err(res, 502, 502, '上游 Tiger 未配置');
     try {
@@ -141,7 +263,8 @@ export default (prisma: PrismaClient) => {
       if (!pkg) return err(res, 404, 404, '套餐不存在');
       const r = await resolveSubjectPrice(prisma, pkg, req.subject!);
       if (!r.visible) return err(res, 404, 404, '套餐不存在');
-      ok(res, { pkg: { ...pkg, price: r.price } });
+      const costPrice = await resolveSettlePrice(prisma, pkg, req.subject!);
+      ok(res, { pkg: { ...pkg, price: r.price, costPrice } });
     } catch (e: any) {
       err(res, 502, 502, '上游 Tiger 异常：' + e.message);
     }
@@ -183,12 +306,7 @@ export default (prisma: PrismaClient) => {
     try {
       const [total, rows] = await Promise.all([
         prisma.order.count({ where }),
-        prisma.order.findMany({
-          where,
-          orderBy: { createdAt: 'desc' },
-          skip: (page - 1) * pageSize,
-          take: pageSize,
-        }),
+        prisma.order.findMany({ where, orderBy: { createdAt: 'desc' }, skip: (page - 1) * pageSize, take: pageSize }),
       ]);
       ok(res, { orders: rows.map((o) => toOpenOrderView(o, false)), total, page, pageSize });
     } catch (e: any) {
@@ -196,12 +314,13 @@ export default (prisma: PrismaClient) => {
     }
   });
 
-  /** GET /orders/:orderNo 订单详情（paid 才含激活码） */
+  async function loadOrderByNo(req: OpenAuthRequest, orderNo: string): Promise<any | null> {
+    return prisma.order.findFirst({ where: { orderNo, subjectId: req.subject!.id }, include: { esim: true } });
+  }
+
+  /** GET /orders/:orderNo 订单详情（delivered/refunded 才含激活码） */
   router.get('/orders/:orderNo', async (req: OpenAuthRequest, res: Response) => {
-    const order = await prisma.order.findFirst({
-      where: { orderNo: req.params.orderNo, subjectId: req.subject!.id },
-      include: { esim: true },
-    });
+    const order = await loadOrderByNo(req, req.params.orderNo);
     if (!order) return err(res, 404, 404, '订单不存在');
     if (order.esim && tigerClient.configured) {
       const resolved = await resolveEsimActivation(order.esim);
@@ -226,10 +345,7 @@ export default (prisma: PrismaClient) => {
 
   /** GET /orders/:orderNo/esim eSIM 详情与用量 */
   router.get('/orders/:orderNo/esim', async (req: OpenAuthRequest, res: Response) => {
-    const order = await prisma.order.findFirst({
-      where: { orderNo: req.params.orderNo, subjectId: req.subject!.id },
-      include: { esim: true },
-    });
+    const order = await loadOrderByNo(req, req.params.orderNo);
     if (!order) return err(res, 404, 404, '订单不存在');
     if (!order.esim) return err(res, 404, 404, '订单暂无 eSIM');
     let esim = order.esim;
@@ -247,6 +363,7 @@ export default (prisma: PrismaClient) => {
         days: esim.days ?? 0,
         used: esim.used ?? 0,
         isUnlimited: !!esim.isUnlimited,
+        questionCodes: esim.activationCode ? { activationCode: esim.activationCode, smdp: esim.smdp, iccid: esim.iccid } : null,
       },
     });
   });
@@ -275,55 +392,45 @@ export default (prisma: PrismaClient) => {
 
   // ==================== 写接口 ====================
 
-  /** POST /orders 下单：body { pkgId, email, extOrderNo?, returnUrl? } */
+  /** POST /orders 下单（扣额 + 开卡，无支付）：body { pkgId, email, extOrderNo? } */
   router.post('/orders', async (req: OpenAuthRequest, res: Response) => {
-    const { pkgId, email, extOrderNo, returnUrl } = req.body || {};
+    const { pkgId, email, extOrderNo } = req.body || {};
     if (!pkgId || !email) return err(res, 400, 400, '缺少必要参数 pkgId / email');
     if (!EMAIL_RE.test(String(email))) return err(res, 400, 400, 'email 格式不正确');
-    if (returnUrl != null && String(returnUrl) !== '' && !isHttpUrl(String(returnUrl))) {
-      return err(res, 400, 400, 'returnUrl 必须是 http(s):// 开头的合法地址');
-    }
 
     try {
       // 幂等：主体内同一 extOrderNo 已存在则直接复用
       if (extOrderNo) {
         const existing = await prisma.order.findFirst({
           where: { subjectId: req.subject!.id, extOrderNo: String(extOrderNo) },
+          include: { esim: true },
         });
-        if (existing) {
-          const result = await createWapPaymentUrl(prisma, existing, {
-            returnUrl: returnUrl || defaultReturnUrl(existing.orderNo),
-          });
-          return ok(res, {
-            orderNo: existing.orderNo,
-            extOrderNo: existing.extOrderNo || null,
-            payUrl: result.payUrl,
-            price: existing.price,
-            totalAmount: result.totalAmount,
-            paid: result.paid,
-          });
+        if (existing && existing.status !== 'failed') {
+          return ok(res, { ...toOpenOrderView(existing, true), created: false });
         }
       }
 
-      const order = await createSubjectOrder(prisma, {
+      const { order, esim, cost } = await createSubjectCreditOrder(prisma, {
         pkgId: String(pkgId),
         email: String(email),
         subject: req.subject!,
         apiKeyId: req.apiKey!.id,
         extOrderNo: extOrderNo ? String(extOrderNo) : undefined,
       });
-
-      const result = await createWapPaymentUrl(prisma, order, {
-        returnUrl: returnUrl || defaultReturnUrl(order.orderNo),
-      });
-
       ok(res, {
         orderNo: order.orderNo,
         extOrderNo: order.extOrderNo || null,
-        payUrl: result.payUrl,
-        price: order.price,
-        totalAmount: result.totalAmount,
-        paid: result.paid,
+        status: order.status,
+        cost,
+        created: true,
+        esim: esim
+          ? {
+              iccid: esim.iccid,
+              activationCode: esim.activationCode,
+              smdp: esim.smdp,
+              expireAt: new Date(esim.expireAt).toISOString(),
+            }
+          : null,
       });
     } catch (e: any) {
       if (e instanceof OrderCreateError) return err(res, e.status, e.status, e.message);
@@ -332,7 +439,7 @@ export default (prisma: PrismaClient) => {
     }
   });
 
-  /** POST /orders/:orderNo/refunds 主体自助退款：body { extRefundNo?, amount?, reason? } */
+  /** POST /orders/:orderNo/refunds 额度冲回退款：body { extRefundNo?, amount?, reason? } */
   router.post('/orders/:orderNo/refunds', async (req: OpenAuthRequest, res: Response) => {
     const orderNo = req.params.orderNo;
     const subject = req.subject!;
@@ -344,24 +451,21 @@ export default (prisma: PrismaClient) => {
         await prisma.esim.delete({ where: { orderId } });
       },
       updateOrder: (no: string, data: Record<string, any>) => prisma.order.update({ where: { orderNo: no }, data }),
-      listRefundsByOrder: (orderId: string) =>
-        prisma.refund.findMany({ where: { orderId }, select: { status: true, amount: true } }),
       findRefundByExtNo: (sid: string, extNo: string) =>
         prisma.refund.findFirst({ where: { subjectId: sid, extRefundNo: extNo } }),
       createRefund: (data: any) => prisma.refund.create({ data }),
-      alipayRefund: async (p: { outTradeNo: string }) => {
-        const o = await prisma.order.findUnique({ where: { orderNo: p.outTradeNo } });
-        if (!o?.alipayTradeNo) return { code: '10000', tradeNo: `RF${Date.now()}` };
-        return alipayProvider.refund(p as any);
+      creditBack: async (sid: string, amt: number, ono: string, rno: string) => {
+        const s = await prisma.subject.findUnique({ where: { id: sid } });
+        await restoreWallet(prisma, s ?? { id: sid }, amt, ono, rno, '钱包冲回退款');
       },
-      onRefunded: async (d: { order: any; refund: any; full: boolean }) => {
+      onRefunded: async (d: { order: any; refund: any }) => {
         await enqueueSubjectWebhook(prisma, subject.id, 'order.refunded', {
           event: 'order.refunded',
           orderNo: d.order.orderNo,
           extOrderNo: d.order.extOrderNo || null,
-          status: d.full ? 'refunded' : 'paid',
+          status: 'refunded',
           paidAt: d.order.paidAt ? new Date(d.order.paidAt).toISOString() : null,
-          totalAmount: Number(d.order.paidAmount ?? d.order.price ?? 0),
+          totalAmount: Number(d.order.price ?? 0),
           refundNo: d.refund.refundNo,
           extRefundNo: d.refund.extRefundNo || null,
           amount: d.refund.amount,
@@ -371,7 +475,7 @@ export default (prisma: PrismaClient) => {
     };
 
     try {
-      const result = await refundOrderSelfService(deps, subject.id, orderNo, {
+      const result = await refundSubjectCreditOrder(deps, subject.id, orderNo, {
         extRefundNo: extRefundNo ? String(extRefundNo) : undefined,
         amount: amount != null ? Number(amount) : undefined,
         reason: reason ? String(reason) : undefined,
@@ -392,17 +496,18 @@ export default (prisma: PrismaClient) => {
     }
   });
 
-  /** POST /orders/:orderNo/webhook/retry 手动重发支付成功回调（立即发送一次） */
+  /** POST /orders/:orderNo/webhook/retry 手动重发交付回调（立即发送一次） */
   router.post('/orders/:orderNo/webhook/retry', async (req: OpenAuthRequest, res: Response) => {
     const subject = req.subject!;
     const order = await prisma.order.findFirst({
       where: { orderNo: req.params.orderNo, subjectId: subject.id },
     });
     if (!order) return err(res, 404, 404, '订单不存在');
-    if (order.status !== 'paid') return err(res, 400, 400, '订单尚未支付成功，无需回调');
-    const result = await resendSubjectWebhook(prisma, subject as any, order, 'order.paid');
+    const event: 'order.delivered' | 'order.refunded' = order.status === 'refunded' ? 'order.refunded' : 'order.delivered';
+    if (order.status !== 'delivered' && order.status !== 'refunded') return err(res, 400, 400, '订单尚未交付，无需回调');
+    const result = await resendSubjectWebhook(prisma, subject as any, order, event);
     if (!result.sent) return err(res, 400, 400, result.message || '回调发送失败，请检查主体回调地址');
-    ok(res, { orderNo: order.orderNo, sent: true });
+    ok(res, { orderNo: order.orderNo, event, sent: true });
   });
 
   return router;

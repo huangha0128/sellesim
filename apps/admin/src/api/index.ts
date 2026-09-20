@@ -188,6 +188,7 @@ export interface TigerStatus {
 export interface Settings {
   displayCurrency: 'CNY' | 'USD';
   usdCnyRate: number;
+  maxRefundRejectCount?: number; // 退款申请被拒绝次数上限（后台可配置）
 }
 
 // ---- Open API v2：主体 / 密钥 / 定价 ----
@@ -208,6 +209,7 @@ export interface SubjectPackagePrice {
   pkgId: string;
   price?: number | null;
   markupPercent?: number | null;
+  costPrice?: number | null;
   enabled?: boolean;
   createdAt?: string;
 }
@@ -221,10 +223,30 @@ export interface Subject {
   contactName?: string | null;
   contactPhone?: string | null;
   remark?: string | null;
+  quotaLimit?: number | null;
+  usedQuota?: number | null;
+  balance?: number | null;
+  splitPercent?: number | null;
   createdAt?: string;
   keys?: SubjectKey[];
   prices?: SubjectPackagePrice[];
   _count?: { keys?: number; orders?: number };
+}
+
+// 记账流水类型：order_debit=下单扣额 | refund_credit=退款冲回 | settle_credit=结清 | adjust=调整
+export type SubjectLedgerType = 'order_debit' | 'refund_credit' | 'settle_credit' | 'adjust' | null;
+
+export interface SubjectLedgerEntry {
+  id: string;
+  subjectId: string;
+  type: string;
+  orderNo?: string | null;
+  refundNo?: string | null;
+  amount: number;
+  note?: string | null;
+  operatorId?: string | null;
+  operatorName?: string | null;
+  createdAt?: string;
 }
 
 // ---------- 接口 ----------
@@ -278,10 +300,13 @@ export const adminApi = {
   batchClearPackagePrices: (tigerPkgIds: number[]) =>
     http.post('/admin/packages/prices/clear', { tigerPkgIds }),
 
-  // 汇率与展示货币设置
+  // 汇率与展示货币设置 / 退款拒绝次数上限
   getSettings: () => http.get('/admin/settings'),
-  updateSettings: (data: { displayCurrency?: 'CNY' | 'USD'; usdCnyRate?: number }) =>
-    http.put('/admin/settings', data),
+  updateSettings: (data: {
+    displayCurrency?: 'CNY' | 'USD';
+    usdCnyRate?: number;
+    maxRefundRejectCount?: number;
+  }) => http.put('/admin/settings', data),
 
   // ---- Open API v2：主体 / 密钥 / 定价 ----
   getSubjects: () => http.get('/admin/subjects'),
@@ -291,6 +316,8 @@ export const adminApi = {
     contactPhone?: string;
     callbackUrl?: string;
     defaultMarkupPercent?: number;
+    quotaLimit?: number | null;
+    splitPercent?: number | null;
     remark?: string;
   }) => http.post('/admin/subjects', data),
   getSubject: (id: string) => http.get(`/admin/subjects/${id}`),
@@ -302,6 +329,8 @@ export const adminApi = {
       contactPhone?: string | null;
       callbackUrl?: string | null;
       defaultMarkupPercent?: number | null;
+      quotaLimit?: number | null;
+      splitPercent?: number | null;
       remark?: string | null;
       status?: string;
     },
@@ -319,6 +348,22 @@ export const adminApi = {
   getSubjectPrices: (id: string) => http.get(`/admin/subjects/${id}/prices`),
   setSubjectPrices: (
     id: string,
-    items: { pkgId: string; price?: number | null; markupPercent?: number | null; enabled?: boolean }[],
+    items: {
+      pkgId: string;
+      price?: number | null;
+      markupPercent?: number | null;
+      costPrice?: number | null;
+      enabled?: boolean;
+    }[],
   ) => http.put(`/admin/subjects/${id}/prices`, { items }),
+
+  // ---- Open Platform v3：授信额度 / 记账流水 ----
+  getSubjectLedger: (
+    id: string,
+    params?: { page?: number; pageSize?: number; type?: string },
+  ) => http.get(`/admin/subjects/${id}/ledger`, { params }),
+  settleSubject: (id: string, data: { amount: number; note?: string }) =>
+    http.post(`/admin/subjects/${id}/settle`, data),
+  adjustSubjectQuota: (id: string, data: { amount: number; reason?: string }) =>
+    http.post(`/admin/subjects/${id}/adjquota`, data),
 };

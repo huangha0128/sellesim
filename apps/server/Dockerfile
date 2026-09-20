@@ -20,6 +20,7 @@ ENV PRISMA_ENGINES_MIRROR=https://registry.npmmirror.com/-/binary/prisma
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY apps/server/package.json apps/server/package.json
 COPY apps/admin/package.json apps/admin/package.json
+COPY apps/partner/package.json apps/partner/package.json
 COPY apps/miniapp/package.json apps/miniapp/package.json
 RUN pnpm install --no-frozen-lockfile
 

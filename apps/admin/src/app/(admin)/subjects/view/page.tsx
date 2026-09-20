@@ -12,6 +12,7 @@ import {
   RefreshCw,
   Check,
   Loader2,
+  Edit3,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -28,6 +29,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 import {
   Select,
   SelectContent,
@@ -59,6 +67,7 @@ import {
   type Subject,
   type SubjectKey,
   type SubjectPackagePrice,
+  type SubjectLedgerEntry,
   type CatalogItem,
 } from '@/api';
 
@@ -81,6 +90,8 @@ export default function SubjectDetailPage() {
     contactPhone: '',
     callbackUrl: '',
     defaultMarkupPercent: '',
+    quotaLimit: '',
+    splitPercent: '',
     remark: '',
   });
   const [saving, setSaving] = useState(false);
@@ -97,7 +108,9 @@ export default function SubjectDetailPage() {
 
   // 定价
   const [prices, setPrices] = useState<SubjectPackagePrice[]>([]);
-  const [priceDrafts, setPriceDrafts] = useState<Record<string, { price: string; markup: string; enabled: boolean }>>({});
+  const [priceDrafts, setPriceDrafts] = useState<
+    Record<string, { price: string; markup: string; cost: string; enabled: boolean }>
+  >({});
   const [priceSaving, setPriceSaving] = useState<string | null>(null);
   const [addPriceOpen, setAddPriceOpen] = useState(false);
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
@@ -106,7 +119,26 @@ export default function SubjectDetailPage() {
   const [chosen, setChosen] = useState<CatalogItem | null>(null);
   const [newPrice, setNewPrice] = useState('');
   const [newMarkup, setNewMarkup] = useState('');
+  const [newCost, setNewCost] = useState('');
   const [addingPrice, setAddingPrice] = useState(false);
+
+  // 记账流水（Open Platform v3）
+  const [ledger, setLedger] = useState<SubjectLedgerEntry[]>([]);
+  const [ledgerTotal, setLedgerTotal] = useState(0);
+  const [ledgerPage, setLedgerPage] = useState(1);
+  const [ledgerPageSize, setLedgerPageSize] = useState(20);
+  const [ledgerType, setLedgerType] = useState('');
+  const [ledgerLoading, setLedgerLoading] = useState(false);
+
+  // 授信额度操作（结清 / 调整）
+  const [settleOpen, setSettleOpen] = useState(false);
+  const [settleAmount, setSettleAmount] = useState('');
+  const [settleNote, setSettleNote] = useState('');
+  const [settleSaving, setSettleSaving] = useState(false);
+  const [adjOpen, setAdjOpen] = useState(false);
+  const [adjAmount, setAdjAmount] = useState('');
+  const [adjReason, setAdjReason] = useState('');
+  const [adjSaving, setAdjSaving] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -122,15 +154,18 @@ export default function SubjectDetailPage() {
           contactPhone: s.contactPhone || '',
           callbackUrl: s.callbackUrl || '',
           defaultMarkupPercent: s.defaultMarkupPercent != null ? String(s.defaultMarkupPercent) : '',
+          quotaLimit: s.quotaLimit != null ? String(s.quotaLimit) : '',
+          splitPercent: s.splitPercent != null ? String(s.splitPercent) : '',
           remark: s.remark || '',
         });
         setPrices(s.prices || []);
         setPriceDrafts(
-          (s.prices || []).reduce<Record<string, { price: string; markup: string; enabled: boolean }>>(
+          (s.prices || []).reduce<Record<string, { price: string; markup: string; cost: string; enabled: boolean }>>(
             (acc, p) => {
               acc[p.pkgId] = {
                 price: p.price != null ? String(p.price) : '',
                 markup: p.markupPercent != null ? String(p.markupPercent) : '',
+                cost: p.costPrice != null ? String(p.costPrice) : '',
                 enabled: p.enabled !== false,
               };
               return acc;
@@ -153,16 +188,101 @@ export default function SubjectDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // 加载记账流水
+  const loadLedger = async () => {
+    if (!id) return;
+    setLedgerLoading(true);
+    try {
+      const res = await adminApi.getSubjectLedger(id, {
+        page: ledgerPage,
+        pageSize: ledgerPageSize,
+        type: ledgerType || undefined,
+      });
+      const body = unwrap<{ ledger: SubjectLedgerEntry[]; total: number; page: number; pageSize: number }>(res);
+      if (body.code === 0) {
+        setLedger(body.data.ledger || []);
+        setLedgerTotal(body.data.total || 0);
+      } else {
+        toast.error(body.message || '流水加载失败');
+      }
+    } catch (e) {
+      toast.error(getErrorMessage(e, '流水加载失败'));
+    } finally {
+      setLedgerLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (id) loadLedger();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, ledgerPage, ledgerPageSize, ledgerType]);
+
+  const submitSettle = async () => {
+    const amount = Number(settleAmount);
+    if (!amount || amount <= 0 || !Number.isFinite(amount)) return toast.warning('请输入有效的结清金额');
+    setSettleSaving(true);
+    try {
+      const res = await adminApi.settleSubject(id, { amount, note: settleNote.trim() || undefined });
+      const body = unwrap<{ usedQuota: number }>(res);
+      if (body.code === 0) {
+        toast.success('已结清记账');
+        setSettleOpen(false);
+        setSettleAmount('');
+        setSettleNote('');
+        load();
+        if (ledgerPage === 1) loadLedger();
+        else setLedgerPage(1);
+      } else {
+        toast.error(body.message || '结清失败');
+      }
+    } catch (e) {
+      toast.error(getErrorMessage(e, '结清失败'));
+    } finally {
+      setSettleSaving(false);
+    }
+  };
+
+  const submitAdj = async () => {
+    const amount = Number(adjAmount);
+    if (!amount || !Number.isFinite(amount)) return toast.warning('请输入有效的调整金额（带符号）');
+    setAdjSaving(true);
+    try {
+      const res = await adminApi.adjustSubjectQuota(id, { amount, reason: adjReason.trim() || undefined });
+      const body = unwrap<{ usedQuota: number }>(res);
+      if (body.code === 0) {
+        toast.success('已完成额度调整');
+        setAdjOpen(false);
+        setAdjAmount('');
+        setAdjReason('');
+        load();
+        if (ledgerPage === 1) loadLedger();
+        else setLedgerPage(1);
+      } else {
+        toast.error(body.message || '调整失败');
+      }
+    } catch (e) {
+      toast.error(getErrorMessage(e, '调整失败'));
+    } finally {
+      setAdjSaving(false);
+    }
+  };
+
   const saveInfo = async () => {
     if (!editForm.name.trim()) return toast.warning('请输入主体名称');
     setSaving(true);
     try {
+      const quotaLimitVal = editForm.quotaLimit.trim() === '' ? null : Number(editForm.quotaLimit);
+      const splitVal = editForm.splitPercent.trim() === '' ? null : Number(editForm.splitPercent);
+      if (quotaLimitVal != null && (!Number.isFinite(quotaLimitVal) || quotaLimitVal < 0)) return toast.warning('授信额度不合法');
+      if (splitVal != null && (!Number.isFinite(splitVal) || splitVal < 0 || splitVal > 100)) return toast.warning('分成比例需在 0-100 之间');
       const res = await adminApi.updateSubject(id, {
         name: editForm.name.trim(),
         contactName: editForm.contactName.trim() || null,
         contactPhone: editForm.contactPhone.trim() || null,
         callbackUrl: editForm.callbackUrl.trim() || null,
         defaultMarkupPercent: editForm.defaultMarkupPercent.trim() === '' ? null : Number(editForm.defaultMarkupPercent),
+        quotaLimit: quotaLimitVal,
+        splitPercent: splitVal,
         remark: editForm.remark.trim() || null,
       });
       const body = unwrap<unknown>(res);
@@ -260,6 +380,7 @@ export default function SubjectDetailPage() {
     setChosen(null);
     setNewPrice('');
     setNewMarkup('');
+    setNewCost('');
     setCatFilter('');
     await loadCatalog();
   };
@@ -283,6 +404,7 @@ export default function SubjectDetailPage() {
       pkgId: p.pkgId,
       price: p.price,
       markupPercent: p.markupPercent,
+      costPrice: p.costPrice,
       enabled: p.enabled,
     }));
     setPriceSaving(pkgId);
@@ -307,11 +429,15 @@ export default function SubjectDetailPage() {
     if (!d) return;
     const priceVal = d.price.trim() === '' ? null : Number(d.price);
     const markupVal = d.markup.trim() === '' ? null : Number(d.markup);
+    const costVal = d.cost.trim() === '' ? null : Number(d.cost);
     if (priceVal != null && (!Number.isFinite(priceVal) || priceVal < 0)) return toast.warning('价格不合法');
     if (markupVal != null && !Number.isFinite(markupVal)) return toast.warning('加价比例不合法');
+    if (costVal != null && (!Number.isFinite(costVal) || costVal < 0)) return toast.warning('成本价不合法');
     setPriceSaving(p.pkgId);
     try {
-      const res = await adminApi.setSubjectPrices(id, [{ pkgId: p.pkgId, price: priceVal, markupPercent: markupVal, enabled: d.enabled }]);
+      const res = await adminApi.setSubjectPrices(id, [
+        { pkgId: p.pkgId, price: priceVal, markupPercent: markupVal, costPrice: costVal, enabled: d.enabled },
+      ]);
       const body = unwrap<{ updated: number }>(res);
       if (body.code === 0) {
         toast.success(`已更新套餐 ${p.pkgId} 定价`);
@@ -331,11 +457,15 @@ export default function SubjectDetailPage() {
     const pkgId = String(chosen.tigerPkgId ?? chosen.id);
     const priceVal = newPrice.trim() === '' ? null : Number(newPrice);
     const markupVal = newMarkup.trim() === '' ? null : Number(newMarkup);
+    const costVal = newCost.trim() === '' ? null : Number(newCost);
     if (priceVal != null && (!Number.isFinite(priceVal) || priceVal < 0)) return toast.warning('价格不合法');
     if (markupVal != null && !Number.isFinite(markupVal)) return toast.warning('加价比例不合法');
+    if (costVal != null && (!Number.isFinite(costVal) || costVal < 0)) return toast.warning('成本价不合法');
     setAddingPrice(true);
     try {
-      const res = await adminApi.setSubjectPrices(id, [{ pkgId, price: priceVal, markupPercent: markupVal, enabled: true }]);
+      const res = await adminApi.setSubjectPrices(id, [
+        { pkgId, price: priceVal, markupPercent: markupVal, costPrice: costVal, enabled: true },
+      ]);
       const body = unwrap<{ updated: number }>(res);
       if (body.code === 0) {
         toast.success(`已为该主体添加套餐 ${pkgId} 的定价`);
@@ -423,9 +553,45 @@ export default function SubjectDetailPage() {
                     step={0.5}
                   />
                 </Field>
+                <Field label="分成比例 %（临时方案，未定案）">
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    value={editForm.splitPercent}
+                    onChange={(e) => setEditForm({ ...editForm, splitPercent: e.target.value })}
+                    placeholder="0-100，选填"
+                  />
+                </Field>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="授信额度上限（留空=不限，元）">
+                  <Input
+                    type="number"
+                    min={0}
+                    value={editForm.quotaLimit}
+                    onChange={(e) => setEditForm({ ...editForm, quotaLimit: e.target.value })}
+                    placeholder="留空表示不限"
+                  />
+                </Field>
                 <Field label="备注">
                   <Input value={editForm.remark} onChange={(e) => setEditForm({ ...editForm, remark: e.target.value })} />
                 </Field>
+              </div>
+              {/* 授信额度概览 */}
+              <div className="grid grid-cols-2 gap-3 rounded-lg border bg-muted/30 p-3 sm:grid-cols-5">
+                <Stat label="账户余额" value={`¥${Number(subject.balance ?? 0).toLocaleString()}`} />
+                <Stat label="授信额度" value={subject.quotaLimit != null ? `¥${Number(subject.quotaLimit).toLocaleString()}` : '无限'} />
+                <Stat label="已用额度" value={`¥${Number(subject.usedQuota ?? 0).toLocaleString()}`} />
+                <Stat
+                  label="可透支"
+                  value={
+                    subject.quotaLimit != null
+                      ? `¥${Math.max(0, Number(subject.quotaLimit) - Number(subject.usedQuota ?? 0)).toLocaleString()}`
+                      : '—'
+                  }
+                />
+                <Stat label="分成比例" value={subject.splitPercent != null ? `${subject.splitPercent}%` : '—'} />
               </div>
               <div className="flex justify-end">
                 <Button size="sm" onClick={saveInfo} disabled={saving}>
@@ -504,6 +670,164 @@ export default function SubjectDetailPage() {
             </CardContent>
           </Card>
 
+          {/* 授信额度操作 */}
+          <Card className="panel-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-[15px] text-ink">授信额度操作</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="rounded-lg border border-dashed bg-muted/40 px-4 py-3 text-[12px] text-muted-foreground">
+                绑定账号余额与授信额度关联；「结清记账」将已用额度清零（允许超额冲正），「额度调整」直接增减已用额度（正数为增加扣减，负数为冲回）。操作均记入下方流水。
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={() => { setSettleAmount(''); setSettleNote(''); setSettleOpen(true); }}>
+                  <RefreshCw className="h-4 w-4" /> 结清记账
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => { setAdjAmount(''); setAdjReason(''); setAdjOpen(true); }}>
+                  <Edit3 className="h-4 w-4" /> 额度调整
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 记账流水 */}
+          <Card className="panel-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center justify-between text-[15px] text-ink">
+                <span>记账流水（{ledgerTotal}）</span>
+                <div className="w-40">
+                  <Select
+                    value={ledgerType || '__all'}
+                    onValueChange={(v) => {
+                      setLedgerPage(1);
+                      setLedgerType(v === '__all' ? '' : v);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="全部类型" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__all">全部类型</SelectItem>
+                      <SelectItem value="order_debit">授信透支</SelectItem>
+                      <SelectItem value="balance_debit">余额扣款</SelectItem>
+                      <SelectItem value="refund_credit">退款冲回</SelectItem>
+                      <SelectItem value="balance_refund">退款回补</SelectItem>
+                      <SelectItem value="deposit_credit">充值入账</SelectItem>
+                      <SelectItem value="settle_credit">结清</SelectItem>
+                      <SelectItem value="adjust">调整</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {ledgerLoading ? (
+                <div className="flex items-center justify-center gap-2 py-10 text-[12.5px] text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> 加载中…
+                </div>
+              ) : ledger.length === 0 ? (
+                <div className="py-10 text-center text-[12.5px] text-muted-foreground">暂无记账流水</div>
+              ) : (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>类型</TableHead>
+                        <TableHead>金额</TableHead>
+                        <TableHead>单号</TableHead>
+                        <TableHead>备注</TableHead>
+                        <TableHead>操作人</TableHead>
+                        <TableHead>时间</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {ledger.map((l) => {
+                        const meta = LEDGER_META[l.type] || { label: l.type || '—', credit: false };
+                        const signed = l.type === 'adjust' ? parseAdjSign(l.note) : meta.credit;
+                        const display = signed ? `+¥${Number(l.amount).toLocaleString()}` : `-¥${Number(l.amount).toLocaleString()}`;
+                        return (
+                          <TableRow key={l.id}>
+                            <TableCell>
+                              <span
+                                className={
+                                  meta.credit
+                                    ? 'text-[12.5px] font-medium text-emerald-700'
+                                    : 'text-[12.5px] font-medium text-rose-600'
+                                }
+                              >
+                                {meta.label}
+                              </span>
+                            </TableCell>
+                            <TableCell className={signed ? 'font-medium text-emerald-700' : 'font-medium text-rose-600'}>
+                              {display}
+                            </TableCell>
+                            <TableCell className="font-mono text-[12.5px] text-muted-foreground">
+                              {l.orderNo || l.refundNo || '—'}
+                            </TableCell>
+                            <TableCell className="max-w-[16rem] truncate text-muted-foreground">{l.note || '—'}</TableCell>
+                            <TableCell className="text-muted-foreground">{l.operatorName || '—'}</TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {l.createdAt ? new Date(l.createdAt).toLocaleString() : '—'}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                  <div className="mt-4 flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-[12px] text-muted-foreground">
+                      每页
+                      <select
+                        className="h-8 rounded-md border border-input bg-background px-2 text-[12px]"
+                        value={ledgerPageSize}
+                        onChange={(e) => {
+                          setLedgerPageSize(Number(e.target.value));
+                          setLedgerPage(1);
+                        }}
+                      >
+                        {[10, 20, 50].map((s) => (
+                          <option key={s} value={s}>
+                            {s}
+                          </option>
+                        ))}
+                      </select>
+                      条
+                    </div>
+                    {ledgerTotal > ledgerPageSize && (
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious
+                              onClick={() => setLedgerPage((p) => Math.max(1, p - 1))}
+                              className={ledgerPage <= 1 ? 'pointer-events-none opacity-50' : ''}
+                            />
+                          </PaginationItem>
+                          <PaginationItem>
+                            <span className="px-3 text-[12.5px] text-muted-foreground">
+                              {ledgerPage} / {Math.max(1, Math.ceil(ledgerTotal / ledgerPageSize))}
+                            </span>
+                          </PaginationItem>
+                          <PaginationItem>
+                            <PaginationNext
+                              onClick={() =>
+                                setLedgerPage((p) => Math.min(Math.max(1, Math.ceil(ledgerTotal / ledgerPageSize)), p + 1))
+                              }
+                              className={
+                                ledgerPage >= Math.max(1, Math.ceil(ledgerTotal / ledgerPageSize))
+                                  ? 'pointer-events-none opacity-50'
+                                  : ''
+                              }
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    )}
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
           {/* 套餐定价 */}
           <Card className="panel-card">
             <CardHeader className="pb-3">
@@ -516,7 +840,7 @@ export default function SubjectDetailPage() {
             </CardHeader>
             <CardContent>
               <div className="mb-3 rounded-lg border border-dashed bg-muted/40 px-4 py-3 text-[12px] text-muted-foreground">
-                缺省回落平台价。设置「固定售价」优先生效；否则按「加价比例」（基于平台价）计算；关闭「启用」后该主体将看不到此套餐。
+                缺省回落平台价。设置「固定售价」优先生效；否则按「加价比例」（基于平台价）计算；「成本价」作为结算基准参考。「启用」关闭后该主体将看不到此套餐。
               </div>
               {prices.length === 0 ? (
                 <div className="py-8 text-center text-[12.5px] text-muted-foreground">
@@ -529,13 +853,14 @@ export default function SubjectDetailPage() {
                       <TableHead>套餐 ID</TableHead>
                       <TableHead>固定售价</TableHead>
                       <TableHead>加价比例（%）</TableHead>
+                      <TableHead>成本价</TableHead>
                       <TableHead>启用</TableHead>
                       <TableHead className="text-right">操作</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {prices.map((p) => {
-                      const d = priceDrafts[p.pkgId] || { price: '', markup: '', enabled: true };
+                      const d = priceDrafts[p.pkgId] || { price: '', markup: '', cost: '', enabled: true };
                       return (
                         <TableRow key={p.pkgId}>
                           <TableCell className="font-mono text-[12.5px]">{p.pkgId}</TableCell>
@@ -556,6 +881,17 @@ export default function SubjectDetailPage() {
                               disabled={priceSaving === p.pkgId}
                               onChange={(e) =>
                                 setPriceDrafts((prev) => ({ ...prev, [p.pkgId]: { ...d, markup: e.target.value } }))
+                              }
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <Input
+                              className="h-7 w-24 px-1.5 text-[12.5px]"
+                              value={d.cost}
+                              placeholder="留空"
+                              disabled={priceSaving === p.pkgId}
+                              onChange={(e) =>
+                                setPriceDrafts((prev) => ({ ...prev, [p.pkgId]: { ...d, cost: e.target.value } }))
                               }
                             />
                           </TableCell>
@@ -712,7 +1048,7 @@ export default function SubjectDetailPage() {
               </Table>
             )}
           </div>
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Field label="已选套餐">
               <div className="flex h-9 items-center rounded-md border border-input bg-background px-3 text-[13px] text-ink">
                 {chosen ? (
@@ -724,12 +1060,17 @@ export default function SubjectDetailPage() {
                 )}
               </div>
             </Field>
-            <Field label="固定售价（留空用加价比例或平台价）">
-              <NumberField value={newPrice === '' ? 0 : Number(newPrice)} onChange={(v) => setNewPrice(String(v))} min={0} precision={2} step={0.1} />
-            </Field>
-            <Field label="加价比例（%）">
-              <NumberField value={newMarkup === '' ? 0 : Number(newMarkup)} onChange={(v) => setNewMarkup(String(v))} min={0} precision={2} step={0.5} />
-            </Field>
+            <div className="grid grid-cols-3 gap-4">
+              <Field label="固定售价">
+                <NumberField value={newPrice === '' ? 0 : Number(newPrice)} onChange={(v) => setNewPrice(String(v))} min={0} precision={2} step={0.1} />
+              </Field>
+              <Field label="加价比例（%）">
+                <NumberField value={newMarkup === '' ? 0 : Number(newMarkup)} onChange={(v) => setNewMarkup(String(v))} min={0} precision={2} step={0.5} />
+              </Field>
+              <Field label="成本价">
+                <NumberField value={newCost === '' ? 0 : Number(newCost)} onChange={(v) => setNewCost(String(v))} min={0} precision={2} step={0.1} />
+              </Field>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddPriceOpen(false)} disabled={addingPrice}>
@@ -803,6 +1144,67 @@ export default function SubjectDetailPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 结清记账弹窗 */}
+      <Dialog open={settleOpen} onOpenChange={setSettleOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>结清记账</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Field label="结清金额（元）*">
+              <Input
+                type="number"
+                min={0}
+                value={settleAmount}
+                onChange={(e) => setSettleAmount(e.target.value)}
+                placeholder="结清后已用额度清零"
+              />
+            </Field>
+            <Field label="备注">
+              <Input value={settleNote} onChange={(e) => setSettleNote(e.target.value)} placeholder="选填" />
+            </Field>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSettleOpen(false)} disabled={settleSaving}>
+              取消
+            </Button>
+            <Button onClick={submitSettle} disabled={settleSaving}>
+              {settleSaving ? '提交中…' : '确认结清'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 额度调整弹窗 */}
+      <Dialog open={adjOpen} onOpenChange={setAdjOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>额度调整</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Field label="调整金额（元，带符号）*">
+              <Input
+                type="number"
+                value={adjAmount}
+                onChange={(e) => setAdjAmount(e.target.value)}
+                placeholder="正数增加扣减，负数冲回"
+              />
+            </Field>
+            <Field label="原因">
+              <Input value={adjReason} onChange={(e) => setAdjReason(e.target.value)} placeholder="选填" />
+            </Field>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAdjOpen(false)} disabled={adjSaving}>
+              取消
+            </Button>
+            <Button onClick={submitAdj} disabled={adjSaving}>
+              {adjSaving ? '提交中…' : '确认调整'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -814,4 +1216,32 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
       {children}
     </div>
   );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-[11.5px] text-muted-foreground">{label}</div>
+      <div className="mt-0.5 text-[15px] font-semibold text-ink">{value}</div>
+    </div>
+  );
+}
+
+// 记账流水类型 → 中文标签，credit=true 表示冲回/结清（绿色+），否则为扣额（红色-）
+const LEDGER_META: Record<string, { label: string; credit: boolean }> = {
+  order_debit: { label: '授信透支', credit: false },
+  balance_debit: { label: '余额扣款', credit: false },
+  refund_credit: { label: '退款冲回', credit: true },
+  balance_refund: { label: '退款回补', credit: true },
+  deposit_credit: { label: '充值入账', credit: true },
+  settle_credit: { label: '结清', credit: true },
+  adjust: { label: '调整', credit: false },
+};
+
+// 调整流水的正负号记录在备注「增减:X」中，据此还原符号
+function parseAdjSign(note?: string | null): boolean {
+  if (!note) return false;
+  const m = note.match(/增减:([+-]?\d+(?:\.\d+)?)/);
+  if (!m) return false;
+  return Number(m[1]) >= 0;
 }

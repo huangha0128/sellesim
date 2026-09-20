@@ -49,6 +49,8 @@ export default function SubjectsPage() {
     contactPhone: '',
     callbackUrl: '',
     defaultMarkupPercent: '',
+    quotaLimit: '',
+    splitPercent: '',
     remark: '',
   });
   const [creating, setCreating] = useState(false);
@@ -83,7 +85,7 @@ export default function SubjectsPage() {
   }, []);
 
   const openCreate = () => {
-    setForm({ name: '', contactName: '', contactPhone: '', callbackUrl: '', defaultMarkupPercent: '', remark: '' });
+    setForm({ name: '', contactName: '', contactPhone: '', callbackUrl: '', defaultMarkupPercent: '', quotaLimit: '', splitPercent: '', remark: '' });
     setCreateOpen(true);
   };
 
@@ -98,6 +100,8 @@ export default function SubjectsPage() {
         callbackUrl: form.callbackUrl.trim() || undefined,
         defaultMarkupPercent:
           form.defaultMarkupPercent.trim() === '' ? undefined : Number(form.defaultMarkupPercent),
+        quotaLimit: form.quotaLimit.trim() === '' ? null : Number(form.quotaLimit),
+        splitPercent: form.splitPercent.trim() === '' ? undefined : Number(form.splitPercent),
         remark: form.remark.trim() || undefined,
       });
       const body = unwrap<{ id: string; name: string; status: string; key: { keyId: string; keySecret: string; mode: string } }>(res);
@@ -179,6 +183,10 @@ export default function SubjectsPage() {
                   <TableHead>联系人</TableHead>
                   <TableHead>联系电话</TableHead>
                   <TableHead>默认加价</TableHead>
+                  <TableHead>余额</TableHead>
+                  <TableHead>授信额度</TableHead>
+                  <TableHead>已用额度</TableHead>
+                  <TableHead>可用额度</TableHead>
                   <TableHead className="text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
@@ -212,6 +220,22 @@ export default function SubjectsPage() {
                     <TableCell className="text-muted-foreground">{s.contactPhone || '—'}</TableCell>
                     <TableCell>
                       {s.defaultMarkupPercent != null ? `${s.defaultMarkupPercent}%` : '—'}
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-semibold text-emerald-600">
+                        {s.balance != null ? `¥${Number(s.balance).toLocaleString()}` : '¥0'}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      {s.quotaLimit != null ? `¥${Number(s.quotaLimit).toLocaleString()}` : <span className="text-muted-foreground">无限</span>}
+                    </TableCell>
+                    <TableCell>
+                      {s.usedQuota != null ? `¥${Number(s.usedQuota).toLocaleString()}` : '—'}
+                    </TableCell>
+                    <TableCell>
+                      {s.quotaLimit != null
+                        ? `¥${Math.max(0, Number(s.quotaLimit) - (Number(s.usedQuota) || 0)).toLocaleString()}`
+                        : '—'}
                     </TableCell>
                     <TableCell align="right">
                       <div className="flex justify-end gap-1">
@@ -284,6 +308,27 @@ export default function SubjectsPage() {
               </Field>
               <Field label="备注">
                 <Input value={form.remark} onChange={(e) => setForm({ ...form, remark: e.target.value })} placeholder="选填" />
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="授信额度上限（留空=不限，元）">
+                <Input
+                  type="number"
+                  min={0}
+                  value={form.quotaLimit}
+                  onChange={(e) => setForm({ ...form, quotaLimit: e.target.value })}
+                  placeholder="留空表示不限"
+                />
+              </Field>
+              <Field label="分成比例 %（临时方案，未定案）">
+                <Input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={form.splitPercent}
+                  onChange={(e) => setForm({ ...form, splitPercent: e.target.value })}
+                  placeholder="0-100，选填"
+                />
               </Field>
             </div>
           </div>

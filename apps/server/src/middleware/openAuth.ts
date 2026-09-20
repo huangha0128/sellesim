@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 import Redis from 'ioredis';
 import { PrismaClient } from '@prisma/client';
 import { signContent, hmacVerify } from '../utils/hmac';
+import { config } from '../config';
 
 /**
  * Open platform v2 dual-mode auth middleware.
@@ -30,6 +32,7 @@ export interface OpenAuthRequest extends Request {
     status: string;
     callbackUrl?: string | null;
     defaultMarkupPercent?: number | null;
+    splitPercent?: number | null;
     userId?: string | null;
   };
   apiKey?: {
@@ -37,6 +40,8 @@ export interface OpenAuthRequest extends Request {
     keyId: string;
     mode: string | null;
   };
+  /** True when authenticated via the partner portal JWT (not an HMAC key). */
+  partnerPortal?: boolean;
   /** raw body set by express.json() verify for signature checks */
   rawBody?: string;
 }
@@ -126,6 +131,42 @@ export const openAuth = (prisma: PrismaClient) => async (
   next: NextFunction,
 ) => {
   try {
+    // Portal session: Bearer token (type=partner) authenticates the logged-in
+    // partner directly. This is distinct from the API key HMAC path and lets the
+    // partner portal perform both reads and writes under its own identity.
+    const bearer = String(req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (bearer) {
+      let decoded: any;
+      try {
+        decoded = jwt.verify(bearer, config.jwt.secret) as any;
+      } catch {
+        return res.status(401).json({ code: 401, message: '门户登录已过期' });
+      }
+      if (!decoded || decoded.type !== 'partner' || !decoded.subjectId) {
+        return res.status(401).json({ code: 401, message: '无效的门户凭证' });
+      }
+      const subject = await prisma.subject.findUnique({ where: { id: decoded.subjectId } });
+      if (!subject || subject.status !== 'active') {
+        return res.status(401).json({ code: 401, message: '主体不存在或已停用' });
+      }
+      const used = await rateLimit(subject.id, req.method);
+      if (used > (isWriteMethod(req.method) ? WRITE_LIMIT : READ_LIMIT)) {
+        return res.status(429).json({ code: 429, message: '请求过于频繁，请稍后重试' });
+      }
+      req.subject = {
+        id: subject.id,
+        name: subject.name,
+        status: subject.status,
+        callbackUrl: subject.callbackUrl,
+        defaultMarkupPercent: subject.defaultMarkupPercent,
+        splitPercent: subject.splitPercent,
+        userId: subject.userId,
+      };
+      req.apiKey = { id: 'portal_' + decoded.subjectId, keyId: decoded.keyId || 'portal', mode: 'portal' };
+      req.partnerPortal = true;
+      return next();
+    }
+
     const keyId = String(req.headers['x-api-key'] || '');
     if (!keyId) {
       return res.status(401).json({ code: 401, message: '缺少鉴权头 X-Api-Key' });
@@ -183,7 +224,7 @@ export const openAuth = (prisma: PrismaClient) => async (
     }
 
     // 7. inject + async lastUsedAt
-    req.subject = { id: subject.id, name: subject.name, status: subject.status, callbackUrl: subject.callbackUrl, defaultMarkupPercent: subject.defaultMarkupPercent, userId: subject.userId };
+    req.subject = { id: subject.id, name: subject.name, status: subject.status, callbackUrl: subject.callbackUrl, defaultMarkupPercent: subject.defaultMarkupPercent, splitPercent: subject.splitPercent, userId: subject.userId };
     req.apiKey = { id: apiKey.id, keyId: apiKey.keyId, mode: apiKey.mode };
     prisma.apiKey.update({ where: { id: apiKey.id }, data: { lastUsedAt: new Date() } }).catch(() => {
       /* fire and forget */

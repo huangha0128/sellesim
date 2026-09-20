@@ -17,9 +17,16 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { adminApi, unwrap, getErrorMessage, type Settings } from '@/api';
 
+const DEFAULT_MAX_REFUND_REJECT_COUNT = 3;
+
 export default function SettingsPage() {
-  const [settings, setSettings] = useState<Settings>({ displayCurrency: 'CNY', usdCnyRate: 7 });
+  const [settings, setSettings] = useState<Settings>({
+    displayCurrency: 'CNY',
+    usdCnyRate: 7,
+    maxRefundRejectCount: DEFAULT_MAX_REFUND_REJECT_COUNT,
+  });
   const [rateInput, setRateInput] = useState('7');
+  const [rejectCountInput, setRejectCountInput] = useState(String(DEFAULT_MAX_REFUND_REJECT_COUNT));
   const [busy, setBusy] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -30,6 +37,7 @@ export default function SettingsPage() {
         const data = unwrap<{ settings: Settings }>(res).data.settings;
         setSettings(data);
         setRateInput(String(data.usdCnyRate));
+        setRejectCountInput(String(data.maxRefundRejectCount ?? DEFAULT_MAX_REFUND_REJECT_COUNT));
       })
       .catch((e) => setErrorMsg(getErrorMessage(e, '读取设置失败')));
   }, []);
@@ -43,13 +51,27 @@ export default function SettingsPage() {
       setBusy(false);
       return;
     }
+    const maxReject = Number(rejectCountInput);
+    if (!Number.isInteger(maxReject) || maxReject < 1) {
+      setErrorMsg('退款拒绝次数上限必须是大于等于 1 的整数');
+      setBusy(false);
+      return;
+    }
     try {
-      const res = await adminApi.updateSettings({ displayCurrency: settings.displayCurrency, usdCnyRate: rate });
+      const res = await adminApi.updateSettings({
+        displayCurrency: settings.displayCurrency,
+        usdCnyRate: rate,
+        maxRefundRejectCount: maxReject,
+      });
       const body = unwrap<unknown>(res);
       if (body.code !== 0) {
         setErrorMsg(body.message || '保存失败');
       } else {
-        setSettings({ displayCurrency: settings.displayCurrency, usdCnyRate: rate });
+        setSettings({
+          displayCurrency: settings.displayCurrency,
+          usdCnyRate: rate,
+          maxRefundRejectCount: maxReject,
+        });
         toast.success('设置已保存，套餐价格已重新换算');
       }
     } catch (e) {
@@ -104,6 +126,24 @@ export default function SettingsPage() {
               />
               <p className="text-[12px] text-muted-foreground">1 美元 = 该数值人民币，用于展示货币换算。</p>
             </div>
+          </div>
+
+          <Separator className="my-5" />
+
+          <div className="space-y-2">
+            <Label htmlFor="max-reject-count">退款申请被拒绝次数上限</Label>
+            <Input
+              id="max-reject-count"
+              type="number"
+              min={1}
+              step={1}
+              value={rejectCountInput}
+              onChange={(e) => setRejectCountInput(e.target.value)}
+              placeholder="例如 3"
+            />
+            <p className="text-[12px] text-muted-foreground">
+              用户对同一订单发起退款申请，被后台拒绝的次数达到该上限后，将不能再对该订单发起退款申请。
+            </p>
           </div>
 
           <Separator className="my-5" />

@@ -2,7 +2,7 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { tigerClient } from '../tiger';
 import { resolveEsimActivation } from '../tiger/activation';
-import { applyRefundRequest } from '../services/refund';
+import { applyRefundRequest, readMaxRefundRejectCount } from '../services/refund';
 import { createOrder, OrderCreateError } from '../services/order';
 import { createPaymentIntent, fulfillPaidOrder, buildRefundDeps } from '../services/payment';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
@@ -97,7 +97,9 @@ export default (prisma: PrismaClient) => {
       const resolved = await resolveEsimActivation(order.esim);
       if (resolved) Object.assign(order.esim, resolved);
     }
-    res.json({ code: 0, data: { order } });
+    // 附带退款申请被拒绝次数上限，供小程序端判断是否还能再次申请退款
+    const maxRefundRejectCount = await readMaxRefundRejectCount();
+    res.json({ code: 0, data: { order, maxRefundRejectCount } });
   });
 
   /**

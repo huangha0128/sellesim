@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { alipay } from '../utils/alipay';
 import { fulfillPaidOrder } from '../services/payment';
 import { enqueueSubjectWebhook, enqueueWebhook } from '../services/webhook';
+import { fulfillRecharge, RECHARGE_PREFIX } from '../services/recharge';
 
 /**
  * 支付宝异步通知专用的表单解析器。
@@ -67,6 +68,19 @@ export default (prisma: PrismaClient) => {
     }
 
     try {
+      // subject wallet recharge: out_trade_no carries the 'RC' prefix
+      if (String(outTradeNo).startsWith(RECHARGE_PREFIX)) {
+        try {
+          await fulfillRecharge(prisma, outTradeNo, {
+            alipayTradeNo: params.trade_no || '',
+            paidAmount: Number(params.buyer_pay_amount ?? params.total_amount ?? 0),
+          });
+        } catch (re: any) {
+          console.error(`[alipay] 充值 ${outTradeNo} 入账失败：`, re.message);
+        }
+        return res.status(200).send('success');
+      }
+
       const order = await prisma.order.findUnique({
         where: { orderNo: outTradeNo },
       });

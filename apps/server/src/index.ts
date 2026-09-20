@@ -12,6 +12,7 @@ import authRoutes from './routes/auth';
 import alipayRoutes from './routes/alipay';
 import externalRoutes from './routes/external';
 import openRoutes from './routes/open';
+import openAuthRoutes from './routes/open-auth';
 import { refreshPackageCache, PACKAGE_REFRESH_INTERVAL_MS } from './tiger/view';
 import { retryPendingWebhooks, retryPendingSubjectWebhooks } from './services/webhook';
 import { genSalt, hashPassword } from './middleware/adminAuth';
@@ -40,7 +41,8 @@ app.use('/api/esims', esimRoutes(prisma));
 app.use('/api/admin', adminRoutes(prisma));
 app.use('/api/alipay', alipayRoutes(prisma));
 app.use('/api/external', externalRoutes(prisma));
-app.use('/api/open/v1', openRoutes(prisma));
+app.use('/api/open/v1', openAuthRoutes(prisma)); // public: POST /auth/login (portal login)
+app.use('/api/open/v1', openRoutes(prisma)); // protected: openAuth (key or portal JWT)
 
 // 开放平台公开文档（免鉴权）：/open-api 浏览器直接访问
 app.use('/open-api', express.static(path.join(__dirname, '..', 'public', 'open-api')));

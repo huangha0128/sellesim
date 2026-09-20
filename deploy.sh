@@ -126,6 +126,7 @@ echo "==> [4/7] 构建并启动容器"
 # rsync 铺的仍是旧 dist，线上官网永远停在第一次部署的那一版。
 docker compose build --no-cache server
 docker compose build admin
+docker compose build partner
 docker compose build caddy
 docker compose rm -f web 2>/dev/null || true
 docker compose build web

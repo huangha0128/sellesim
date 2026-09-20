@@ -4,7 +4,12 @@ import { PrismaClient } from '@prisma/client';
 import { tigerClient, iccidPoolCount, getIccidPool, fetchTigerIccids } from '../tiger';
 import { syncAllFromTiger, syncRegionsFromTiger, syncPackagesFromTiger } from '../tiger/sync';
 import { enrichEsims } from '../tiger/esim-enrich';
-import { refundOrder, rejectRefundRequest } from '../services/refund';
+import {
+  refundOrder,
+  rejectRefundRequest,
+  clearMaxRefundRejectCache,
+  DEFAULT_MAX_REFUND_REJECT_COUNT,
+} from '../services/refund';
 import { sendRefundEmail } from '../services/email';
 import { buildRefundDeps } from '../services/payment';
 import { genAppSecret } from '../utils/hmac';
@@ -511,31 +516,36 @@ export default (prisma: PrismaClient) => {
 
   // ===== 汇率与展示货币设置（全局）=====
 
-  /** GET /api/admin/settings 读取全局设置：展示货币 + USD⇄CNY 汇率 */
+  /** GET /api/admin/settings 读取全局设置：展示货币 + USD⇄CNY 汇率 + 退款拒绝次数上限 */
   router.get('/settings', async (_req: Request, res: Response) => {
     const rows = await prisma.setting.findMany({
-      where: { key: { in: ['displayCurrency', 'usdCnyRate'] } },
+      where: { key: { in: ['displayCurrency', 'usdCnyRate', 'maxRefundRejectCount'] } },
     });
     const map = new Map(rows.map((r) => [r.key, r.value]));
+    const maxReject = Number(map.get('maxRefundRejectCount'));
     res.json({
       code: 0,
       data: {
         settings: {
           displayCurrency: map.get('displayCurrency') === 'USD' ? 'USD' : 'CNY',
           usdCnyRate: Number(map.get('usdCnyRate') || 7),
+          maxRefundRejectCount:
+            Number.isFinite(maxReject) && maxReject >= 1
+              ? Math.floor(maxReject)
+              : DEFAULT_MAX_REFUND_REJECT_COUNT,
         },
       },
     });
   });
 
   /**
-   * PUT /api/admin/settings 设置展示货币与汇率
-   * body: { displayCurrency?: 'CNY'|'USD', usdCnyRate?: number }
+   * PUT /api/admin/settings 设置展示货币与汇率 / 退款拒绝次数上限
+   * body: { displayCurrency?: 'CNY'|'USD', usdCnyRate?: number, maxRefundRejectCount?: number }
    * 写完后清 settings 白名单缓存 + 失效套餐缓存并同步重拉，保证前台即时重新换算。
    */
   router.put('/settings', async (req: Request, res: Response) => {
     try {
-      const { displayCurrency, usdCnyRate } = req.body || {};
+      const { displayCurrency, usdCnyRate, maxRefundRejectCount } = req.body || {};
       const writes = [];
       if (displayCurrency === 'USD' || displayCurrency === 'CNY') {
         writes.push(
@@ -559,8 +569,22 @@ export default (prisma: PrismaClient) => {
           }),
         );
       }
+      if (maxRefundRejectCount !== undefined && maxRefundRejectCount !== null && maxRefundRejectCount !== '') {
+        const n = Number(maxRefundRejectCount);
+        if (!Number.isInteger(n) || n < 1) {
+          return res.json({ code: 1, message: '退款拒绝次数上限必须是大于等于 1 的整数' });
+        }
+        writes.push(
+          prisma.setting.upsert({
+            where: { key: 'maxRefundRejectCount' },
+            update: { value: String(n) },
+            create: { key: 'maxRefundRejectCount', value: String(n) },
+          }),
+        );
+        clearMaxRefundRejectCache();
+      }
       if (writes.length === 0) {
-        return res.json({ code: 1, message: '请至少提供 displayCurrency 或 usdCnyRate' });
+        return res.json({ code: 1, message: '请至少提供 displayCurrency、usdCnyRate 或 maxRefundRejectCount' });
       }
       await prisma.$transaction(writes);
       await refreshAfterOverride();
@@ -888,7 +912,7 @@ export default (prisma: PrismaClient) => {
 
   /** POST /api/admin/subjects 创建主体（自动生成合成用户 + 第一把 live 密钥，密钥仅一次返回） */
   router.post('/subjects', async (req: Request, res: Response) => {
-    const { name, contactName, contactPhone, callbackUrl, defaultMarkupPercent, remark } = req.body || {};
+    const { name, contactName, contactPhone, callbackUrl, defaultMarkupPercent, quotaLimit, splitPercent, remark } = req.body || {};
     if (!name) return res.json({ code: 1, message: '请输入主体名称' });
     try {
       const result = await prisma.$transaction(async (tx) => {
@@ -903,6 +927,8 @@ export default (prisma: PrismaClient) => {
             contactPhone: contactPhone || null,
             callbackUrl: callbackUrl || null,
             defaultMarkupPercent: defaultMarkupPercent != null ? Number(defaultMarkupPercent) : null,
+            quotaLimit: quotaLimit != null ? Number(quotaLimit) : null,
+            splitPercent: splitPercent != null ? Number(splitPercent) : null,
             remark: remark || null,
             userId: user.id,
           },
@@ -944,9 +970,9 @@ export default (prisma: PrismaClient) => {
     }
   });
 
-  /** PUT /api/admin/subjects/:id 改资料/状态/回调地址/默认加价 */
+  /** PUT /api/admin/subjects/:id 改资料/状态/回调地址/默认加价/授信额度/分成比例 */
   router.put('/subjects/:id', async (req: Request, res: Response) => {
-    const { name, contactName, contactPhone, callbackUrl, defaultMarkupPercent, remark, status } = req.body || {};
+    const { name, contactName, contactPhone, callbackUrl, defaultMarkupPercent, quotaLimit, splitPercent, remark, status } = req.body || {};
     try {
       const data: any = {};
       if (name !== undefined) data.name = String(name);
@@ -955,6 +981,8 @@ export default (prisma: PrismaClient) => {
       if (callbackUrl !== undefined) data.callbackUrl = callbackUrl || null;
       if (remark !== undefined) data.remark = remark || null;
       if (defaultMarkupPercent !== undefined) data.defaultMarkupPercent = defaultMarkupPercent == null ? null : Number(defaultMarkupPercent);
+      if (quotaLimit !== undefined) data.quotaLimit = quotaLimit == null ? null : Number(quotaLimit);
+      if (splitPercent !== undefined) data.splitPercent = splitPercent == null ? null : Number(splitPercent);
       if (status !== undefined && ['active', 'suspended'].includes(status)) data.status = status;
       if (!Object.keys(data).length) return res.json({ code: 1, message: '没有需要更新的字段' });
       const subject = await prisma.subject.update({ where: { id: req.params.id }, data });
@@ -1037,7 +1065,7 @@ export default (prisma: PrismaClient) => {
     }
   });
 
-  /** PUT /api/admin/subjects/:id/prices 批量设置/覆盖该主体套餐价。body { items: [{ pkgId, price?, markupPercent?, enabled? }] } */
+  /** PUT /api/admin/subjects/:id/prices 批量设置/覆盖该主体套餐价。body { items: [{ pkgId, price?, markupPercent?, costPrice?, enabled? }] } */
   router.put('/subjects/:id/prices', async (req: Request, res: Response) => {
     const items = Array.isArray(req.body?.items) ? req.body.items : [];
     if (!items.length) return res.json({ code: 1, message: '缺少 items' });
@@ -1053,11 +1081,13 @@ export default (prisma: PrismaClient) => {
               pkgId: String(it.pkgId),
               price: it.price != null ? Number(it.price) : null,
               markupPercent: it.markupPercent != null ? Number(it.markupPercent) : null,
+              costPrice: it.costPrice != null ? Number(it.costPrice) : null,
               enabled: it.enabled === undefined ? true : !!it.enabled,
             },
             update: {
               price: it.price !== undefined ? (it.price == null ? null : Number(it.price)) : undefined,
               markupPercent: it.markupPercent !== undefined ? (it.markupPercent == null ? null : Number(it.markupPercent)) : undefined,
+              costPrice: it.costPrice !== undefined ? (it.costPrice == null ? null : Number(it.costPrice)) : undefined,
               enabled: it.enabled === undefined ? undefined : !!it.enabled,
             },
           }),
@@ -1066,6 +1096,99 @@ export default (prisma: PrismaClient) => {
       res.json({ code: 0, data: { updated: results.length } });
     } catch (e: any) {
       res.status(500).json({ code: 1, message: '设置失败：' + e.message });
+    }
+  });
+
+  // ================= 授信额度（Open platform v3）=================
+
+  /** GET /api/admin/subjects/:id/ledger 记账流水（分页，按 type 过滤） */
+  router.get('/subjects/:id/ledger', async (req: Request, res: Response) => {
+    const where: any = { subjectId: req.params.id };
+    if (req.query.type) where.type = String(req.query.type);
+    const page = Math.max(1, Number(req.query.page) || 1);
+    const pageSize = Math.min(100, Math.max(1, Number(req.query.pageSize) || 20));
+    try {
+      const [total, rows] = await Promise.all([
+        prisma.subjectLedger.count({ where }),
+        prisma.subjectLedger.findMany({
+          where,
+          orderBy: { createdAt: 'desc' },
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+        }),
+      ]);
+      const operatorIds = Array.from(new Set(rows.map((r) => r.operatorId).filter(Boolean))) as string[];
+      const operators = operatorIds.length
+        ? await prisma.adminUser.findMany({ where: { id: { in: operatorIds } }, select: { id: true, username: true } })
+        : [];
+      const opMap = new Map(operators.map((o) => [o.id, o.username]));
+      res.json({
+        code: 0,
+        data: {
+          ledger: rows.map((l) => ({ ...l, operatorName: l.operatorId ? opMap.get(l.operatorId) || null : null })),
+          total,
+          page,
+          pageSize,
+        },
+      });
+    } catch (e: any) {
+      res.status(500).json({ code: 1, message: '查询失败：' + e.message });
+    }
+  });
+
+  /** POST /api/admin/subjects/:id/settle 结清记账：body { amount, note? } */
+  router.post('/subjects/:id/settle', async (req: Request, res: Response) => {
+    const amount = Number(req.body?.amount);
+    const note = req.body?.note ? String(req.body.note) : undefined;
+    if (!(amount > 0)) return res.json({ code: 1, message: '结清金额必须大于 0' });
+    try {
+      const subject = await prisma.subject.findUnique({ where: { id: req.params.id } });
+      if (!subject) return res.json({ code: 1, message: '主体不存在' });
+      // clamp to the amount already used, or allow credit (over-settle) if > used
+      const newUsed = Math.max(0, Number(subject.usedQuota ?? 0) - amount);
+      await prisma.$transaction([
+        prisma.subject.update({ where: { id: req.params.id }, data: { usedQuota: newUsed } }),
+        prisma.subjectLedger.create({
+          data: {
+            subjectId: req.params.id,
+            type: 'settle_credit',
+            amount,
+            note: note ? `${note}（结清 ${amount}）` : `结清 ${amount}`,
+            operatorId: (req as any).admin?.id || null,
+          },
+        }),
+      ]);
+      res.json({ code: 0, data: { usedQuota: newUsed } });
+    } catch (e: any) {
+      res.status(500).json({ code: 1, message: '结清失败：' + e.message });
+    }
+  });
+
+  /** POST /api/admin/subjects/:id/adjquota 额度调整：body { amount(带符号), reason? } */
+  router.post('/subjects/:id/adjquota', async (req: Request, res: Response) => {
+    const signed = Number(req.body?.amount);
+    const reason = req.body?.reason ? String(req.body.reason) : undefined;
+    if (!signed || !Number.isFinite(signed)) return res.json({ code: 1, message: '调整金额无效' });
+    try {
+      const subject = await prisma.subject.findUnique({ where: { id: req.params.id } });
+      if (!subject) return res.json({ code: 1, message: '主体不存在' });
+      const base = Number(subject.usedQuota ?? 0) + signed;
+      const newUsed = Math.max(0, base);
+      await prisma.$transaction([
+        prisma.subject.update({ where: { id: req.params.id }, data: { usedQuota: newUsed } }),
+        prisma.subjectLedger.create({
+          data: {
+            subjectId: req.params.id,
+            type: 'adjust',
+            amount: Math.abs(signed),
+            note: `${reason ? reason + '；' : ''}增减:${signed}`,
+            operatorId: (req as any).admin?.id || null,
+          },
+        }),
+      ]);
+      res.json({ code: 0, data: { usedQuota: newUsed } });
+    } catch (e: any) {
+      res.status(500).json({ code: 1, message: '调整失败：' + e.message });
     }
   });
 

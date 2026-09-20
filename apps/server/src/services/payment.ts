@@ -4,6 +4,7 @@ import { provisionEsim } from './provision';
 import { renewEsim } from './topup';
 import { sendEsimEmail, sendRenewEmail } from './email';
 import { readDisplayConfig, DEFAULT_DISPLAY_CONFIG } from '../pricing/priceOverride';
+import { readMaxRefundRejectCount } from './refund';
 import { config } from '../config';
 import type { RefundDeps } from './refund';
 
@@ -260,6 +261,7 @@ export function buildRefundDeps(prisma: PrismaClient, orderNo: string): RefundDe
       // 创建交易时写入的商户单号 out_trade_no 就是 orderNo，退款必须用它作为 out_trade_no
       return alipayProvider.refund(params);
     },
+    getMaxRejectCount: readMaxRefundRejectCount,
   };
 }
 

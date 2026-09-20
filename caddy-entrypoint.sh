@@ -45,6 +45,10 @@ $CADDY_DOMAIN {
         reverse_proxy admin:80
     }
 
+    handle /partner* {
+        reverse_proxy partner:80
+    }
+
     handle /open-api* {
         reverse_proxy server:6660
     }
@@ -68,6 +72,10 @@ else
 
     handle /backend* {
         reverse_proxy admin:80
+    }
+
+    handle /partner* {
+        reverse_proxy partner:80
     }
 
     handle /open-api* {
