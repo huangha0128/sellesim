@@ -87,7 +87,7 @@ export default (prisma: PrismaClient) => {
   router.get('/:orderNo', authMiddleware, async (req: AuthRequest, res: Response) => {
     const order = await prisma.order.findUnique({
       where: { orderNo: req.params.orderNo },
-      include: { esim: true },
+      include: { esim: true, refundRequests: { orderBy: { createdAt: 'asc' } } },
     });
     if (!order) {
       return res.json({ code: 1, message: '订单不存在' });

@@ -93,6 +93,17 @@ export interface CatalogItem extends PackageItem {
   added: boolean;
 }
 
+export interface RefundRecord {
+  id: string;
+  status: 'requested' | 'rejected' | 'approved';
+  reason?: string | null;
+  rejectReason?: string | null;
+  operator?: string | null;
+  approvedAt?: string | null;
+  rejectedAt?: string | null;
+  createdAt?: string;
+}
+
 export interface Order {
   id: string;
   orderNo: string;
@@ -108,6 +119,7 @@ export interface Order {
   refundRequestedAt?: string | null;
   refundRejectReason?: string | null;
   refundRejectedAt?: string | null;
+  refundRejectCount?: number | null;
   createdAt?: string;
   // 套餐快照（不再嵌套 package，实时来源 TigerESIM）
   countryCode?: string | null;
@@ -117,6 +129,7 @@ export interface Order {
   isUnlimited?: boolean;
   package?: PackageItem;
   user?: { id: string; nickname?: string; alipayUserId?: string } | null;
+  refundRequests?: RefundRecord[];
 }
 
 export interface Esim {

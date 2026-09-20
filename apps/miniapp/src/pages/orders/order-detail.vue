@@ -138,13 +138,44 @@
           <text class="refund-banner-label">{{ fmt('orders.rejectReasonLabel') }}：</text>{{ order.refundRejectReason }}
         </view>
         <text class="refund-banner-sub">{{ fmt('orders.refundRejectedSub') }}</text>
+        <text v-if="!refundRejectReached" class="refund-banner-sub">
+          {{ fmt('orders.refundRejectCountLeft', { count: refundRejectCount, remain: refundRejectRemain }) }}
+        </text>
+        <text v-else class="refund-banner-sub refund-banner-sub--danger">
+          {{ fmt('orders.refundRejectLimitReached', { max: maxRefundRejectCount }) }}
+        </text>
+      </view>
+
+      <view v-if="order.refundRequests && order.refundRequests.length" class="card refund-history">
+        <view class="refund-history-head">
+          <text class="refund-history-title">{{ fmt('orders.refundHistoryTitle') }}</text>
+        </view>
+        <view
+          v-for="(r, idx) in order.refundRequests"
+          :key="r.id"
+          class="refund-history-item"
+        >
+          <view class="refund-history-row">
+            <text class="refund-history-step" :class="`refund-history-step--${r.status}`">
+              {{ refundStepText(r.status) }}
+            </text>
+            <text class="refund-history-time">{{ formatDateTime(r.createdAt) }}</text>
+          </view>
+          <view v-if="r.reason" class="refund-history-sub">
+            <text class="refund-history-label">{{ fmt('orders.refundReasonLabel') }}：</text>{{ r.reason }}
+          </view>
+          <view v-if="r.rejectReason" class="refund-history-sub">
+            <text class="refund-history-label">{{ fmt('orders.rejectReasonLabel') }}：</text>{{ r.rejectReason }}
+          </view>
+        </view>
       </view>
 
       <view v-if="canApplyRefund" class="bottom-cta">
         <view class="refund-btn" hover-class="refund-btn--hover" @click="openRefundForm">{{ fmt('orders.refundApply') }}</view>
       </view>
 
-      <view v-if="showRefundForm" class="popup-mask" :style="refundMaskStyle" @click.self="closeRefundForm">
+<!--      <view v-if="showRefundForm" class="popup-mask" :style="refundMaskStyle" @click.self="onMaskTap">-->
+      <view v-if="showRefundForm" class="popup-mask" :style="refundMaskStyle">
         <view class="popup">
           <view class="popup-title">{{ fmt('orders.refundApply') }}</view>
           <textarea
@@ -155,8 +186,8 @@
             :adjust-position="false"
           />
           <view class="popup-actions">
-            <view class="popup-btn cancel" @click="closeRefundForm">{{ fmt('orders.cancel') }}</view>
-            <view class="popup-btn submit" :class="{ disabled: submitting }" @click="submitRefund">
+            <view class="popup-btn cancel" @tap="closeRefundForm">{{ fmt('orders.cancel') }}</view>
+            <view class="popup-btn submit" :class="{ disabled: submitting }" @tap="submitRefund">
               {{ submitting ? '...' : fmt('orders.refundSubmit') }}
             </view>
           </view>
@@ -207,7 +238,8 @@ export default {
       showRefundForm: false,
       refundReasonInput: '',
       submitting: false,
-      kbHeight: 0
+      kbHeight: 0,
+      maxRefundRejectCount: 3
     }
   },
   onLoad(options) {
@@ -249,12 +281,26 @@ export default {
     refundMaskStyle() {
       return this.kbHeight > 0 ? { paddingBottom: this.kbHeight + 'px' } : null
     },
-    // 待激活订单（已支付且 eSIM 未激活）且未发起过退款申请时可申请退款
+    // 订单退款申请已被拒绝的次数
+    refundRejectCount() {
+      return (this.order && this.order.refundRejectCount) || 0
+    },
+    // 拒绝次数是否已达后台配置上限（达到后不能再申请退款）
+    refundRejectReached() {
+      return this.refundRejectCount >= this.maxRefundRejectCount
+    },
+    // 剩余可申请次数
+    refundRejectRemain() {
+      const remain = this.maxRefundRejectCount - this.refundRejectCount
+      return remain > 0 ? remain : 0
+    },
+    // 待激活订单（已支付且 eSIM 未激活）、未被拒绝超过上限时可申请退款
     canApplyRefund() {
       const o = this.order
       if (!o) return false
       if (o.status !== 'paid' || o.refundedAt) return false
-      if (o.refundStatus) return false
+      if (o.refundStatus === 'requested' || o.refundStatus === 'approved') return false
+      if (o.refundStatus === 'rejected' && this.refundRejectReached) return false
       return !(o.esim && o.esim.status === 'activated')
     }
   },
@@ -286,6 +332,12 @@ export default {
         if (res.code === 0 && res.data.order) {
           this.order = res.data.order
           this.esim = res.data.order.esim || null
+          if (
+            typeof res.data.maxRefundRejectCount === 'number' &&
+            res.data.maxRefundRejectCount >= 1
+          ) {
+            this.maxRefundRejectCount = res.data.maxRefundRejectCount
+          }
           return
         }
         // 实时接口未返回（订单可能已删除），保留缓存展示，不误报
@@ -305,6 +357,11 @@ export default {
       if (c === 'activate') return this.fmt('orders.tabActivate')
       if (c === 'done') return this.fmt('orders.tabDone')
       return this.fmt('orders.tabRefunded')
+    },
+    refundStepText(status) {
+      if (status === 'approved') return this.fmt('orders.refundStepApproved')
+      if (status === 'rejected') return this.fmt('orders.refundStepRejected')
+      return this.fmt('orders.refundStepRequested')
     },
     typeText(order) {
       if (order.orderType === 'renew') return this.fmt('orders.typeRenew')
@@ -355,6 +412,11 @@ export default {
     openRefundForm() {
       this.refundReasonInput = ''
       this.showRefundForm = true
+    },
+    // 点击遮罩关闭：软键盘弹起期间屏蔽，避免点按输入框时被误判为点击遮罩而关闭弹窗
+    onMaskTap() {
+      if (this.kbHeight > 0) return
+      this.closeRefundForm()
     },
     closeRefundForm() {
       if (this.submitting) return
@@ -860,11 +922,86 @@ export default {
   font-size: 24rpx;
   color: $ink-3;
   line-height: 1.6;
+
+  &--danger {
+    color: $coral;
+    font-weight: 600;
+  }
 }
 
 .refund-banner-label {
   font-weight: 600;
   color: $ink-2;
+}
+
+.refund-history {
+  margin-top: 20rpx;
+  padding: 24rpx;
+}
+
+.refund-history-head {
+  margin-bottom: 4rpx;
+}
+
+.refund-history-title {
+  font-size: 28rpx;
+  font-weight: 800;
+  color: $ink;
+}
+
+.refund-history-item {
+  padding: 20rpx 0;
+  border-bottom: 1rpx solid $line;
+
+  &:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+}
+
+.refund-history-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.refund-history-step {
+  font-size: 22rpx;
+  font-weight: 700;
+  border-radius: 999rpx;
+  padding: 4rpx 14rpx;
+
+  &--requested {
+    color: $warn;
+    background: rgba(255, 159, 67, 0.08);
+  }
+
+  &--rejected {
+    color: $coral;
+    background: rgba(255, 77, 79, 0.08);
+  }
+
+  &--approved {
+    color: $teal;
+    background: rgba(14, 165, 147, 0.1);
+  }
+}
+
+.refund-history-time {
+  font-size: 22rpx;
+  color: $ink-3;
+}
+
+.refund-history-sub {
+  margin-top: 12rpx;
+  font-size: 24rpx;
+  color: $ink-2;
+  line-height: 1.6;
+}
+
+.refund-history-label {
+  font-weight: 600;
+  color: $ink-3;
 }
 
 .refund-btn {

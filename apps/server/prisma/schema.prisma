@@ -204,6 +204,7 @@ model Order {
   refundTradeNo String?   @map("refund_trade_no")
   refundedAt    DateTime? @map("refunded_at")
   refundRejectCount Int   @default(0) @map("refund_reject_count") // refund requests rejected count (capped by settings maxRefundRejectCount)
+  refundRequests RefundRequest[] // per-attempt refund application/review history
   extOrderNo    String?   @map("ext_order_no") // external order no for reconciliation
   webhookStatus String?   @default("none") @map("webhook_status") // none/pending/success/failed
   webhookSentAt DateTime? @map("webhook_sent_at")
@@ -289,6 +290,25 @@ model Refund {
   updatedAt      DateTime @updatedAt
 
   @@unique([subjectId, extRefundNo])
+  @@index([orderId])
+}
+
+// C2C user refund flow: one row per application attempt + review outcome.
+// Tracks each time the user applies (requested) and the admin approve/reject
+// so an order can be refunded multiple times (each rejected attempt is kept).
+model RefundRequest {
+  id           String    @id @default(uuid())
+  orderId      String    @map("order_id")
+  order        Order     @relation(fields: [orderId], references: [id])
+  status       String    @default("requested") // requested | rejected | approved
+  reason       String? // user-provided refund reason for this attempt
+  rejectReason String?   @map("reject_reason") // admin reject reason (when rejected)
+  operator     String? // admin who reviewed (rejected/approved)
+  approvedAt   DateTime? @map("approved_at")
+  rejectedAt   DateTime? @map("rejected_at")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
   @@index([orderId])
 }
 

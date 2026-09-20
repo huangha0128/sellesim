@@ -147,7 +147,7 @@ export default (prisma: PrismaClient) => {
   router.get('/orders', async (req: Request, res: Response) => {
     const orders = await prisma.order.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { user: true },
+      include: { user: true, refundRequests: { orderBy: { createdAt: 'asc' } } },
     });
     res.json({ code: 0, data: { orders } });
   });
@@ -159,13 +159,15 @@ export default (prisma: PrismaClient) => {
    * - 退款成功后订单置为 refunded（refundStatus=approved），删除 eSIM 记录（ICCID 归还卡片池）
    * - 向用户邮箱发送退款成功通知
    */
-  router.post('/orders/:orderNo/refund', async (req: Request, res: Response) => {
+  router.post('/orders/:orderNo/refund', async (req: AdminAuthRequest, res: Response) => {
     const { reason } = req.body || {};
+    const operator = req.admin?.username || req.admin?.name || 'admin';
     try {
       const result = await refundOrder(
         buildRefundDeps(prisma, req.params.orderNo),
         req.params.orderNo,
         reason,
+        operator,
       );
 
       // 退款成功后向用户邮箱发送退款通知（发送失败不影响退款结果）
@@ -190,13 +192,15 @@ export default (prisma: PrismaClient) => {
    * - 仅待审批（refundStatus=requested）的申请可拒绝
    * - 必填拒绝理由存入 refundRejectReason，用户端展示拒绝状态与理由
    */
-  router.post('/orders/:orderNo/refund/reject', async (req: Request, res: Response) => {
+  router.post('/orders/:orderNo/refund/reject', async (req: AdminAuthRequest, res: Response) => {
     const { reason } = req.body || {};
+    const operator = req.admin?.username || req.admin?.name || 'admin';
     try {
       const result = await rejectRefundRequest(
         buildRefundDeps(prisma, req.params.orderNo),
         req.params.orderNo,
         typeof reason === 'string' ? reason : '',
+        operator,
       );
       res.json({ code: 0, data: result });
     } catch (e: any) {

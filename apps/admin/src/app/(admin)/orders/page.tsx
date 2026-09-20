@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { RefreshCw, Undo2, XCircle } from 'lucide-react';
+import { RefreshCw, Undo2, XCircle, History } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,12 @@ function fmt(dt?: string) {
 
 type BadgeVariant = 'success' | 'warning' | 'info' | 'destructive';
 
+const refundStepText: Record<string, { text: string; cls: string }> = {
+  requested: { text: '申请', cls: 'text-amber-700 bg-amber-50 border-amber-200' },
+  rejected: { text: '已拒绝', cls: 'text-destructive bg-destructive/5 border-destructive/20' },
+  approved: { text: '已同意', cls: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
+};
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,6 +53,9 @@ export default function OrdersPage() {
   const [rejectTarget, setRejectTarget] = useState<Order | null>(null);
   const [rejectReason, setRejectReason] = useState('');
   const [rejecting, setRejecting] = useState(false);
+
+  // 查看退款记录
+  const [historyTarget, setHistoryTarget] = useState<Order | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -148,6 +157,7 @@ export default function OrdersPage() {
                   <TableHead className="w-20">金额</TableHead>
                   <TableHead className="w-32">状态</TableHead>
                   <TableHead className="w-44">退款时间</TableHead>
+                  <TableHead className="w-24">退款记录</TableHead>
                   <TableHead className="w-44">创建时间</TableHead>
                   <TableHead className="w-20 text-right">操作</TableHead>
                 </TableRow>
@@ -180,6 +190,16 @@ export default function OrdersPage() {
                         </div>
                       </TableCell>
                       <TableCell>{fmt(o.refundedAt as string | undefined)}</TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 px-2 text-[12px] text-muted-foreground hover:text-ink"
+                          onClick={() => setHistoryTarget(o)}
+                        >
+                          <History className="h-3.5 w-3.5" /> {(o.refundRequests || []).length} 条
+                        </Button>
+                      </TableCell>
                       <TableCell>{fmt(o.createdAt)}</TableCell>
                       <TableCell align="right">
                         {o.refundStatus === 'requested' ? (
@@ -251,6 +271,49 @@ export default function OrdersPage() {
               {rejecting ? '处理中…' : '确认拒绝'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 退款记录 */}
+      <Dialog open={!!historyTarget} onOpenChange={(o) => !o && setHistoryTarget(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>退款记录</DialogTitle>
+          </DialogHeader>
+          <div className="mb-2 text-[13px] text-muted-foreground">
+            订单 <span className="font-mono font-medium text-ink">{historyTarget?.orderNo}</span>
+            {historyTarget && (historyTarget.refundRequests || []).length === 0 && ' 暂无退款申请记录'}
+          </div>
+          <div className="max-h-[60vh] space-y-3 overflow-y-auto pr-1">
+            {(historyTarget?.refundRequests || []).map((r) => {
+              const step = refundStepText[r.status] || refundStepText.requested;
+              return (
+                <div key={r.id} className="rounded-lg border p-3 text-[13px] leading-relaxed">
+                  <div className="flex items-center justify-between">
+                    <span className={`inline-flex items-center rounded border px-1.5 py-0.5 text-[11.5px] font-medium ${step.cls}`}>
+                      {step.text}
+                    </span>
+                    <span className="text-[12px] text-muted-foreground">{fmt(r.createdAt)}</span>
+                  </div>
+                  {r.reason ? (
+                    <div className="mt-2">
+                      <span className="text-muted-foreground">申请原因：</span>
+                      <span className="text-ink">{r.reason}</span>
+                    </div>
+                  ) : null}
+                  {r.rejectReason ? (
+                    <div className="mt-1">
+                      <span className="text-muted-foreground">拒绝理由：</span>
+                      <span className="text-ink">{r.rejectReason}</span>
+                    </div>
+                  ) : null}
+                  {r.operator ? (
+                    <div className="mt-1 text-[12px] text-muted-foreground">操作人：{r.operator}</div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
         </DialogContent>
       </Dialog>
     </div>

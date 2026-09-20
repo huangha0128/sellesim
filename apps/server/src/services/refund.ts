@@ -30,6 +30,14 @@ export interface RefundDeps {
   }): Promise<AlipayRefundResult>;
   /** 退款申请被拒绝次数上限（后台可配置），缺省读取 Setting.maxRefundRejectCount */
   getMaxRejectCount?(): Promise<number>;
+  /** 每次用户申请时追加一条退款申请记录（requested），用于订单退款历史 */
+  createRefundRequest?(orderId: string, reason?: string): Promise<any>;
+  /** 后台处理（拒绝/同意）时更新该订单最新一条待处理申请记录 */
+  resolveRefundRequest?(
+    orderId: string,
+    status: 'rejected' | 'approved',
+    data: Record<string, any>,
+  ): Promise<void>;
 }
 
 export const DEFAULT_MAX_REFUND_REJECT_COUNT = 3;
@@ -100,6 +108,12 @@ export async function applyRefundRequest(
       : {}),
     ...(reason ? { refundReason: reason } : {}),
   });
+
+  // 落一条「本次申请」记录，供订单退款历史查看
+  if (deps.createRefundRequest) {
+    await deps.createRefundRequest(order.id, reason);
+  }
+
   return { order: updated, requested: true };
 }
 
@@ -107,7 +121,7 @@ export async function applyRefundRequest(
  * 后台同意退款并执行：校验 → 调用支付宝退款 → 更新订单状态 → 释放 eSIM（ICCID 归还卡片池）。
  * out_request_no 传订单号保证支付宝侧幂等，重复调用同一订单可安全返回。
  */
-export async function refundOrder(deps: RefundDeps, orderNo: string, reason?: string) {
+export async function refundOrder(deps: RefundDeps, orderNo: string, reason?: string, operator?: string) {
   const order = await deps.findOrder(orderNo);
   if (!order) {
     throw new Error('订单不存在');
@@ -162,6 +176,15 @@ export async function refundOrder(deps: RefundDeps, orderNo: string, reason?: st
     await deps.deleteEsimByOrderId(order.id);
   }
 
+  // 更新最新一条申请记录为已同意
+  if (deps.resolveRefundRequest) {
+    await deps.resolveRefundRequest(order.id, 'approved', {
+      approvedAt: new Date(),
+      ...(reason ? { reason } : {}),
+      ...(operator ? { operator } : {}),
+    });
+  }
+
   return { order: updated, refunded: true };
 }
 
@@ -169,7 +192,12 @@ export async function refundOrder(deps: RefundDeps, orderNo: string, reason?: st
  * 后台拒绝退款：需填写拒绝理由，前端展示拒绝状态与理由。
  * 每次拒绝累计 refundRejectCount，用户端据此判断是否还能再次申请。
  */
-export async function rejectRefundRequest(deps: RefundDeps, orderNo: string, rejectReason?: string) {
+export async function rejectRefundRequest(
+  deps: RefundDeps,
+  orderNo: string,
+  rejectReason?: string,
+  operator?: string,
+) {
   const order = await deps.findOrder(orderNo);
   if (!order) {
     throw new Error('订单不存在');
@@ -187,6 +215,16 @@ export async function rejectRefundRequest(deps: RefundDeps, orderNo: string, rej
     refundRejectedAt: new Date(),
     refundRejectCount: (order.refundRejectCount ?? 0) + 1,
   });
+
+  // 更新最新一条申请记录为已拒绝，记录操作人和理由
+  if (deps.resolveRefundRequest) {
+    await deps.resolveRefundRequest(order.id, 'rejected', {
+      rejectReason: String(rejectReason).trim(),
+      rejectedAt: new Date(),
+      ...(operator ? { operator } : {}),
+    });
+  }
+
   return { order: updated, rejected: true };
 }
 

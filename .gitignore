@@ -65,3 +65,7 @@ apps/server/prisma/test-tmp/
 .trae/
 apps/.trae/
 .workbuddy-ai/
+.trae-tmp/
+
+# ===== 数据库备份（deploy.sh 自动 dump，含数据，不入库）=====
+backups/
