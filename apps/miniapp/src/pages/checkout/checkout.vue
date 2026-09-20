@@ -80,38 +80,31 @@
 
         <!-- 已选择加购目标卡 -->
         <view v-if="buyMode === 'renew'" class="bm-target">
-          <!-- 已选卡：点左侧信息可重新选择（原生 picker），右侧清除 -->
-          <template v-if="selectedEsim">
+          <!-- 未选卡：左占位文本，右侧原生 picker 触发（picker 内仅静态文案，可正常点击） -->
+          <template v-if="!selectedEsim">
+            <view class="bm-target-left">
+              <text class="bm-target-empty">{{ expiredEsims.length ? fmt('checkout.buySelectCard') : fmt('checkout.buyAddEmpty') }}</text>
+            </view>
             <picker
-              class="bm-target-picker"
+              class="bm-pick"
               mode="selector"
               :range="pickerRange"
               range-key="label"
-              @change="onPickEsim"
-            >
-              <view class="bm-target-left">
-                <text class="bm-target-label">{{ fmt('checkout.buyAddTo') }}</text>
-                <text class="bm-target-name">{{ selectedEsim.pkg.countryName }}</text>
-                <text class="bm-target-spec">{{ selectedEsim.pkg.isUnlimited ? fmt('package.unlimited') : selectedEsim.pkg.gb + 'GB' }} · {{ selectedEsim.pkg.days }}{{ fmt('checkout.buyDayUnit') }} · {{ fmt('checkout.buyExpire', { date: formatDate(selectedEsim.expireAt) }) }}</text>
-              </view>
-            </picker>
-            <view class="bm-clear" @tap.stop="selectEsim('')">{{ fmt('checkout.buyClear') }}</view>
-          </template>
-          <!-- 未选卡：整个区域用原生 picker 弹出可选卡列表 -->
-          <template v-else>
-            <picker
-              class="bm-target-picker"
-              mode="selector"
-              :range="pickerRange"
-              range-key="label"
+              :value="pickerIndex"
               :disabled="!expiredEsims.length"
               @change="onPickEsim"
             >
-              <view class="bm-target-left">
-                <text class="bm-target-empty">{{ expiredEsims.length ? fmt('checkout.buySelectCard') : fmt('checkout.buyAddEmpty') }}</text>
-              </view>
-              <view v-if="expiredEsims.length" class="bm-target-btn">{{ fmt('checkout.buyChoose') }} ›</view>
+              <view class="bm-target-btn">{{ fmt('checkout.buyChoose') }} ›</view>
             </picker>
+          </template>
+          <!-- 已选卡：卡片信息放普通 view，确保响应式切换生效；右侧为清除 -->
+          <template v-else>
+            <view class="bm-target-left">
+              <text class="bm-target-label">{{ fmt('checkout.buyAddTo') }}</text>
+              <text class="bm-target-name">{{ selectedEsim.pkg.countryName }}</text>
+              <text class="bm-target-spec">{{ selectedEsim.pkg.isUnlimited ? fmt('package.unlimited') : selectedEsim.pkg.gb + 'GB' }} · {{ selectedEsim.pkg.days }}{{ fmt('checkout.buyDayUnit') }} · {{ fmt('checkout.buyExpire', { date: formatDate(selectedEsim.expireAt) }) }}</text>
+            </view>
+            <view class="bm-clear" @tap.stop="selectEsim('')">{{ fmt('checkout.buyClear') }}</view>
           </template>
         </view>
       </view>
@@ -245,6 +238,12 @@ export default {
       return this.expiredEsims.map(e => ({
         label: `${e.pkg.countryName} · ${e.pkg.isUnlimited ? this.fmt('package.unlimited') : e.pkg.gb + 'GB'} · ${e.pkg.days}${this.fmt('checkout.buyDayUnit')} · ${this.fmt('checkout.buyExpire', { date: formatDate(e.expireAt) })}`
       }))
+    },
+    // 已选目标卡在过期卡列表中的下标，用于 picker :value，保证再次打开时定位到当前选择
+    pickerIndex() {
+      if (!this.selectedEsimId) return 0
+      const idx = this.expiredEsims.findIndex(e => e.id === this.selectedEsimId)
+      return idx >= 0 ? idx : 0
     }
   },
   onLoad(options) {
@@ -261,6 +260,8 @@ export default {
     fmt(key, params) {
       return fmtNamed(translate(key, params), params)
     },
+    // 模板中直接使用了 formatDate，必须暴露到实例上，否则选中卡片后渲染函数会抛错、界面无法更新
+    formatDate,
     getFlagImage(code) {
       return `/static/icons/flag-${code.toLowerCase()}.png`
     },
@@ -304,8 +305,11 @@ export default {
       if (m === 'new') this.selectedEsimId = ''
     },
     onPickEsim(e) {
-      const idx = Number(e.detail.value)
-      const target = this.expiredEsims[idx]
+      const raw = e.detail && e.detail.value
+      // 常规：detail.value 为下标；部分基础库版本会直接传回所选对象（含 label 字段）
+      const isObj = typeof raw === 'object'
+      const target = isObj ? this.expiredEsims.find(es => `${es.pkg.countryName} · ${es.pkg.isUnlimited ? this.fmt('package.unlimited') : es.pkg.gb + 'GB'} · ${es.pkg.days}${this.fmt('checkout.buyDayUnit')} · ${this.fmt('checkout.buyExpire', { date: formatDate(es.expireAt) })}` === raw.label) : this.expiredEsims[Number(raw)]
+      console.log('[checkout] onPickEsim raw=', raw, 'target=', target && target.id)
       if (target) this.selectedEsimId = target.id
     },
     selectEsim(id) {
@@ -718,12 +722,10 @@ export default {
   margin-top: 8rpx;
 }
 
-.bm-target-picker {
-  flex: 1;
+.bm-pick {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  min-width: 0;
 }
 
 .bm-target-left {
@@ -768,6 +770,8 @@ export default {
 }
 
 .bm-clear {
+  position: relative;
+  z-index: 2;
   font-size: 22rpx;
   color: $ink-3;
   padding: 6rpx 18rpx;
