@@ -35,10 +35,10 @@ ENV DATABASE_URL=mysql://placeholder:placeholder@localhost:3306/placeholder
 RUN pnpm --filter @sellsim/server exec prisma generate --generator client \
     && pnpm --filter @sellsim/server build \
     && echo "==> 校验 Prisma engine 已固化进镜像 ==" \
-    && find /app/node_modules -type f \( -name 'libquery_engine-*.so.node' -o -name 'schema-engine-*' \) | sort \
-    && COUNT=$(find /app/node_modules -type f -name 'libquery_engine-linux-musl-openssl-3.0.x.so.node' | wc -l) \
+    && find /app -type f \( -name 'libquery_engine-*.so.node' -o -name 'schema-engine-*' -o -name 'query-engine-*' \) | sort \
+    && COUNT=$(find /app -type f -name 'libquery_engine-linux-musl-openssl-3.0.x.so.node' | wc -l) \
     && echo "libquery_engine found: $COUNT" \
-    && [ "$COUNT" -gt 0 ] || (echo "FATAL: libquery_engine-linux-musl not found in build!"; exit 1)
+    && [ "$COUNT" -gt 0 ] || (echo "FATAL: 镜像内未找到 libquery_engine-linux-musl（若 prisma generate/build 已失败，请检视上方原始报错而非本条提示）"; exit 1)
 
 # ---------- 运行阶段 ----------
 FROM node:22-alpine AS runtime
