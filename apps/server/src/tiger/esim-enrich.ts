@@ -21,6 +21,26 @@ export function toNumber(value: any, fallback = 0): number {
   return Number.isFinite(num) ? num : fallback;
 }
 
+/**
+ * Tiger 返回的时间字段（activated_at / expired_at / created_at）是「无时区、按 UTC
+ * 墙钟」的字符串。前端以 '创建时间'（本地库，UTC ISO + 前端转东八区）为准，
+ * 因此这里把 Tiger 的无时区值当作 UTC 解析并归一化为带 Z 的 ISO，保证与
+ * createdAt 使用同一套时区口径显示，避免出现「激活时间早于创建时间 8 小时」的倒挂。
+ * 若值本身已带时区或不是合法时间，则原样返回（由本地值兜底）。
+ */
+export function normalizeTigerTime(value: any): string | null {
+  if (value === undefined || value === null) return null;
+  let s = String(value).trim();
+  if (!s) return null;
+  const hasTz = /(Z|[+-]\d{2}:?\d{2})\s*$/i.test(s);
+  if (!hasTz) {
+    // 无时区值统一按 UTC 补充后缀，避免 JS 把空格格式当成本地时间
+    s = s.replace(' ', 'T') + 'Z';
+  }
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 function matchesLocalEsim(local: any, item: any): boolean {
   if (local.tigerBindingId) {
     return toNumber(local.tigerBindingId, -1) === toNumber(item?.id, -2);
@@ -49,8 +69,8 @@ export function tigerDisplayEsim(item: any, local: any, iccid: string): any {
     iccid: local?.iccid || iccid,
     smdp: local?.smdp || '',
     status: tigerStatus(item),
-    activatedAt: item?.activated_at || local?.activatedAt,
-    expireAt: item?.expired_at || local?.expireAt,
+    activatedAt: normalizeTigerTime(item?.activated_at) || local?.activatedAt,
+    expireAt: normalizeTigerTime(item?.expired_at) || local?.expireAt,
     used: usageMb / 1024,
     gb: local?.gb ?? Math.round(toNumber(pkg.amount) / 1024),
     days: local?.days ?? toNumber(pkg.valid_days),
@@ -62,7 +82,7 @@ export function tigerDisplayEsim(item: any, local: any, iccid: string): any {
     tigerPid: local?.tigerPid || pkg.pid,
     tigerBindingId: toNumber(item?.id),
     order: local?.order,
-    createdAt: local?.createdAt || item?.created_at,
+    createdAt: local?.createdAt || normalizeTigerTime(item?.created_at),
     source: 'tiger',
   };
 }

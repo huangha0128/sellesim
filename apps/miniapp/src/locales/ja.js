@@ -34,7 +34,8 @@ export default {
     esimCard: 'eSIM カード詳細',
     about: '当社について',
     supportedModels: '対応 eSIM 機種一覧',
-    usageNotice: 'eSIM 利用上の注意'
+    usageNotice: 'eSIM 利用上の注意',
+    contact: 'お問い合わせ'
   },
   index: {
     slogan: '世界 200 以上の地域でデータ通信',
@@ -83,12 +84,21 @@ export default {
     menuOrders: 'マイ注文',
     menuGuide: 'インストールとアクティベート',
     menuAbout: '当社について',
+    menuContact: 'お問い合わせ',
     menuLanguage: '言語設定',
     menuLogout: 'ログアウト',
     demo: 'デモ環境 · ローカルバックエンドに接続中',
     logoutConfirm: 'ログアウトしてもよろしいですか？',
     loggedOut: 'ログアウトしました',
     languageTitle: '言語を切り替える'
+  },
+  contact: {
+    heroTitle: 'お問い合わせ',
+    heroSub: 'いつでもサポートいたします',
+    emailLabel: '公式メール',
+    responseTip: 'メールを受信後、できるだけ早くご返信します（通常1〜2営業日以内）。',
+    copyEmail: 'メールをコピー',
+    copied: 'メールをコピーしました'
   },
   about: {
     slogan: 'グローバルデータ、買ってすぐ使える',

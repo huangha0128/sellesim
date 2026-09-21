@@ -1,7 +1,16 @@
-import nodemailer from 'nodemailer';
+import nodemailer, { type SendMailOptions } from 'nodemailer';
 import QRCode from 'qrcode';
 
-/** 邮件发送服务：发卡成功后向用户邮箱发送激活码与二维码 */
+/**
+ * 邮件发送服务
+ *
+ * 样式参照 exampleemail 目录中的 TigerESIM 示例邮件（该模板经验证不易被识别为垃圾邮件）：
+ * - 暖色 #fff0e8 背景 + 居中窄卡片（max-width 520px）
+ * - 顶部圆角 logo、居中小黑标题、纯黑字体正文、无 emoji / 无营销渐变
+ * - 订单信息用浅色嵌套表格呈现
+ * - 页脚为邮箱 + 网址 + 版权（无需退订链接，减少 spam 误报）
+ * - HTML 与纯文本始终成对，内容一致
+ */
 
 interface SendEsimEmailOptions {
   to: string;
@@ -41,99 +50,205 @@ async function generateQrDataUri(text: string): Promise<string> {
   });
 }
 
-export async function sendEsimEmail(opts: SendEsimEmailOptions): Promise<void> {
-  const transporter = createTransporter();
-
-  const qrDataUri = await generateQrDataUri(opts.activationCode);
-
-  const expireStr = opts.expireAt.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
-  const fromName = process.env.SMTP_FROM_NAME || 'YYeSim';
+function getSenderIdentity() {
+  const brand = process.env.SMTP_FROM_NAME || 'YYeSim';
   const fromAddr = process.env.SMTP_FROM || process.env.SMTP_USER || '';
+  const replyTo = process.env.SMTP_REPLY_TO || fromAddr;
+  const supportAddr = process.env.SMTP_MANAGER_ADDR || fromAddr; // 客服联系邮箱
+  const siteUrl = process.env.SMTP_SITE_URL || process.env.MINIPROGRAM_HOST || '';
+  const logoUrl = process.env.SMTP_LOGO_URL || '';
+  return { brand, fromAddr, replyTo, supportAddr, siteUrl, logoUrl };
+}
 
-  const html = `
-<!DOCTYPE html>
+const BASE_FONT = `-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif`;
+
+/** 订单摘要行（示例邮件同款：左标签 black、右值 black、行间浅分隔） */
+function summaryRow(label: string, value: string): string {
+  return `
+          <tr>
+            <td style="font-family:${BASE_FONT};font-size:14px;color:#000000;line-height:24px;padding:7px 12px;">
+              ${label}
+            </td>
+            <td style="font-family:${BASE_FONT};font-size:14px;color:#000000;line-height:24px;text-align:right;word-break:break-all;padding:7px 12px;">
+              ${value}
+            </td>
+          </tr>`;
+}
+
+/** 订单信息卡片（示例邮件同款：白底圆角内嵌表格） */
+function summaryCard(rows: Array<[string, string]>): string {
+  return `
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;">
+    <tr>
+      <td style="background:#ffffff;border-radius:12px;padding:20px;">
+        <p style="margin:0 0 12px;font-family:${BASE_FONT};font-size:14px;font-weight:700;color:#000000;line-height:24px;">Order summary</p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tbody>
+            ${rows.map(([l, v]) => summaryRow(l, v)).join('')}
+          </tbody>
+        </table>
+      </td>
+    </tr>
+  </table>`;
+}
+
+/** 外层布局外壳：暖色背景 + 居中卡片 + 圆角 logo + 标题 + 页脚（完全还原示例邮件版式） */
+function renderShell(opts: {
+  title: string;
+  titlePre?: string;
+  headerSpace?: boolean;
+  bodyRows: string; // 正文若干行（已拼好的 <tr> 或 <td> 内容）
+  footerNote?: string; // 可选的客服提示（如 "For support or further clarification, please contact customer service:"）
+}): string {
+  const { brand, supportAddr, siteUrl, logoUrl } = getSenderIdentity();
+  const siteLink = siteUrl
+    ? `<a href="${siteUrl}" target="_blank" rel="noopener noreferrer" style="font-family:${BASE_FONT};font-size:14px;color:#333333;text-decoration:none;">${siteUrl.replace(/^https?:\/\//, '')}</a>`
+    : `<span style="font-family:${BASE_FONT};font-size:14px;color:#333333;">${brand}</span>`;
+
+  const logoHtml = logoUrl
+    ? `<img src="${logoUrl}" width="64" height="64" alt="" style="display:block;border:0;border-radius:12.8px;"/>`
+    : `<td align="center" style="width:64px;height:64px;background:#ec652b;border-radius:12.8px;display:inline-block;"><span style="font-family:${BASE_FONT};font-size:28px;font-weight:700;color:#ffffff;line-height:64px;">${brand.charAt(0)}</span></td>`;
+
+  return `
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#fff0e8;">
+    <tbody>
+      <tr>
+        <td align="center" style="padding:0;">
+          <table width="375" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;width:100%;background-color:#fff0e8;">
+            <tbody>
+              <tr>
+                <td align="center" style="padding:${opts.headerSpace ? '16px 24px 24px' : '48px 24px 24px'};">
+                  ${logoHtml}
+                </td>
+              </tr>
+              <tr>
+                <td align="center" style="padding:0 24px 32px;">
+                  <h1 style="margin:0;font-family:${BASE_FONT};font-size:20px;font-weight:700;color:#000000;line-height:22px;letter-spacing:0;">
+                    ${opts.title}
+                  </h1>
+                </td>
+              </tr>
+              ${opts.bodyRows}
+              <tr>
+                <td align="center" style="padding:0 24px 16px;">
+                  <p style="margin:0;font-family:${BASE_FONT};font-size:14px;font-weight:400;color:#000000;line-height:24px;">
+                    For support or further clarification, please contact customer service:
+                  </p>
+                  <p style="margin:0;font-family:${BASE_FONT};font-size:14px;font-weight:700;color:#000000;line-height:24px;">
+                    <a href="mailto:${supportAddr}" style="color:#000000;font-weight:700;text-decoration:none;">${supportAddr}</a>
+                  </p>
+                </td>
+              </tr>
+              <tr>
+                <td align="center" style="padding:0 24px 32px;">
+                  ${siteLink}
+                  <p style="margin:8px 0 0;font-family:${BASE_FONT};font-size:12px;font-weight:400;color:#333333;line-height:24px;">
+                    &copy; ${new Date().getFullYear()} ${brand}
+                  </p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </td>
+      </tr>
+    </tbody>
+  </table>`;
+}
+
+/** 生成的完整 <title> 与 <body>（Html 部分），便于统一包裹 DOCTYPE */
+function wrapDocument(title: string, bodyHtml: string): string {
+  return `<!DOCTYPE html>
 <html lang="zh-CN">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:24px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
-        <!-- 头部 -->
-        <tr><td style="background:linear-gradient(135deg,#1a6fb5 0%,#0d4a7a 100%);padding:32px 40px;">
-          <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">🎉 您的 eSIM 已就绪</h1>
-          <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">订单号：${opts.orderNo}</p>
-        </td></tr>
-        <!-- 套餐信息 -->
-        <tr><td style="padding:28px 40px 0;">
-          <div style="background:#f0f7ff;border-radius:8px;padding:20px 24px;">
-            <p style="margin:0 0 8px;font-size:13px;color:#666;">套餐信息</p>
-            <p style="margin:0;font-size:20px;font-weight:700;color:#1a1a1a;">${opts.countryName} · ${opts.gb}GB · ${opts.days}天</p>
-            <p style="margin:8px 0 0;font-size:13px;color:#888;">有效期至 ${expireStr}</p>
-          </div>
-        </td></tr>
-        <!-- 二维码 -->
-        <tr><td style="padding:24px 40px 0;text-align:center;">
-          <p style="margin:0 0 16px;font-size:14px;color:#666;font-weight:600;">📱 扫码激活 eSIM</p>
-          <img src="${qrDataUri}" alt="eSIM 二维码" style="width:240px;height:240px;border-radius:8px;" />
-        </td></tr>
-        <!-- 激活码 -->
-        <tr><td style="padding:24px 40px 0;">
-          <p style="margin:0 0 8px;font-size:14px;color:#666;font-weight:600;"> 激活码（LPA）</p>
-          <div style="background:#f8f8f8;border:1px solid #e8e8e8;border-radius:8px;padding:16px 20px;word-break:break-all;font-size:14px;color:#333;line-height:1.6;">${opts.activationCode}</div>
-        </td></tr>
-        <!-- ICCID -->
-        <tr><td style="padding:16px 40px 0;">
-          <p style="margin:0;font-size:13px;color:#999;">ICCID：${opts.iccid}</p>
-        </td></tr>
-        <!-- 使用说明 -->
-        <tr><td style="padding:24px 40px 0;">
-          <p style="margin:0 0 12px;font-size:14px;color:#666;font-weight:600;">📋 激活步骤</p>
-          <ol style="margin:0;padding-left:20px;font-size:13px;color:#666;line-height:2;">
-            <li>打开手机「设置 → 蜂窝网络（或移动网络）」</li>
-            <li>点击「添加 eSIM」或「添加蜂窝号码」</li>
-            <li>选择「使用二维码」，扫描上方二维码</li>
-            <li>或选择「手动输入」，粘贴上方激活码</li>
-            <li>开启该 eSIM 的数据漫游即可使用</li>
-          </ol>
-        </td></tr>
-        <!-- 底部 -->
-        <tr><td style="padding:32px 40px 24px;text-align:center;">
-          <p style="margin:0;font-size:12px;color:#bbb;">如有疑问请联系客服 · YYeSim</p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>${title}</title>
+</head>
+<body style="margin:0;padding:0;background:#fff0e8;">
+  ${bodyHtml}
 </body>
 </html>`;
+}
 
-  const text = `您的 eSIM 已就绪
+/** 发信的公共入口：设置 From / Reply-To / 主题并发送 */
+async function dispatchMail(opts: { to: string; subject: string; html: string; text: string }, tag: string, orderNo: string) {
+  const transporter = createTransporter();
+  const { brand, fromAddr, replyTo } = getSenderIdentity();
 
-订单号：${opts.orderNo}
-套餐：${opts.countryName} · ${opts.gb}GB · ${opts.days}天
-有效期至：${expireStr}
+  const mailOptions: SendMailOptions = {
+    from: `"${brand}" <${fromAddr}>`,
+    to: opts.to,
+    subject: opts.subject,
+    html: opts.html,
+    text: opts.text,
+  };
+  if (replyTo) mailOptions.replyTo = replyTo;
 
-激活码（LPA）：
+  await transporter.sendMail(mailOptions);
+  console.log(`[email] ${tag} 已发送至 ${opts.to}（订单 ${orderNo}）`);
+}
+
+/** 发卡成功：向用户发送 eSIM 激活码与二维码（对应示例邮件 "Your eSIM installation guide"） */
+export async function sendEsimEmail(opts: SendEsimEmailOptions): Promise<void> {
+  const qrDataUri = await generateQrDataUri(opts.activationCode);
+  const expireStr = opts.expireAt.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+  const packageName = `${opts.countryName} / ${opts.gb}GB ${opts.days}day-eSIM`;
+
+  const rows: Array<[string, string]> = [
+    ['Order ID:', opts.orderNo],
+    ['Product:', packageName],
+    ['Qty:', '1'],
+    ['ICCID:', opts.iccid],
+    ['Valid until:', expireStr],
+  ];
+
+  const bodyRows = `
+      <tr>
+        <td style="padding:0 24px 16px;">
+          <p style="margin:0 0 8px;font-family:${BASE_FONT};font-size:14px;font-weight:700;color:#000000;line-height:24px;">Hi ${opts.to},</p>
+          <p style="margin:0 0 8px;font-family:${BASE_FONT};font-size:14px;font-weight:400;color:#000000;line-height:24px;">
+            Thank you for your purchase. Please find your eSIM activation information below or in the QR code.
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:0 24px 16px;">
+          ${summaryCard(rows)}
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:0 24px 16px;">
+          <p style="margin:0 0 8px;font-family:${BASE_FONT};font-size:14px;font-weight:700;color:#000000;line-height:24px;">Activation code (LPA)</p>
+          <p style="margin:0;font-family:monospace;font-size:13px;color:#000000;line-height:20px;word-break:break-all;">${opts.activationCode}</p>
+        </td>
+      </tr>
+      <tr>
+        <td align="center" style="padding:0 24px 16px;">
+          <img src="${qrDataUri}" width="200" height="200" alt="QR code" style="display:block;border:0;border-radius:8px;"/>
+        </td>
+      </tr>`;
+
+  const html = wrapDocument('您的 eSIM 已就绪', renderShell({ title: 'Your eSIM installation guide', headerSpace: true, bodyRows }));
+
+  const text = `Your eSIM installation guide
+
+Hi ${opts.to},
+
+Thank you for your purchase. Please find your eSIM activation information below.
+
+Order summary
+  Order ID: ${opts.orderNo}
+  Product: ${packageName}
+  Qty: 1
+  ICCID: ${opts.iccid}
+  Valid until: ${expireStr}
+
+Activation code (LPA):
 ${opts.activationCode}
 
-ICCID：${opts.iccid}
+For support or further clarification, please contact customer service: ${process.env.SMTP_MANAGER_ADDR || process.env.SMTP_FROM || ''}`;
 
-激活步骤：
-1. 打开手机「设置 → 蜂窝网络」
-2. 点击「添加 eSIM」
-3. 选择「使用二维码」或「手动输入激活码」
-4. 开启数据漫游即可使用
-
-如有疑问请联系客服 · YYeSim`;
-
-  await transporter.sendMail({
-    from: `"${fromName}" <${fromAddr}>`,
-    to: opts.to,
-    subject: `【YYeSim】您的 eSIM 已就绪 - ${opts.countryName} ${opts.gb}GB/${opts.days}天`,
-    html,
-    text,
-  });
-
-  console.log(`[email] 激活码邮件已发送至 ${opts.to}（订单 ${opts.orderNo}）`);
+  await dispatchMail({ to: opts.to, subject: `Your eSIM installation guide - ${opts.orderNo}`, html, text }, '激活邮件', opts.orderNo);
 }
 
 interface SendRefundEmailOptions {
@@ -142,60 +257,50 @@ interface SendRefundEmailOptions {
   amount: string;
 }
 
-/** 订单退款成功通知邮件 */
+/** 订单退款成功通知（对应示例邮件 "Refund completed – Order"） */
 export async function sendRefundEmail(opts: SendRefundEmailOptions): Promise<void> {
-  const transporter = createTransporter();
-  const fromName = process.env.SMTP_FROM_NAME || 'YYeSim';
-  const fromAddr = process.env.SMTP_FROM || process.env.SMTP_USER || '';
   const refundTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
 
-  const html = `
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:24px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
-        <tr><td style="background:linear-gradient(135deg,#1a6fb5 0%,#0d4a7a 100%);padding:32px 40px;">
-          <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">退款成功通知</h1>
-          <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">订单号：${opts.orderNo}</p>
-        </td></tr>
-        <tr><td style="padding:28px 40px 0;">
-          <div style="background:#f0f7ff;border-radius:8px;padding:20px 24px;">
-            <p style="margin:0 0 8px;font-size:13px;color:#666;">您购买的 eSIM 套餐已成功退款</p>
-            <p style="margin:0;font-size:20px;font-weight:700;color:#1a1a1a;">退款金额：¥${opts.amount}</p>
-            <p style="margin:8px 0 0;font-size:13px;color:#888;">退款时间：${refundTime}</p>
-          </div>
-        </td></tr>
-        <tr><td style="padding:24px 40px 0;">
-          <p style="margin:0;font-size:13px;color:#666;line-height:1.8;">退款将按原支付渠道原路退回，一般 1～3 个工作日到账，具体以支付宝到账提示为准。</p>
-        </td></tr>
-        <tr><td style="padding:32px 40px 24px;text-align:center;">
-          <p style="margin:0;font-size:12px;color:#bbb;">如有疑问请联系客服 · YYeSim</p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+  const rows: Array<[string, string]> = [
+    ['Refund amount:', `¥${opts.amount}`],
+    ['Refund time:', refundTime],
+  ];
 
-  const text = `退款成功
-订单号：${opts.orderNo}
-退款金额：¥${opts.amount}
-退款时间：${refundTime}
-退款将按原支付渠道原路退回，一般 1～3 个工作日到账。
-如有疑问请联系客服 · YYeSim`;
+  const bodyRows = `
+      <tr>
+        <td style="padding:0 24px 16px;">
+          <p style="margin:0 0 8px;font-family:${BASE_FONT};font-size:14px;font-weight:400;color:#000000;line-height:24px;">
+            Your refund request for order <strong>${opts.orderNo}</strong> has been updated.
+          </p>
+          <p style="margin:0 0 8px;font-family:${BASE_FONT};font-size:14px;color:#000000;line-height:24px;">
+            Status: <strong>refunded</strong>
+          </p>
+          <p style="margin:0;font-family:${BASE_FONT};font-size:13px;color:#444444;line-height:22px;">
+            Refund will be returned to your original payment method within 1~3 business days.
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:0 24px 16px;">
+          ${summaryCard(rows)}
+        </td>
+      </tr>`;
 
-  await transporter.sendMail({
-    from: `"${fromName}" <${fromAddr}>`,
-    to: opts.to,
-    subject: `【YYeSim】订单退款成功 - ${opts.orderNo}`,
-    html,
-    text,
-  });
+  const html = wrapDocument('退款已完成', renderShell({ title: 'Refund completed', headerSpace: true, bodyRows }));
 
-  console.log(`[email] 退款通知已发送至 ${opts.to}（订单 ${opts.orderNo}）`);
+  const text = `Refund completed - Order ${opts.orderNo}
+
+Your refund request for order ${opts.orderNo} has been updated.
+
+Status: refunded
+Refund amount: ¥${opts.amount}
+Refund time: ${refundTime}
+
+Refund will be returned to your original payment method within 1~3 business days.
+
+For support or further clarification, please contact customer service: ${process.env.SMTP_MANAGER_ADDR || process.env.SMTP_FROM || ''}`;
+
+  await dispatchMail({ to: opts.to, subject: `Refund completed - ${opts.orderNo}`, html, text }, '退款通知', opts.orderNo);
 }
 
 interface SendRenewEmailOptions {
@@ -207,58 +312,55 @@ interface SendRenewEmailOptions {
   expireAt: Date; // 新的到期时间
 }
 
-/** 续费成功通知邮件：套餐到期后为同一张卡购买的新套餐已生效，无需重新安装 */
+/** 续费成功通知（对应示例邮件 "Order Confirmation" 版式） */
 export async function sendRenewEmail(opts: SendRenewEmailOptions): Promise<void> {
-  const transporter = createTransporter();
-  const fromName = process.env.SMTP_FROM_NAME || 'YYeSim';
-  const fromAddr = process.env.SMTP_FROM || process.env.SMTP_USER || '';
   const expireStr = opts.expireAt.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
+  const packageName = `${opts.countryName} / ${opts.gb}GB ${opts.days}day-eSIM`;
 
-  const html = `
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-<body style="margin:0;padding:0;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f5;padding:24px 0;">
-    <tr><td align="center">
-      <table width="600" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
-        <tr><td style="background:linear-gradient(135deg,#1a6fb5 0%,#0d4a7a 100%);padding:32px 40px;">
-          <h1 style="margin:0;color:#ffffff;font-size:24px;font-weight:700;">✅ 续费成功</h1>
-          <p style="margin:8px 0 0;color:rgba(255,255,255,0.85);font-size:14px;">订单号：${opts.orderNo}</p>
-        </td></tr>
-        <tr><td style="padding:28px 40px 0;">
-          <div style="background:#f0f7ff;border-radius:8px;padding:20px 24px;">
-            <p style="margin:0 0 8px;font-size:13px;color:#666;">新的套餐已生效</p>
-            <p style="margin:0;font-size:20px;font-weight:700;color:#1a1a1a;">${opts.countryName} · ${opts.gb}GB · ${opts.days}天</p>
-            <p style="margin:8px 0 0;font-size:13px;color:#888;">有效期至 ${expireStr}</p>
-          </div>
-        </td></tr>
-        <tr><td style="padding:24px 40px 0;">
-          <p style="margin:0;font-size:13px;color:#666;line-height:1.8;">您的 eSIM 无需重新安装，新套餐将在原卡上生效，可在「我的 eSIM」中查看卡片状态。</p>
-        </td></tr>
-        <tr><td style="padding:32px 40px 24px;text-align:center;">
-          <p style="margin:0;font-size:12px;color:#bbb;">如有疑问请联系客服 · YYeSim</p>
-        </td></tr>
-      </table>
-    </td></tr>
-  </table>
-</body>
-</html>`;
+  const rows: Array<[string, string]> = [
+    ['Order ID:', opts.orderNo],
+    ['Product:', packageName],
+    ['Qty:', '1'],
+    ['Valid until:', expireStr],
+  ];
 
-  const text = `续费成功
-订单号：${opts.orderNo}
-新的套餐：${opts.countryName} · ${opts.gb}GB · ${opts.days}天
-有效期至：${expireStr}
-您的 eSIM 无需重新安装，新套餐将在原卡上生效。
-如有疑问请联系客服 · YYeSim`;
+  const bodyRows = `
+      <tr>
+        <td align="center" style="padding:0 24px 8px;">
+          <p style="margin:0;font-family:${BASE_FONT};font-size:20px;font-weight:700;color:#000000;line-height:22px;">Thank you for choosing us!</p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:0 24px 16px;">
+          <p style="margin:0 0 8px;font-family:${BASE_FONT};font-size:14px;font-weight:700;color:#000000;line-height:24px;">Dear ${opts.to},</p>
+          <p style="margin:0;font-family:${BASE_FONT};font-size:14px;color:#000000;line-height:24px;">
+            Your renewal has been activated successfully. No re-installation is needed; the new package takes effect on your current eSIM.
+          </p>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:0 24px 16px;">
+          ${summaryCard(rows)}
+        </td>
+      </tr>`;
 
-  await transporter.sendMail({
-    from: `"${fromName}" <${fromAddr}>`,
-    to: opts.to,
-    subject: `【YYeSim】续费成功 - ${opts.countryName} ${opts.gb}GB/${opts.days}天`,
-    html,
-    text,
-  });
+  const html = wrapDocument('续费已生效', renderShell({ title: 'Order Confirmation', headerSpace: true, bodyRows }));
 
-  console.log(`[email] 续费通知已发送至 ${opts.to}（订单 ${opts.orderNo}）`);
+  const text = `Order Confirmation
+
+Thank you for choosing us!
+
+Dear ${opts.to},
+
+Your renewal has been activated successfully. No re-installation is needed; the new package takes effect on your current eSIM.
+
+Order summary
+  Order ID: ${opts.orderNo}
+  Product: ${packageName}
+  Qty: 1
+  Valid until: ${expireStr}
+
+For support or further clarification, please contact customer service: ${process.env.SMTP_MANAGER_ADDR || process.env.SMTP_FROM || ''}`;
+
+  await dispatchMail({ to: opts.to, subject: `Order Confirmation - ${opts.orderNo}`, html, text }, '续费通知', opts.orderNo);
 }

@@ -34,7 +34,8 @@ export default {
     esimCard: 'eSIM Card Details',
     about: 'About Us',
     supportedModels: 'Supported eSIM Devices',
-    usageNotice: 'eSIM Usage Notice'
+    usageNotice: 'eSIM Usage Notice',
+    contact: 'Contact Us'
   },
   index: {
     slogan: 'Data in 200+ destinations worldwide',
@@ -81,12 +82,21 @@ export default {
     menuEmail: 'My Email',
     menuFaq: 'FAQ',
     menuAbout: 'About YYeSim',
+    menuContact: 'Contact Us',
     menuLanguage: 'Language / 语言',
     menuLogout: 'Log Out',
     demo: 'Demo environment · Data connected to local backend',
     logoutConfirm: 'Are you sure you want to log out?',
     loggedOut: 'Logged out',
     languageTitle: 'Switch Language'
+  },
+  contact: {
+    heroTitle: 'Contact Us',
+    heroSub: 'We are here to help',
+    emailLabel: 'Official Email',
+    responseTip: 'We will reply to your email as soon as possible, usually within 1-2 business days.',
+    copyEmail: 'Copy Email',
+    copied: 'Email copied'
   },
   about: {
     slogan: 'Global data, buy and use instantly',

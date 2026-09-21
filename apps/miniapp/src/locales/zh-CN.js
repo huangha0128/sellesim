@@ -34,7 +34,8 @@ export default {
     esimCard: 'eSIM 卡详情',
     about: '关于我们',
     supportedModels: '支持 eSIM 机型汇总',
-    usageNotice: 'eSIM 使用须知'
+    usageNotice: 'eSIM 使用须知',
+    contact: '联系我们'
   },
   index: {
     slogan: '全球 200+ 地区流量',
@@ -83,12 +84,21 @@ export default {
     menuOrders: '我的订单',
     menuGuide: '安装与激活说明',
     menuAbout: '关于我们',
+    menuContact: '联系我们',
     menuLanguage: '语言设置',
     menuLogout: '退出登录',
     demo: '演示环境 · 数据已对接本地后端服务',
     logoutConfirm: '确定要退出登录吗？',
     loggedOut: '已退出登录',
     languageTitle: '切换语言'
+  },
+  contact: {
+    heroTitle: '联系我们',
+    heroSub: '我们随时为您服务',
+    emailLabel: '官方邮箱',
+    responseTip: '收到您的邮件后，我们将尽快回复，通常为 1-2 个工作日。',
+    copyEmail: '复制邮箱',
+    copied: '邮箱已复制'
   },
   about: {
     slogan: '全球流量，即买即用',

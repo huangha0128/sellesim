@@ -170,7 +170,7 @@ export async function refundOrder(deps: RefundDeps, orderNo: string, reason?: st
     ...(reason ? { refundReason: reason } : {}),
   });
 
-  // 释放 eSIM 记录（ICCID 归还卡片池，可再次使用）
+  // 释放 eSIM 记录：先解绑 Tiger 该 ICCID 上的套餐，再删本地记录（ICCID 归还卡片池，可再次使用）
   const esim = await deps.findEsimByOrderId(order.id);
   if (esim) {
     await deps.deleteEsimByOrderId(order.id);
@@ -398,7 +398,7 @@ export async function refundOrderSelfService(
       refundTradeNo: res.tradeNo || '',
       refundedAt: new Date(),
     });
-    // release eSIM (ICCID returns to pool)
+    // release eSIM: unbind Tiger packages first, then drop local row (ICCID returns to pool)
     if (esim) await deps.deleteEsimByOrderId(order.id);
   } else {
     await deps.updateOrder(order.orderNo, {

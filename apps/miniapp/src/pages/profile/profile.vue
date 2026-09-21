@@ -106,6 +106,13 @@
         <text class="menu-txt">{{ $t('profile.menuAbout') }}</text>
         <text class="menu-arrow">›</text>
       </view>
+      <view class="menu-item" hover-class="menu-item--hover" @click="goContact">
+        <view class="menu-icon-wrap ic-purple">
+          <image class="menu-icon" src="/static/icons/prof-help.png" mode="aspectFit" />
+        </view>
+        <text class="menu-txt">{{ $t('profile.menuContact') }}</text>
+        <text class="menu-arrow">›</text>
+      </view>
     </view>
 
     <view class="footer-safe"></view>
@@ -212,6 +219,9 @@ export default {
     },
     about() {
       uni.navigateTo({ url: '/pages/profile/about' })
+    },
+    goContact() {
+      uni.navigateTo({ url: '/pages/profile/contact' })
     },
     switchTab(tab) {
       if (tab === this.currentTab) return

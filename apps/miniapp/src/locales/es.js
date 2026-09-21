@@ -34,7 +34,8 @@ export default {
     esimCard: 'Detalles de la tarjeta eSIM',
     about: 'Sobre nosotros',
     supportedModels: 'Dispositivos compatibles eSIM',
-    usageNotice: 'Aviso de uso eSIM'
+    usageNotice: 'Aviso de uso eSIM',
+    contact: 'Contáctanos'
   },
   index: {
     slogan: 'Datos en más de 200 destinos del mundo',
@@ -83,12 +84,21 @@ export default {
     menuOrders: 'Mis pedidos',
     menuGuide: 'Instalación y activación',
     menuAbout: 'Sobre nosotros',
+    menuContact: 'Contáctanos',
     menuLanguage: 'Idioma',
     menuLogout: 'Cerrar sesión',
     demo: 'Entorno de demostración · Conectado al backend local',
     logoutConfirm: '¿Seguro que quieres cerrar sesión?',
     loggedOut: 'Sesión cerrada',
     languageTitle: 'Cambiar idioma'
+  },
+  contact: {
+    heroTitle: 'Contáctanos',
+    heroSub: 'Estamos aquí para ayudarte',
+    emailLabel: 'Correo oficial',
+    responseTip: 'Responderemos a tu correo lo antes posible, normalmente en 1-2 días laborables.',
+    copyEmail: 'Copiar correo',
+    copied: 'Correo copiado'
   },
   about: {
     slogan: 'Datos globales, cómpralos y úsalos al instante',

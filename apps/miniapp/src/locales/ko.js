@@ -34,7 +34,8 @@ export default {
     esimCard: 'eSIM 카드 상세',
     about: '회사 소개',
     supportedModels: 'eSIM 지원 기기 목록',
-    usageNotice: 'eSIM 사용 안내'
+    usageNotice: 'eSIM 사용 안내',
+    contact: '문의하기'
   },
   index: {
     slogan: '전 세계 200여 개 지역 데이터',
@@ -83,12 +84,21 @@ export default {
     menuOrders: '내 주문',
     menuGuide: '설치 및 활성화 안내',
     menuAbout: '회사 소개',
+    menuContact: '문의하기',
     menuLanguage: '언어 설정',
     menuLogout: '로그아웃',
     demo: '데모 환경 · 로컬 백엔드에 연결됨',
     logoutConfirm: '정말 로그아웃하시겠습니까?',
     loggedOut: '로그아웃되었습니다',
     languageTitle: '언어 전환'
+  },
+  contact: {
+    heroTitle: '문의하기',
+    heroSub: '언제든지 도와드리겠습니다',
+    emailLabel: '공식 이메일',
+    responseTip: '메일을 받은 후 최대한 빨리 답변드리며, 보통 영업일 기준 1~2일이 소요됩니다.',
+    copyEmail: '이메일 복사',
+    copied: '이메일이 복사되었습니다'
   },
   about: {
     slogan: '글로벌 데이터, 사서 바로 사용',
