@@ -74,6 +74,9 @@ export default function ProfilePage() {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(500);
   const [submitting, setSubmitting] = useState(false);
+  // 回调地址（自助配置）
+  const [callback, setCallback] = useState('');
+  const [callbackSaving, setCallbackSaving] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -81,12 +84,31 @@ export default function ProfilePage() {
       const [meRes, walletRes] = await Promise.all([api.me(), api.wallet()]);
       setMe(meRes);
       setWallet(walletRes);
+      setCallback(meRes.subject.callbackUrl || '');
     } catch (e) {
       toast.error(getErrorMessage(e, '加载失败'));
     } finally {
       setLoading(false);
     }
   }, []);
+
+  async function saveCallback() {
+    const val = callback.trim();
+    if (val !== '' && !/^https?:\/\//.test(val)) {
+      toast.error('回调地址必须以 http:// 或 https:// 开头');
+      return;
+    }
+    setCallbackSaving(true);
+    try {
+      await api.updateCallback(val);
+      toast.success('回调地址已保存');
+      load();
+    } catch (e) {
+      toast.error(getErrorMessage(e, '保存失败'));
+    } finally {
+      setCallbackSaving(false);
+    }
+  }
 
   useEffect(() => {
     load();
@@ -127,11 +149,28 @@ export default function ProfilePage() {
           </Badge>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">回调地址</div>
-            <div className="break-all rounded-lg bg-muted/70 px-3 py-2 text-[12.5px] text-ink">
-              {subj?.callbackUrl || '未配置'}
+          <div className="space-y-1.5 sm:col-span-2">
+            <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Webhook 回调地址
             </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                value={callback}
+                onChange={(e) => setCallback(e.target.value)}
+                placeholder="https://your-server.com/webhook"
+                className="min-w-[220px] flex-1 font-mono text-[12.5px]"
+              />
+              <Button
+                size="sm"
+                onClick={saveCallback}
+                disabled={callbackSaving || callback.trim() === (subj?.callbackUrl || '')}
+              >
+                {callbackSaving ? '保存中…' : '保存'}
+              </Button>
+            </div>
+            <p className="text-[11.5px] text-muted-foreground">
+              交付（order.delivered）与退款（order.refunded）事件将通过此地址以签名形式回调；无需后台配置，自助填写即可，留空并保存可清除。
+            </p>
           </div>
           <div className="space-y-1.5">
             <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">分成比例</div>

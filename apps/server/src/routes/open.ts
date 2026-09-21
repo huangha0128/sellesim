@@ -107,6 +107,30 @@ export default (prisma: PrismaClient) => {
     });
   });
 
+  /** PUT /me 主体自改 Webhook 回调地址（无需后台，自助配置） */
+  router.put('/me', async (req: OpenAuthRequest, res: Response) => {
+    const { callbackUrl } = (req.body || {}) as { callbackUrl?: string | null };
+    let next: string | null = null;
+    if (callbackUrl !== undefined && callbackUrl !== null) {
+      const trimmed = String(callbackUrl).trim();
+      // 空串表示清除回调地址
+      if (trimmed === '') {
+        next = null;
+      } else {
+        if (!/^https?:\/\//.test(trimmed)) {
+          return err(res, 400, 400, 'callbackUrl 必须以 http:// 或 https:// 开头');
+        }
+        next = trimmed;
+      }
+    }
+    const subject = await prisma.subject.update({
+      where: { id: req.subject!.id },
+      data: { callbackUrl: next },
+      select: { callbackUrl: true },
+    });
+    ok(res, { callbackUrl: subject.callbackUrl });
+  });
+
   /** GET /quota 额度总览 + 记账流水 */
   router.get('/quota', async (req: OpenAuthRequest, res: Response) => {
     const s = await prisma.subject.findUnique({ where: { id: req.subject!.id } });

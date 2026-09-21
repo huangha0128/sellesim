@@ -263,6 +263,10 @@ export const api = {
 
   me: () => request<MeResult>('/me'),
 
+  /** 自助更新 Webhook 回调地址（需写接口签名） */
+  updateCallback: (callbackUrl: string) =>
+    request<{ callbackUrl: string }>('/me', { method: 'PUT', body: { callbackUrl } }),
+
   quota: (page = 1, pageSize = 20) =>
     request<QuotaResult>(`/quota${qs({ page, pageSize })}`),
 
