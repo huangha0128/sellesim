@@ -1,0 +1,106 @@
+Received: from xmbg7.mail.qq.com (localhost [101.91.43.121])
+	by bizmx58.qq.com (NewMx) with SMTP id 
+	for <hhao@ziai.net.cn>; Sun, 20 Sep 2026 15:55:34 +0800
+X-QQ-HITDIVERSE: none
+X-BIZMAIL-ID: 4098268410747839160
+X-QQ-mid: bizmx58t1789890934t0288ae7959
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed; d=qq.com; s=s201512;
+	t=1789890933; bh=H7NurSwAGGdEKTV/qvC+Fe3HqtzonrMXZvmb5T4fn3M=;
+	h=From:To:Subject:Date;
+	b=s5auyBtadHj5rIbZ3Y3Bvw4VAKtoilbAotcL12KIVcyfcSEagfeLM9+eG/ZZ/pama
+	 3RONiN5maEOEpBAFeUBxX5VXoE2H7GtzWzl+8CRyn+Rg/TIBU3PeSLs5y7opnfhy5i
+	 7SnSRsbWKOtEetvKdjTQ5pxnTZOrach5qL+Juf20=
+X-BQ-XMRINFO: NS+P29fieYNwqS3WCnRCOn9D1NpZuCnCRA==
+X-BQ-XMAILINFO: Noq0cIcmFX23UficVLTXLQxQyz0XLzXhyryMlieaPEu9mix1P2MS2cKZ8IIxCR
+	 W3gvaj6cRVJb1ppeT6PM7cCZa3NROjsvJpk0M9U+y0G+Kp2CGru6xgX6Y3Y7GI07+7bI7TLsr2B6a
+	 KEjR1sSuBhJU6h1Hx8DhELCiJ9slSfYrXKcyLJdiFvvVq7t+35OrgS/4CLIKJ5YcBPm2Jg8xmgYus
+	 n8yos18liAxQQjl1QzfBkpv0bjW3fMtkDWXFlQP6ROV1g1IAQ8NO9jIrN8brEwmoiYnbiR/6DyA8D
+	 KJl3tcPxqPdkKhlxm237QkJUIFr6AReuDQyP/RKVty7uDYcOzRqAuAXYDWh9nMS5uznEuuSCuV90X
+	 +7TfI0ncW6sokKkKnDdBNSqL8RwobBumytQhrSVqpiqeOsEWV+ryawnOUlFTFLpX2uUbwk1bz+v13
+	 4KCuOA6EpL/KuTh8IX1Y5BmlE8IJhpEBw17jGmeqeuyUI3FThCHk8ZsKjgoc0/RAmpMPMQHHHpILO
+	 xHauWXH09MLQRIeVZj8/Dm33qfpbSY8S5LYqMCHkOkyQiE4ne871aFz1VZN+SvnlnOn0uY8OEdZHP
+	 sYrxOl5JuGNUwYUA6IBptGO5Ims5F0B2AbAcScvwEweWz8g/l0TcTzVXHVeicdGAV1d26qiC0C64o
+	 /YAfixCbRkidtp0saId5hNX0ldhL/EHs1dEwkcvd4pOSFEgjhWJ0NicaX9o9Wkv7jBL/DT3c8Yoz2
+	 HWRO9bTttRfwbMk2dRwUcjz3vqhIZqGRHW0SszsPR2m1YEE6CTReGyt6r02wxgcYZRI4viSQaEHYk
+	 aH39X6hFEZiwopSimGtbcfr9uBQ/WtHlAgHu0/O/0mlETax9xHtQVNo1jlQPvFHjHgjF+Fj8DlFK9
+	 0zvAlQzjITav2CDUxj3DXjcrnlUY2St2cHWcEfBbub60gCcCOlYNh2Mtxz+n/jUMoN2gm/FGhqTyv
+	 2c/p9nHKu93G3BpEW7VAHFLw0ObB8VmoB84HrWytqcxv+pf9pT1+hXORp5nC/sstW35IvJ1MWSXkk
+	 NhqrIQAL9R2ox+Ugq9gmAnFH8+LfmNr39zd2N
+From: "=?utf-8?B?Kioq?=" <811403141@qq.com>
+To: "=?utf-8?B?aGhhbw==?=" <hhao@ziai.net.cn>
+Subject: =?utf-8?B?Rnc6IFJlZnVuZCBjb21wbGV0ZWQg4oCTIE9yZGVy?=
+ =?utf-8?B?IE9SRDIwMjYwODA1MDcxMTA5ZTQxMzU=?=
+Mime-Version: 1.0
+Content-Type: multipart/alternative;
+	boundary="----=_NextPart_6AAF9175_497118C0_5534AB05"
+Content-Transfer-Encoding: 8Bit
+Date: Sun, 20 Sep 2026 15:55:33 +0800
+X-Priority: 3
+Message-ID: <tencent_47CA4162E1C5EA655EB2F8680E7F0AAD930A@qq.com>
+X-BQ-MIME: TCMime 1.0 by Tencent
+X-Mailer: QQMail 2.x
+X-BQ-Mailer: QQMail 2.x
+X-BQ-mid: xmapza28-1t1789890933tvhkminis
+X-QQ-XMAILINFO: N76rkG23tQ5K0H/0pzu+1V6cgNLOTDACCn6WS2kUn8Al4EcXXVk+h/WZ
+	WRnDKrT9Ed/FG8wvk1t8H2z29Oj5eixiBBwVe0bS9UAmZCOfHokrLI9jUUhSkJW/iKVeVwt
+	/eH0GgLKDl2iV/hUJ2jBh1qQtfXQJEbcn241Cl3emUc2MDTFKFv408zPpkmKjCeJz8geX3W
+	qEXmEiRZ+7iMmst1+u5zisIY2if4cW+1XQ1xFUu9l1bQBVdINUwSZP92Bg31gGq9nWXcHP2
+	1jvjzjI0Io/HKjZECeWmTVbO8hvEdd9y2p+hV6bXIi5bWCuodkuihoIO45vplyTSvF210mP
+	DuGu3VDzKd+PGHZazHR7D0mRDb4GODk9iBWbsJpn4VM6vexjX/HKeQRQENxBZ6PEEpKwiHK
+	9wzgI3YEsMVOETpK2XBPrJ3sRIvqL6zq3GlQ8eSjzLjpkRN/T0ecn+MuM9KwJpROIbVPauD
+	72tMT6GkZh5QXzeG7hVF9xDh6RbkFnUmwyDBlzUca2CqkwtSc9KIPLYvmi3iMy94CDaiHCc
+	QT6R/W0/AnjbSyqFbdA6DgMsidtQJmBkDRknByG4i0YC5iI5hMAz+JC17KRq8NdMQlN7ThY
+	CT/N6nHAQRvzUiH3jJVrPQHG+l/nubYXlM7CM4AZ3XQLOaik3MgUZBFwEcUUyw6p2vlcPUx
+	vXaKpf1PfOl29vLlRzSPDLQlNWpg/e/325CCSflORzOELpczT5izabKf5WyGqbq4ltpsx3/
+	EGyaVDeb08H+eYrZ3PvCVY29EYluuGce5VLZkS/lftqOVmhIUSXCrxWWWxIOwFxO/NfoGAZ
+	O7uJ35ij7ikTH7jvY3oem6T8q7aOCuHR8PJa3U+SQGgJUP5q4nMJTdBRZD7MtZpDJDOnSYp
+	ZQC0DVEYfz+WRq+o6Nt8GX0G/2hm+Z2py1asexFyvbRPwD+tAA6BItKFqkVGCZFMow46B9X
+	jspSxMiPdHphsrgXRUHzzoQl7/fz9fXHNIdR81YoJgwys1uENWsmBpQKIYFYiBDYqusaHZk
+	giro6V1tzWKoyvL1sMkz9oXPiuLhP3CLc8Ibob8DLC8/cPNvib2B6rrmWuXczxqdlKzEEt1
+	wsQCWZzOPQ0Olk/I6C81SqCQsWycFoUKBfEqbY01MjH
+X-QQ-XMRINFO: MSVp+SPm3vtSI1QTLgDHQqIV1w2oNKDqfg==
+Authentication-Results: mxbiz.qq.com; spf=pass(101.91.43.121) smtp.mailf
+	rom=<811403141@qq.com>; dkim=pass(signature was verified) header.d=qq.c
+	om; dmarc=pass(p=QUARANTINE sp=QUARANTINE pct=100) header.from=qq.com
+X-QQ-RECHKSPAM: 0
+
+This is a multi-part message in MIME format.
+
+------=_NextPart_6AAF9175_497118C0_5534AB05
+Content-Type: text/plain;
+	charset="utf-8"
+Content-Transfer-Encoding: base64
+
+LS0tT3JpZ2luYWwtLS0NCkZyb206ICJpbmZvIjxpbmZvQG1haWwudGlnZXJlc2ltcy5jb20m
+Z3Q7DQpEYXRlOiBUaHUsIEF1ZyA2LCAyMDI2IDA5OjA0IEFNDQpUbzogIjgxMTQwMzE0MSI8
+ODExNDAzMTQxQHFxLmNvbSZndDs7DQpTdWJqZWN0OiBSZWZ1bmQgY29tcGxldGVkIOKAkyBP
+cmRlciBPUkQyMDI2MDgwNTA3MTEwOWU0MTM1DQoNCg0KDQpZb3VyIHJlZnVuZCByZXF1ZXN0
+IGZvciBvcmRlciBPUkQyMDI2MDgwNTA3MTEwOWU0MTM1IGhhcyBiZWVuIHVwZGF0ZWQuDQoN
+ClN0YXR1czogcmVmdW5kZWQNCk5ldCByZWZ1bmQ6IDAuOTcgUk1CDQoNCklmIHlvdSBuZWVk
+IGhlbHAsIHBsZWFzZSBjb250YWN0IEN1c3RvbWVyIFN1cHBvcnQgaW4gdGhlIGFwcC4=
+
+------=_NextPart_6AAF9175_497118C0_5534AB05
+Content-Type: text/html;
+	charset="utf-8"
+Content-Transfer-Encoding: base64
+
+PGRpdj48YnIgIC8+PC9kaXY+PGRpdj48YnIgIC8+PC9kaXY+PGRpdj48IS0tZW1wdHlzaWdu
+LS0+PC9kaXY+PGRpdj48ZGl2IHN0eWxlPSJmb250LXNpemU6MTJweDtwYWRkaW5nOjJweCAw
+OyIgY2xhc3M9InhtX21haWxfb3JpbmdpbmFsX2Rlc2NyaWJlIj4tLS1PcmlnaW5hbC0tLTwv
+ZGl2PjxkaXYgc3R5bGU9ImZvbnQtc2l6ZToxMnB4O2JhY2tncm91bmQ6I2YwZjBmMDtjb2xv
+cjojMjEyMTIxO3BhZGRpbmc6OHB4IWltcG9ydGFudDtib3JkZXItcmFkaXVzOjRweDtsaW5l
+LWhlaWdodDoxLjU7Ij48ZGl2IGNsYXNzPSJ4bV9tYWlsX29yaW5naW5hbF9kZXNjcmliZSI+
+PGI+RnJvbTo8L2I+ICJpbmZvIiZsdDtpbmZvQG1haWwudGlnZXJlc2ltcy5jb20mZ3Q7PC9k
+aXY+PGRpdiBjbGFzcz0ieG1fbWFpbF9vcmluZ2luYWxfZGVzY3JpYmUiPjxiPkRhdGU6PC9i
+PiBUaHUsIEF1ZyA2LCAyMDI2IDA5OjA0IEFNPC9kaXY+PGRpdiBjbGFzcz0ieG1fbWFpbF9v
+cmluZ2luYWxfZGVzY3JpYmUiPjxiPlRvOjwvYj4gIjgxMTQwMzE0MSImbHQ7ODExNDAzMTQx
+QHFxLmNvbSZndDs7PC9kaXY+PGRpdiBjbGFzcz0ieG1fbWFpbF9vcmluZ2luYWxfZGVzY3Jp
+YmUiPjxiPlN1YmplY3Q6PC9iPiBSZWZ1bmQgY29tcGxldGVkIOKAkyBPcmRlciBPUkQyMDI2
+MDgwNTA3MTEwOWU0MTM1PC9kaXY+PC9kaXY+PGJyICAvPjxwPllvdXIgcmVmdW5kIHJlcXVl
+c3QgZm9yIG9yZGVyIDxzdHJvbmc+T1JEMjAyNjA4MDUwNzExMDllNDEzNTwvc3Ryb25nPiBo
+YXMgYmVlbiB1cGRhdGVkLjwvcD48cD5TdGF0dXM6IDxzdHJvbmc+cmVmdW5kZWQ8L3N0cm9u
+Zz48YnIgIC8+TmV0IHJlZnVuZDogMC45NyBSTUI8L3A+PHA+SWYgeW91IG5lZWQgaGVscCwg
+cGxlYXNlIGNvbnRhY3QgQ3VzdG9tZXIgU3VwcG9ydCBpbiB0aGUgYXBwLjwvcD48L2Rpdj4=
+
+------=_NextPart_6AAF9175_497118C0_5534AB05--
+

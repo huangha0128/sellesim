@@ -1,15 +1,16 @@
+import { readFile } from 'fs/promises';
+import path from 'path';
 import nodemailer, { type SendMailOptions } from 'nodemailer';
-import QRCode from 'qrcode';
+import { buildInstallGuidePdf } from './install-guide-pdf';
 
 /**
  * 邮件发送服务
  *
- * 样式参照 exampleemail 目录中的 TigerESIM 示例邮件（该模板经验证不易被识别为垃圾邮件）：
- * - 暖色 #fff0e8 背景 + 居中窄卡片（max-width 520px）
- * - 顶部圆角 logo、居中小黑标题、纯黑字体正文、无 emoji / 无营销渐变
- * - 订单信息用浅色嵌套表格呈现
- * - 页脚为邮箱 + 网址 + 版权（无需退订链接，减少 spam 误报）
- * - HTML 与纯文本始终成对，内容一致
+ * 内容与结构参照 exampleemail 目录中的示例邮件：
+ * - 正文只放简单的订单/退款信息；安装指南与激活二维码放在 PDF 附件中。
+ * - 样式遵循小程序深蓝紫星空体系（apps/miniapp/src/uni.scss）：
+ *   主色 #4050C0 / 文字 #1A1D3A / 页面背景 #F5F7F8 / 卡片 #FFFFFF / 分隔 #E1E8EC。
+ * - 不使用 emoji、营销渐变与夸张促销用语；HTML 与纯文本始终成对且内容一致。
  */
 
 interface SendEsimEmailOptions {
@@ -21,6 +22,45 @@ interface SendEsimEmailOptions {
   activationCode: string;
   iccid: string;
   expireAt: Date;
+}
+
+interface SendRefundEmailOptions {
+  to: string;
+  orderNo: string;
+  amount: string;
+}
+
+interface SendRenewEmailOptions {
+  to: string;
+  orderNo: string;
+  countryName: string;
+  gb: number; // 续费后的套餐流量
+  days: number; // 续费后的套餐天数
+  expireAt: Date; // 新的到期时间
+}
+
+// ---- 小程序主题色 ----
+const C_BRAND = '#4050C0';
+const C_BRAND_LIGHT = '#E4EAFF';
+const C_INK = '#1A1D3A';
+const C_INK_2 = '#4A5078';
+const C_BG = '#F5F7F8';
+const C_LINE = '#E1E8EC';
+const FONT_STACK = `-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif`;
+
+const LOGO_PATH = path.resolve(process.cwd(), 'assets/logo.png');
+const LOGO_CID = 'yyesim-logo';
+let logoCache: Buffer | null = null;
+
+/** 读取品牌 logo（CID 内嵌，随邮件附件发送，避免邮箱拦截外链图片） */
+async function loadLogo(): Promise<Buffer | null> {
+  if (logoCache) return logoCache;
+  try {
+    logoCache = await readFile(LOGO_PATH);
+    return logoCache;
+  } catch {
+    return null;
+  }
 }
 
 function createTransporter() {
@@ -42,109 +82,85 @@ function createTransporter() {
   });
 }
 
-async function generateQrDataUri(text: string): Promise<string> {
-  return QRCode.toDataURL(text, {
-    width: 300,
-    margin: 1,
-    color: { dark: '#000000', light: '#ffffff' },
-  });
-}
-
 function getSenderIdentity() {
   const brand = process.env.SMTP_FROM_NAME || 'YYeSim';
   const fromAddr = process.env.SMTP_FROM || process.env.SMTP_USER || '';
   const replyTo = process.env.SMTP_REPLY_TO || fromAddr;
   const supportAddr = process.env.SMTP_MANAGER_ADDR || fromAddr; // 客服联系邮箱
-  const siteUrl = process.env.SMTP_SITE_URL || process.env.MINIPROGRAM_HOST || '';
-  const logoUrl = process.env.SMTP_LOGO_URL || '';
-  return { brand, fromAddr, replyTo, supportAddr, siteUrl, logoUrl };
+  const siteUrl = process.env.SMTP_SITE_URL || '';
+  return { brand, fromAddr, replyTo, supportAddr, siteUrl };
 }
 
-const BASE_FONT = `-apple-system, BlinkMacSystemFont, 'SF Pro', 'Helvetica Neue', Arial, sans-serif`;
-
-/** 订单摘要行（示例邮件同款：左标签 black、右值 black、行间浅分隔） */
+/** 订单摘要行（左标签 / 右值） */
 function summaryRow(label: string, value: string): string {
   return `
-          <tr>
-            <td style="font-family:${BASE_FONT};font-size:14px;color:#000000;line-height:24px;padding:7px 12px;">
-              ${label}
-            </td>
-            <td style="font-family:${BASE_FONT};font-size:14px;color:#000000;line-height:24px;text-align:right;word-break:break-all;padding:7px 12px;">
-              ${value}
-            </td>
-          </tr>`;
+        <tr>
+          <td style="padding:10px 4px;border-bottom:1px solid ${C_LINE};font-size:13px;color:${C_INK_2};font-family:${FONT_STACK};white-space:nowrap;vertical-align:top;">${label}</td>
+          <td style="padding:10px 4px;border-bottom:1px solid ${C_LINE};font-size:13px;color:${C_INK};font-family:${FONT_STACK};text-align:right;word-break:break-all;vertical-align:top;">${value}</td>
+        </tr>`;
 }
 
-/** 订单信息卡片（示例邮件同款：白底圆角内嵌表格） */
-function summaryCard(rows: Array<[string, string]>): string {
+/** 订单摘要卡片 */
+function summaryCard(title: string, rows: Array<[string, string]>): string {
   return `
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background:#FFFFFF;border:1px solid ${C_LINE};border-radius:12px;padding:20px;">
     <tr>
-      <td style="background:#ffffff;border-radius:12px;padding:20px;">
-        <p style="margin:0 0 12px;font-family:${BASE_FONT};font-size:14px;font-weight:700;color:#000000;line-height:24px;">Order summary</p>
-        <table width="100%" cellpadding="0" cellspacing="0" border="0">
-          <tbody>
-            ${rows.map(([l, v]) => summaryRow(l, v)).join('')}
-          </tbody>
+      <td>
+        <p style="margin:0 0 4px;font-size:13px;font-weight:600;color:${C_BRAND};font-family:${FONT_STACK};">${title}</p>
+        <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+          ${rows.map(([l, v]) => summaryRow(l, v)).join('')}
         </table>
       </td>
     </tr>
   </table>`;
 }
 
-/** 外层布局外壳：暖色背景 + 居中卡片 + 圆角 logo + 标题 + 页脚（完全还原示例邮件版式） */
-function renderShell(opts: {
-  title: string;
-  titlePre?: string;
-  headerSpace?: boolean;
-  bodyRows: string; // 正文若干行（已拼好的 <tr> 或 <td> 内容）
-  footerNote?: string; // 可选的客服提示（如 "For support or further clarification, please contact customer service:"）
-}): string {
-  const { brand, supportAddr, siteUrl, logoUrl } = getSenderIdentity();
+/**
+ * 页面外壳：浅灰底 + 居中窄卡片 + 品牌 logo 块 + 标题 + 客服页脚。
+ * 版式仿照示例邮件，配色使用小程序主题色。
+ */
+async function renderShell(opts: { title: string; bodyRows: string; logoText?: string }): Promise<string> {
+  const { brand, supportAddr, siteUrl } = getSenderIdentity();
+  const wordmark = opts.logoText || brand || 'YYeSim';
+  const logo = await loadLogo();
   const siteLink = siteUrl
-    ? `<a href="${siteUrl}" target="_blank" rel="noopener noreferrer" style="font-family:${BASE_FONT};font-size:14px;color:#333333;text-decoration:none;">${siteUrl.replace(/^https?:\/\//, '')}</a>`
-    : `<span style="font-family:${BASE_FONT};font-size:14px;color:#333333;">${brand}</span>`;
+    ? `<a href="${siteUrl}" target="_blank" rel="noopener noreferrer" style="font-size:12px;color:${C_INK_2};font-family:${FONT_STACK};text-decoration:none;">${siteUrl.replace(/^https?:\/\//, '')}</a>`
+    : `<span style="font-size:12px;color:${C_INK_2};font-family:${FONT_STACK};">${brand}</span>`;
 
-  const logoHtml = logoUrl
-    ? `<img src="${logoUrl}" width="64" height="64" alt="" style="display:block;border:0;border-radius:12.8px;"/>`
-    : `<td align="center" style="width:64px;height:64px;background:#ec652b;border-radius:12.8px;display:inline-block;"><span style="font-family:${BASE_FONT};font-size:28px;font-weight:700;color:#ffffff;line-height:64px;">${brand.charAt(0)}</span></td>`;
+  const logoBlock = logo
+    ? `<img src="cid:${LOGO_CID}" width="72" alt="${brand}" style="display:block;border:0;width:72px;height:auto;"/>`
+    : `<table cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color:${C_BRAND};border-radius:12px;">
+         <tr>
+           <td align="center" style="padding:10px 22px;font-size:20px;font-weight:700;color:#FFFFFF;font-family:${FONT_STACK};letter-spacing:0.5px;">${wordmark}</td>
+         </tr>
+       </table>`;
 
   return `
-  <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#fff0e8;">
+  <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color:${C_BG};">
     <tbody>
       <tr>
-        <td align="center" style="padding:0;">
-          <table width="375" cellpadding="0" cellspacing="0" border="0" style="max-width:520px;width:100%;background-color:#fff0e8;">
+        <td align="center" style="padding:40px 16px;">
+          <table width="520" cellpadding="0" cellspacing="0" border="0" role="presentation" style="width:100%;max-width:520px;background-color:#FFFFFF;border:1px solid ${C_LINE};border-radius:16px;">
             <tbody>
               <tr>
-                <td align="center" style="padding:${opts.headerSpace ? '16px 24px 24px' : '48px 24px 24px'};">
-                  ${logoHtml}
+                <td align="center" style="padding:32px 24px 8px;">
+                  ${logoBlock}
                 </td>
               </tr>
               <tr>
-                <td align="center" style="padding:0 24px 32px;">
-                  <h1 style="margin:0;font-family:${BASE_FONT};font-size:20px;font-weight:700;color:#000000;line-height:22px;letter-spacing:0;">
-                    ${opts.title}
-                  </h1>
+                <td align="center" style="padding:16px 24px 24px;">
+                  <h1 style="margin:0;font-size:20px;font-weight:700;color:${C_INK};font-family:${FONT_STACK};line-height:1.4;">${opts.title}</h1>
                 </td>
               </tr>
               ${opts.bodyRows}
               <tr>
-                <td align="center" style="padding:0 24px 16px;">
-                  <p style="margin:0;font-family:${BASE_FONT};font-size:14px;font-weight:400;color:#000000;line-height:24px;">
-                    For support or further clarification, please contact customer service:
+                <td align="center" style="padding:24px;border-top:1px solid ${C_LINE};">
+                  <p style="margin:0;font-size:13px;color:${C_INK_2};font-family:${FONT_STACK};line-height:1.8;">
+                    如需帮助，请联系客服：
+                    <a href="mailto:${supportAddr}" style="color:${C_BRAND};text-decoration:none;font-weight:600;">${supportAddr}</a>
                   </p>
-                  <p style="margin:0;font-family:${BASE_FONT};font-size:14px;font-weight:700;color:#000000;line-height:24px;">
-                    <a href="mailto:${supportAddr}" style="color:#000000;font-weight:700;text-decoration:none;">${supportAddr}</a>
-                  </p>
-                </td>
-              </tr>
-              <tr>
-                <td align="center" style="padding:0 24px 32px;">
-                  ${siteLink}
-                  <p style="margin:8px 0 0;font-family:${BASE_FONT};font-size:12px;font-weight:400;color:#333333;line-height:24px;">
-                    &copy; ${new Date().getFullYear()} ${brand}
-                  </p>
+                  <p style="margin:8px 0 0;font-size:12px;color:${C_INK_2};font-family:${FONT_STACK};">${siteLink}</p>
+                  <p style="margin:4px 0 0;font-size:12px;color:${C_INK_2};font-family:${FONT_STACK};">&copy; ${new Date().getFullYear()} ${brand}</p>
                 </td>
               </tr>
             </tbody>
@@ -155,7 +171,6 @@ function renderShell(opts: {
   </table>`;
 }
 
-/** 生成的完整 <title> 与 <body>（Html 部分），便于统一包裹 DOCTYPE */
 function wrapDocument(title: string, bodyHtml: string): string {
   return `<!DOCTYPE html>
 <html lang="zh-CN">
@@ -164,14 +179,22 @@ function wrapDocument(title: string, bodyHtml: string): string {
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>${title}</title>
 </head>
-<body style="margin:0;padding:0;background:#fff0e8;">
+<body style="margin:0;padding:0;background-color:${C_BG};">
   ${bodyHtml}
 </body>
 </html>`;
 }
 
-/** 发信的公共入口：设置 From / Reply-To / 主题并发送 */
-async function dispatchMail(opts: { to: string; subject: string; html: string; text: string }, tag: string, orderNo: string) {
+interface DispatchOptions {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  attachments?: Array<{ filename: string; content: Buffer; contentType: string; cid?: string }>;
+}
+
+/** 发送邮件：统一设置 From / Reply-To / 附件（含品牌 logo CID），并打印日志 */
+async function dispatchMail(opts: DispatchOptions, tag: string, orderNo: string) {
   const transporter = createTransporter();
   const { brand, fromAddr, replyTo } = getSenderIdentity();
 
@@ -184,183 +207,195 @@ async function dispatchMail(opts: { to: string; subject: string; html: string; t
   };
   if (replyTo) mailOptions.replyTo = replyTo;
 
+  const attachments = [...(opts.attachments ?? [])];
+  const logo = await loadLogo();
+  if (logo) {
+    attachments.push({ filename: 'logo.png', content: logo, cid: LOGO_CID, contentType: 'image/png' });
+  }
+  if (attachments.length) mailOptions.attachments = attachments;
+
   await transporter.sendMail(mailOptions);
   console.log(`[email] ${tag} 已发送至 ${opts.to}（订单 ${orderNo}）`);
 }
 
-/** 发卡成功：向用户发送 eSIM 激活码与二维码（对应示例邮件 "Your eSIM installation guide"） */
+/** 发卡成功：正文只给简要信息，安装指南（含激活二维码）放在 PDF 附件中 */
 export async function sendEsimEmail(opts: SendEsimEmailOptions): Promise<void> {
-  const qrDataUri = await generateQrDataUri(opts.activationCode);
+  const { supportAddr, siteUrl } = getSenderIdentity();
   const expireStr = opts.expireAt.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
   const packageName = `${opts.countryName} / ${opts.gb}GB ${opts.days}day-eSIM`;
 
-  const rows: Array<[string, string]> = [
-    ['Order ID:', opts.orderNo],
-    ['Product:', packageName],
-    ['Qty:', '1'],
-    ['ICCID:', opts.iccid],
-    ['Valid until:', expireStr],
-  ];
+  const pdf = await buildInstallGuidePdf({
+    orderNo: opts.orderNo,
+    countryName: opts.countryName,
+    gb: opts.gb,
+    days: opts.days,
+    iccid: opts.iccid,
+    activationCode: opts.activationCode,
+    expireAt: opts.expireAt,
+    supportAddr,
+    siteUrl,
+  });
 
+  const title = '您的 eSIM 安装指南';
   const bodyRows = `
       <tr>
         <td style="padding:0 24px 16px;">
-          <p style="margin:0 0 8px;font-family:${BASE_FONT};font-size:14px;font-weight:700;color:#000000;line-height:24px;">Hi ${opts.to},</p>
-          <p style="margin:0 0 8px;font-family:${BASE_FONT};font-size:14px;font-weight:400;color:#000000;line-height:24px;">
-            Thank you for your purchase. Please find your eSIM activation information below or in the QR code.
+          <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:${C_INK};font-family:${FONT_STACK};">尊敬的客户：</p>
+          <p style="margin:0;font-size:14px;color:${C_INK_2};font-family:${FONT_STACK};line-height:1.8;">
+            感谢您的购买。您的 eSIM 安装指南与激活二维码已放在本邮件的 <strong style="color:${C_BRAND};">PDF 附件</strong> 中，请下载并按照附件步骤完成激活。
           </p>
         </td>
       </tr>
       <tr>
         <td style="padding:0 24px 16px;">
-          ${summaryCard(rows)}
-        </td>
-      </tr>
-      <tr>
-        <td style="padding:0 24px 16px;">
-          <p style="margin:0 0 8px;font-family:${BASE_FONT};font-size:14px;font-weight:700;color:#000000;line-height:24px;">Activation code (LPA)</p>
-          <p style="margin:0;font-family:monospace;font-size:13px;color:#000000;line-height:20px;word-break:break-all;">${opts.activationCode}</p>
-        </td>
-      </tr>
-      <tr>
-        <td align="center" style="padding:0 24px 16px;">
-          <img src="${qrDataUri}" width="200" height="200" alt="QR code" style="display:block;border:0;border-radius:8px;"/>
+          ${summaryCard('订单摘要', [
+            ['订单号', opts.orderNo],
+            ['套餐', packageName],
+            ['数量', '1'],
+            ['ICCID', opts.iccid],
+            ['有效期至', expireStr],
+          ])}
         </td>
       </tr>`;
 
-  const html = wrapDocument('您的 eSIM 已就绪', renderShell({ title: 'Your eSIM installation guide', headerSpace: true, bodyRows }));
+  const text = `${title}
 
-  const text = `Your eSIM installation guide
+尊敬的客户：
 
-Hi ${opts.to},
+感谢您的购买。您的 eSIM 安装指南与激活二维码已放在本邮件的 PDF 附件中，请下载并按照附件步骤完成激活。
 
-Thank you for your purchase. Please find your eSIM activation information below.
+订单摘要
+  订单号：${opts.orderNo}
+  套餐：${packageName}
+  数量：1
+  ICCID：${opts.iccid}
+  有效期至：${expireStr}
 
-Order summary
-  Order ID: ${opts.orderNo}
-  Product: ${packageName}
-  Qty: 1
-  ICCID: ${opts.iccid}
-  Valid until: ${expireStr}
+如需帮助，请联系客服：${supportAddr}
+${siteUrl ? `官网：${siteUrl}` : ''}`;
 
-Activation code (LPA):
-${opts.activationCode}
-
-For support or further clarification, please contact customer service: ${process.env.SMTP_MANAGER_ADDR || process.env.SMTP_FROM || ''}`;
-
-  await dispatchMail({ to: opts.to, subject: `Your eSIM installation guide - ${opts.orderNo}`, html, text }, '激活邮件', opts.orderNo);
+  await dispatchMail(
+    {
+      to: opts.to,
+      subject: `${title} - ${opts.orderNo}`,
+      html: wrapDocument(title, await renderShell({ title, bodyRows })),
+      text,
+      attachments: [
+        {
+          filename: `eSIM-installation-guide-${opts.orderNo}.pdf`,
+          content: pdf,
+          contentType: 'application/pdf',
+        },
+      ],
+    },
+    '激活邮件',
+    opts.orderNo
+  );
 }
 
-interface SendRefundEmailOptions {
-  to: string;
-  orderNo: string;
-  amount: string;
-}
-
-/** 订单退款成功通知（对应示例邮件 "Refund completed – Order"） */
+/** 退款完成通知：简单几行信息（对照示例邮件 Refund completed） */
 export async function sendRefundEmail(opts: SendRefundEmailOptions): Promise<void> {
+  const { supportAddr } = getSenderIdentity();
   const refundTime = new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
 
-  const rows: Array<[string, string]> = [
-    ['Refund amount:', `¥${opts.amount}`],
-    ['Refund time:', refundTime],
-  ];
-
+  const title = '退款已完成';
   const bodyRows = `
       <tr>
         <td style="padding:0 24px 16px;">
-          <p style="margin:0 0 8px;font-family:${BASE_FONT};font-size:14px;font-weight:400;color:#000000;line-height:24px;">
-            Your refund request for order <strong>${opts.orderNo}</strong> has been updated.
+          <p style="margin:0 0 8px;font-size:14px;color:${C_INK_2};font-family:${FONT_STACK};line-height:1.8;">
+            您的订单 <strong style="color:${C_INK};">${opts.orderNo}</strong> 的退款申请已处理完成。
           </p>
-          <p style="margin:0 0 8px;font-family:${BASE_FONT};font-size:14px;color:#000000;line-height:24px;">
-            Status: <strong>refunded</strong>
-          </p>
-          <p style="margin:0;font-family:${BASE_FONT};font-size:13px;color:#444444;line-height:22px;">
-            Refund will be returned to your original payment method within 1~3 business days.
-          </p>
+          <p style="margin:0 0 4px;font-size:14px;color:${C_INK};font-family:${FONT_STACK};">状态：<strong style="color:${C_BRAND};">已退款</strong></p>
+          <p style="margin:0;font-size:14px;color:${C_INK};font-family:${FONT_STACK};">退款金额：<strong>¥${opts.amount}</strong></p>
         </td>
       </tr>
       <tr>
         <td style="padding:0 24px 16px;">
-          ${summaryCard(rows)}
+          ${summaryCard('退款信息', [
+            ['退款金额', `¥${opts.amount}`],
+            ['退款时间', refundTime],
+          ])}
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:0 24px 16px;">
+          <p style="margin:0;font-size:13px;color:${C_INK_2};font-family:${FONT_STACK};line-height:1.8;">退款将按原支付渠道原路退回，一般 1～3 个工作日到账。</p>
         </td>
       </tr>`;
 
-  const html = wrapDocument('退款已完成', renderShell({ title: 'Refund completed', headerSpace: true, bodyRows }));
+  const text = `${title}
 
-  const text = `Refund completed - Order ${opts.orderNo}
+您的订单 ${opts.orderNo} 的退款申请已处理完成。
 
-Your refund request for order ${opts.orderNo} has been updated.
+状态：已退款
+退款金额：¥${opts.amount}
+退款时间：${refundTime}
 
-Status: refunded
-Refund amount: ¥${opts.amount}
-Refund time: ${refundTime}
+退款将按原支付渠道原路退回，一般 1～3 个工作日到账。
 
-Refund will be returned to your original payment method within 1~3 business days.
+如需帮助，请联系客服：${supportAddr}`;
 
-For support or further clarification, please contact customer service: ${process.env.SMTP_MANAGER_ADDR || process.env.SMTP_FROM || ''}`;
-
-  await dispatchMail({ to: opts.to, subject: `Refund completed - ${opts.orderNo}`, html, text }, '退款通知', opts.orderNo);
+  await dispatchMail(
+    {
+      to: opts.to,
+      subject: `${title} - ${opts.orderNo}`,
+      html: wrapDocument(title, await renderShell({ title, bodyRows })),
+      text,
+    },
+    '退款通知',
+    opts.orderNo
+  );
 }
 
-interface SendRenewEmailOptions {
-  to: string;
-  orderNo: string;
-  countryName: string;
-  gb: number; // 续费后的套餐流量
-  days: number; // 续费后的套餐天数
-  expireAt: Date; // 新的到期时间
-}
-
-/** 续费成功通知（对应示例邮件 "Order Confirmation" 版式） */
+/** 续费生效通知（对照示例邮件 Order Confirmation） */
 export async function sendRenewEmail(opts: SendRenewEmailOptions): Promise<void> {
+  const { supportAddr } = getSenderIdentity();
   const expireStr = opts.expireAt.toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' });
   const packageName = `${opts.countryName} / ${opts.gb}GB ${opts.days}day-eSIM`;
 
-  const rows: Array<[string, string]> = [
-    ['Order ID:', opts.orderNo],
-    ['Product:', packageName],
-    ['Qty:', '1'],
-    ['Valid until:', expireStr],
-  ];
-
+  const title = '续费已生效';
   const bodyRows = `
       <tr>
-        <td align="center" style="padding:0 24px 8px;">
-          <p style="margin:0;font-family:${BASE_FONT};font-size:20px;font-weight:700;color:#000000;line-height:22px;">Thank you for choosing us!</p>
-        </td>
-      </tr>
-      <tr>
         <td style="padding:0 24px 16px;">
-          <p style="margin:0 0 8px;font-family:${BASE_FONT};font-size:14px;font-weight:700;color:#000000;line-height:24px;">Dear ${opts.to},</p>
-          <p style="margin:0;font-family:${BASE_FONT};font-size:14px;color:#000000;line-height:24px;">
-            Your renewal has been activated successfully. No re-installation is needed; the new package takes effect on your current eSIM.
+          <p style="margin:0 0 8px;font-size:14px;font-weight:600;color:${C_INK};font-family:${FONT_STACK};">感谢您的续费！</p>
+          <p style="margin:0;font-size:14px;color:${C_INK_2};font-family:${FONT_STACK};line-height:1.8;">
+            您的订单 <strong style="color:${C_INK};">${opts.orderNo}</strong> 已处理完成，新套餐已生效，无需重新安装 eSIM。
           </p>
         </td>
       </tr>
       <tr>
         <td style="padding:0 24px 16px;">
-          ${summaryCard(rows)}
+          ${summaryCard('订单摘要', [
+            ['订单号', opts.orderNo],
+            ['套餐', packageName],
+            ['数量', '1'],
+            ['有效期至', expireStr],
+          ])}
         </td>
       </tr>`;
 
-  const html = wrapDocument('续费已生效', renderShell({ title: 'Order Confirmation', headerSpace: true, bodyRows }));
+  const text = `${title}
 
-  const text = `Order Confirmation
+感谢您的续费！
 
-Thank you for choosing us!
+您的订单 ${opts.orderNo} 已处理完成，新套餐已生效，无需重新安装 eSIM。
 
-Dear ${opts.to},
+订单摘要
+  订单号：${opts.orderNo}
+  套餐：${packageName}
+  数量：1
+  有效期至：${expireStr}
 
-Your renewal has been activated successfully. No re-installation is needed; the new package takes effect on your current eSIM.
+如需帮助，请联系客服：${supportAddr}`;
 
-Order summary
-  Order ID: ${opts.orderNo}
-  Product: ${packageName}
-  Qty: 1
-  Valid until: ${expireStr}
-
-For support or further clarification, please contact customer service: ${process.env.SMTP_MANAGER_ADDR || process.env.SMTP_FROM || ''}`;
-
-  await dispatchMail({ to: opts.to, subject: `Order Confirmation - ${opts.orderNo}`, html, text }, '续费通知', opts.orderNo);
+  await dispatchMail(
+    {
+      to: opts.to,
+      subject: `${title} - ${opts.orderNo}`,
+      html: wrapDocument(title, await renderShell({ title, bodyRows })),
+      text,
+    },
+    '续费通知',
+    opts.orderNo
+  );
 }
