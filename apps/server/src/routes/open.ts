@@ -9,8 +9,7 @@ import { createSubjectCreditOrder, OrderCreateError } from '../services/order';
 import { refundSubjectCreditOrder, SelfServiceRefundError } from '../services/refund';
 import { enqueueSubjectWebhook, resendSubjectWebhook } from '../services/webhook';
 import { resolveEsimActivation } from '../tiger/activation';
-import { createRechargeWapUrl } from '../services/recharge';
-import { tigerClient, fetchTigerIccids, unbindTigerPackages } from '../tiger';
+import { tigerClient, unbindTigerPackages } from '../tiger';
 
 /**
  * Open platform v3 API (统一前缀 /api/open/v1). B2B credit distribution.
@@ -165,19 +164,11 @@ export default (prisma: PrismaClient) => {
     });
   });
 
-  /** GET /wallet 钱包总览（余额/欠款/授信阈值/充值记录） */
+  /** GET /wallet 钱包总览（余额/欠款/授信阈值） */
   router.get('/wallet', async (req: OpenAuthRequest, res: Response) => {
     const s = await prisma.subject.findUnique({ where: { id: req.subject!.id } });
     if (!s) return err(res, 404, 404, '主体不存在');
     const q = quotaView(s);
-    const [total, recharges] = await Promise.all([
-      prisma.subjectRecharge.count({ where: { subjectId: s.id } }),
-      prisma.subjectRecharge.findMany({
-        where: { subjectId: s.id },
-        orderBy: { createdAt: 'desc' },
-        take: 50,
-      }),
-    ]);
     ok(res, {
       wallet: {
         balance: q.balance,
@@ -186,62 +177,51 @@ export default (prisma: PrismaClient) => {
         maxDebt: q.quotaLimit,
         availableDebt: q.availableQuota,
       },
-      recharges: recharges.map((r) => ({
-        rechargeNo: r.rechargeNo,
-        amount: r.amount,
-        status: r.status,
-        paidAt: r.paidAt ? new Date(r.paidAt).toISOString() : null,
-        createdAt: new Date(r.createdAt).toISOString(),
-      })),
-      total,
     });
   });
 
-  /** POST /wallet/topups 充值下单：body { amount, returnUrl? }，返回支付宝 H5 支付链接 */
-  router.post('/wallet/topups', async (req: OpenAuthRequest, res: Response) => {
-    const { amount, returnUrl } = req.body || {};
-    const amt = Number(amount);
-    if (!Number.isFinite(amt) || !(amt > 0)) return err(res, 400, 400, '充值金额必须大于 0');
-    let rUrl = String(returnUrl || '').trim();
-    if (rUrl && !/^https?:\/\//i.test(rUrl)) return err(res, 400, 400, 'returnUrl 需为 http(s) 地址');
-    try {
-      const result = await createRechargeWapUrl(prisma, req.subject!, amt, rUrl);
-      ok(res, { rechargeNo: result.rechargeNo, amount: Math.round(amt * 100) / 100, payUrl: result.payUrl });
-    } catch (e: any) {
-      console.error('[open] 充值下单失败：', e.message);
-      err(res, 500, 500, '充值下单失败，请稍后重试');
-    }
-  });
-
   /**
-   * GET /iccid-pool 可用 ICCID 卡号池（只展示未激活/未使用的卡号）。
-   * 未激活 = 该 iccid 尚未写入 esim 表（已激活卡片对伙伴隐藏）。
+   * GET /cards/:iccid 查询卡号详细信息：该 ICCID 是否绑定套餐、绑定了哪些套餐、
+   * 每个套餐的状态（激活/生效/到期等）。用于伙伴核对卡片归属与套餐占用情况。
    */
-  router.get('/iccid-pool', async (_req: OpenAuthRequest, res: Response) => {
+  router.get('/cards/:iccid', async (req: OpenAuthRequest, res: Response) => {
+    const iccid = String((req.params && req.params.iccid) || '').trim();
+    if (!iccid) return err(res, 400, 400, 'iccid 不能为空');
     try {
-      const usedSet = new Set(
-        (await prisma.esim.findMany({ select: { iccid: true } })).map((e) => e.iccid),
-      );
-      if (tigerClient.configured) {
-        const all = await fetchTigerIccids();
-        const pool = all.filter((ic) => !usedSet.has(ic));
-        ok(res, {
-          mode: 'tiger',
-          stats: { total: all.length, available: pool.length, used: all.length - pool.length },
-          pool: pool.map((iccid) => ({ iccid })),
-        });
-        return;
-      }
-      const cards = await prisma.card.findMany({ orderBy: { createdAt: 'desc' } });
-      const pool = cards.filter((c) => !usedSet.has(c.iccid));
+      const [cardRes, pkgRes] = await Promise.all([
+        tigerClient.listCards({ iccid, limit: 5 }),
+        tigerClient.listCardPackages(iccid),
+      ]);
+      const cdata = cardRes?.data || cardRes || {};
+      const items: any[] = Array.isArray(cdata.items) ? cdata.items : [];
+      const card = items.find((it) => String(it.iccid || it.iccid_number) === iccid) || {};
+      const pdata = pkgRes?.data || pkgRes || {};
+      const pkgs: any[] = Array.isArray(pdata.items)
+        ? pdata.items
+        : Array.isArray(pdata.list)
+          ? pdata.list
+          : Array.isArray(pdata)
+            ? pdata
+            : [];
       ok(res, {
-        mode: 'mock',
-        stats: { total: cards.length, available: pool.length, used: cards.length - pool.length },
-        pool: pool.map((c) => ({ iccid: c.iccid, remark: c.remark })),
+        iccid,
+        card: {
+          status: card.status || card.card_status || null,
+          category: card.category || null,
+          createdAt: card.created_at || card.createdAt || null,
+        },
+        packages: pkgs.map((p: any) => ({
+          id: p.id ?? p.packageId ?? p.package_id ?? null,
+          name: p.name ?? p.packageName ?? p.package_name ?? null,
+          status: p.status ?? null,
+          activatedAt: p.activated_at ?? p.start_time ?? p.startTime ?? null,
+          expireAt: p.expired_at ?? p.end_time ?? p.endTime ?? null,
+          days: p.valid_days ?? p.days ?? null,
+        })),
       });
     } catch (e: any) {
-      console.error('[open] ICCID 卡池拉取失败：', e.message);
-      err(res, 502, 502, 'ICCID 卡池拉取失败：' + e.message);
+      console.error('[open] 查询卡片详情失败：', e?.message);
+      err(res, 502, 502, '查询卡片详情失败：' + (e?.message || '上游接口异常'));
     }
   });
 

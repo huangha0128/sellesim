@@ -126,13 +126,6 @@ export interface QuotaResult {
   pageSize: number;
 }
 
-export interface Recharge {
-  rechargeNo: string;
-  amount: number;
-  status: string;
-  paidAt?: string | null;
-  createdAt: string;
-}
 export interface WalletResult {
   wallet: {
     balance: number;
@@ -141,23 +134,19 @@ export interface WalletResult {
     maxDebt: number | null;
     availableDebt: number | null;
   };
-  recharges: Recharge[];
-  total: number;
 }
-export interface TopupResult {
-  rechargeNo: string;
-  amount: number;
-  payUrl: string;
+export interface CardPkg {
+  id: number | null;
+  name: string | null;
+  status: string | null;
+  activatedAt?: string | null;
+  expireAt?: string | null;
+  days?: number | null;
 }
-
-export interface IccidPoolItem {
+export interface CardDetailResult {
   iccid: string;
-  remark?: string;
-}
-export interface IccidPoolResult {
-  mode: 'tiger' | 'mock';
-  stats: { total: number; available: number; used: number };
-  pool: IccidPoolItem[];
+  card: { status: string | null; category?: string | null; createdAt?: string | null };
+  packages: CardPkg[];
 }
 
 export interface PackageItem {
@@ -297,8 +286,7 @@ export const api = {
 
   wallet: () => request<WalletResult>('/wallet'),
 
-  createTopup: (body: { amount: number; returnUrl?: string }) =>
-    request<TopupResult>('/wallet/topups', { method: 'POST', body }),
-
-  iccidPool: () => request<IccidPoolResult>('/iccid-pool'),
+  /** 查询卡号详情：是否绑定套餐、绑定哪些套餐及各套餐状态 */
+  cardDetail: (iccid: string) =>
+    request<CardDetailResult>(`/cards/${encodeURIComponent(iccid)}`),
 };
