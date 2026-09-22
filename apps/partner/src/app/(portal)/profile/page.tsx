@@ -1,13 +1,21 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Wallet, Copy, Check } from 'lucide-react';
+import { Wallet, Copy, Check, Plus, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { api, getErrorMessage, type MeResult, type WalletResult } from '@/lib/api';
+import { api, getErrorMessage, type MeResult, type WalletResult, type CreateKeyResult } from '@/lib/api';
 import { fmtMoney, copyText } from '@/lib/utils';
 
 function KeyRow({ keyId }: { keyId: string }) {
@@ -37,6 +45,12 @@ export default function ProfilePage() {
   // 回调地址（自助配置）
   const [callback, setCallback] = useState('');
   const [callbackSaving, setCallbackSaving] = useState(false);
+  // 自助创建密钥
+  const [keyOpen, setKeyOpen] = useState(false);
+  const [keyName, setKeyName] = useState('');
+  const [keyMode, setKeyMode] = useState<'live' | 'read'>('live');
+  const [keySubmitting, setKeySubmitting] = useState(false);
+  const [newKey, setNewKey] = useState<CreateKeyResult | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -67,6 +81,22 @@ export default function ProfilePage() {
       toast.error(getErrorMessage(e, '保存失败'));
     } finally {
       setCallbackSaving(false);
+    }
+  }
+
+  async function createKey() {
+    setKeySubmitting(true);
+    try {
+      const r = await api.createKey({ name: keyName, mode: keyMode });
+      setNewKey(r);
+      setKeyOpen(false);
+      setKeyName('');
+      setKeyMode('live');
+      load();
+    } catch (e) {
+      toast.error(getErrorMessage(e, '创建密钥失败'));
+    } finally {
+      setKeySubmitting(false);
     }
   }
 
@@ -121,8 +151,13 @@ export default function ProfilePage() {
             </div>
           </div>
           <div className="space-y-1.5 sm:col-span-2">
-            <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-              API 密钥（{me?.keys?.length || 0}）
+            <div className="flex items-center justify-between">
+              <div className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                API 密钥（{me?.keys?.length || 0}）
+              </div>
+              <Button size="sm" variant="outline" className="h-7 gap-1 px-2" onClick={() => setKeyOpen(true)}>
+                <Plus className="h-3.5 w-3.5" /> 新建密钥
+              </Button>
             </div>
             <div className="space-y-2">
               {me && me.keys.map((k) => <KeyRow key={k.keyId} keyId={k.keyId} />)}
@@ -152,7 +187,115 @@ export default function ProfilePage() {
           <StatMini label="授信阈值" value={`¥${fmtMoney(w?.maxDebt)}`} color="text-muted-foreground" />
         </CardContent>
       </Card>
+
+      {/* 新建密钥 */}
+      <Dialog open={keyOpen} onOpenChange={setKeyOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-primary" /> 新建 API 密钥
+            </DialogTitle>
+            <DialogDescription>
+              创建后 keySecret 将完整展示一次，请立即保存。只读密钥仅可查询，读写密钥可下单与退款。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label className="text-[12.5px] text-muted-foreground">密钥用途（备注名）</label>
+              <Input
+                value={keyName}
+                onChange={(e) => setKeyName(e.target.value)}
+                placeholder="如：生产环境 / 测试环境"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[12.5px] text-muted-foreground">密钥模式</label>
+              <div className="flex gap-2">
+                {(
+                  [
+                    { v: 'live' as const, label: '读写（下单/退款）' },
+                    { v: 'read' as const, label: '只读（查询）' },
+                  ]
+                ).map((o) => (
+                  <Button
+                    key={o.v}
+                    type="button"
+                    size="sm"
+                    variant={keyMode === o.v ? 'default' : 'outline'}
+                    onClick={() => setKeyMode(o.v)}
+                  >
+                    {o.label}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setKeyOpen(false)} disabled={keySubmitting}>
+              取消
+            </Button>
+            <Button onClick={createKey} disabled={keySubmitting}>
+              {keySubmitting ? '创建中…' : '创建密钥'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 新建成功：展示 keySecret（仅一次） */}
+      <Dialog open={!!newKey} onOpenChange={(o) => !o && setNewKey(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <KeyRound className="h-4 w-4 text-emerald-600" /> 密钥已创建
+            </DialogTitle>
+            <DialogDescription>
+              请立即复制并妥善保存 keySecret，此内容仅展示一次，关闭后不可再查看。
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 rounded-xl border border-border/70 bg-muted/40 p-3">
+            <div className="space-y-1">
+              <div className="text-[11px] text-muted-foreground">Key ID</div>
+              <div className="flex items-center justify-between gap-2 rounded-lg bg-card px-3 py-2 font-mono text-[12.5px] text-ink">
+                {newKey?.keyId}
+                <CopyBtn text={newKey?.keyId || ''} />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <div className="text-[11px] text-muted-foreground">Key Secret（仅此一次）</div>
+              <div className="break-all rounded-lg bg-card px-3 py-2 font-mono text-[12.5px] text-ink">
+                {newKey?.keySecret}
+                <div className="mt-2">
+                  <CopyBtn text={newKey?.keySecret || ''} />
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={() => setNewKey(null)}>我已保存</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+  );
+}
+
+function CopyBtn({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const onCopy = async () => {
+    if (await copyText(text)) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
+  };
+  return (
+    <button
+      type="button"
+      onClick={onCopy}
+      className="inline-flex shrink-0 items-center gap-1 rounded-md px-1.5 py-0.5 text-[11.5px] text-muted-foreground hover:bg-muted hover:text-ink"
+    >
+      {copied ? <Check className="h-3.5 w-3.5 text-emerald-600" /> : <Copy className="h-3.5 w-3.5" />}
+      {copied ? '已复制' : '复制'}
+    </button>
   );
 }
 

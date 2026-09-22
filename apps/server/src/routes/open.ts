@@ -1,5 +1,6 @@
 import { Router, Response } from 'express';
 import crypto from 'crypto';
+import { genAppSecret } from '../utils/hmac';
 import { PrismaClient } from '@prisma/client';
 import { openAuth, OpenAuthRequest } from '../middleware/openAuth';
 import { listAllPackagesView, getPackageView } from '../tiger/view';
@@ -128,6 +129,24 @@ export default (prisma: PrismaClient) => {
       select: { callbackUrl: true },
     });
     ok(res, { callbackUrl: subject.callbackUrl });
+  });
+
+  /** POST /keys 自助创建 API 密钥（keySecret 仅本次返回一次，请妥善保存） */
+  router.post('/keys', async (req: OpenAuthRequest, res: Response) => {
+    const body = (req.body || {}) as { name?: string; mode?: string };
+    const mode = body.mode === 'read' ? 'read' : 'live';
+    const name = body.name && String(body.name).trim() ? String(body.name).slice(0, 40) : 'default';
+    const keyId = `ak_${mode}_${crypto.randomBytes(4).toString('hex')}`;
+    const keySecret = genAppSecret();
+    try {
+      const key = await prisma.apiKey.create({
+        data: { subjectId: req.subject!.id, keyId, keySecret, name, mode },
+      });
+      ok(res, { keyId: key.keyId, keySecret: key.keySecret, mode: key.mode, name: key.name });
+    } catch (e: any) {
+      console.error('[open] 创建密钥失败：', e?.message);
+      err(res, 500, 500, '创建密钥失败，请稍后重试');
+    }
   });
 
   /** GET /quota 额度总览 + 记账流水 */

@@ -95,6 +95,12 @@ export interface SubjectKey {
   keyId: string;
   mode: string;
 }
+export interface CreateKeyResult {
+  keyId: string;
+  keySecret: string;
+  mode: string;
+  name: string;
+}
 export interface Quota {
   quotaLimit: number;
   usedQuota: number;
@@ -255,6 +261,10 @@ export const api = {
   /** 自助更新 Webhook 回调地址（需写接口签名） */
   updateCallback: (callbackUrl: string) =>
     request<{ callbackUrl: string }>('/me', { method: 'PUT', body: { callbackUrl } }),
+
+  /** 自助创建 API 密钥（keySecret 仅返回一次） */
+  createKey: (body: { name?: string; mode?: 'live' | 'read' } = {}) =>
+    request<CreateKeyResult>('/keys', { method: 'POST', body }),
 
   quota: (page = 1, pageSize = 20) =>
     request<QuotaResult>(`/quota${qs({ page, pageSize })}`),
