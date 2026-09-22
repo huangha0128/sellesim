@@ -61,6 +61,10 @@ export function tigerDisplayEsim(item: any, local: any, iccid: string): any {
   const pkg = item?.package || {};
   const region = pkg.region || {};
   const usageMb = toNumber(item?.usage);
+  const status = tigerStatus(item);
+  // 待激活卡尚未真正激活，Tiger 仍可能返回 activated_at，须置空避免「待激活却显示激活时间」
+  const activatedAt =
+    status === 'pending' ? null : normalizeTigerTime(item?.activated_at) || local?.activatedAt;
   return {
     id: local?.id || `tiger-${item.id}`,
     localEsimId: local?.id,
@@ -68,8 +72,8 @@ export function tigerDisplayEsim(item: any, local: any, iccid: string): any {
     activationCode: local?.activationCode || '',
     iccid: local?.iccid || iccid,
     smdp: local?.smdp || '',
-    status: tigerStatus(item),
-    activatedAt: normalizeTigerTime(item?.activated_at) || local?.activatedAt,
+    status,
+    activatedAt,
     expireAt: normalizeTigerTime(item?.expired_at) || local?.expireAt,
     used: usageMb / 1024,
     gb: local?.gb ?? Math.round(toNumber(pkg.amount) / 1024),
