@@ -2,10 +2,11 @@ import { describe, it, expect } from 'vitest';
 import { cardPool, getAvailableIccid, iccidPoolCount } from './iccid-pool';
 
 /** 构造一个轻量 prisma 桩（仅含本模块用到的查询） */
-function makePrisma(cards: string[], usedIccids: string[]) {
+function makePrisma(cards: string[], usedIccids: string[], blacklisted: string[] = []) {
   return {
     card: { findMany: async () => cards.map((iccid) => ({ iccid })) },
     esim: { findMany: async () => usedIccids.map((iccid) => ({ iccid })) },
+    cardBlacklist: { findMany: async () => blacklisted.map((iccid) => ({ iccid })) },
   } as any;
 }
 
@@ -40,6 +41,16 @@ describe('getAvailableIccid 取卡', () => {
 
   it('全部卡片已使用时返回 null', async () => {
     const prisma = makePrisma(['A', 'B'], ['A', 'B']);
+    expect(await getAvailableIccid(prisma)).toBeNull();
+  });
+
+  it('跳过已在黑名单中的卡片（即使未使用）', async () => {
+    const prisma = makePrisma(['A', 'B', 'C'], [], ['A', 'C']);
+    expect(await getAvailableIccid(prisma)).toBe('B');
+  });
+
+  it('全部可用卡片均在黑名单时返回 null', async () => {
+    const prisma = makePrisma(['A', 'B'], [], ['A', 'B']);
     expect(await getAvailableIccid(prisma)).toBeNull();
   });
 

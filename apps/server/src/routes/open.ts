@@ -9,7 +9,7 @@ import { createSubjectCreditOrder, OrderCreateError } from '../services/order';
 import { refundSubjectCreditOrder, SelfServiceRefundError } from '../services/refund';
 import { enqueueSubjectWebhook, resendSubjectWebhook } from '../services/webhook';
 import { resolveEsimActivation } from '../tiger/activation';
-import { tigerClient, unbindTigerPackages } from '../tiger';
+import { blacklistIccid, tigerClient, unbindTigerPackages } from '../tiger';
 
 /**
  * Open platform v3 API (统一前缀 /api/open/v1). B2B credit distribution.
@@ -454,9 +454,10 @@ export default (prisma: PrismaClient) => {
       deleteEsimByOrderId: async (orderId: string) => {
         const esim = await prisma.esim.findUnique({ where: { orderId } });
         if (!esim) return;
-        // 退款先解绑 Tiger 该 ICCID 上的套餐，再删本地记录（ICCID 回卡池）
+        // 退款先解绑 Tiger 该 ICCID 上的套餐，再删本地记录，随后 ICCID 列入黑名单，禁止再次绑定下单
         await unbindTigerPackages(esim);
         await prisma.esim.delete({ where: { orderId } });
+        await blacklistIccid(prisma, esim.iccid, 'refund');
       },
       updateOrder: (no: string, data: Record<string, any>) => prisma.order.update({ where: { orderNo: no }, data }),
       findRefundByExtNo: (sid: string, extNo: string) =>

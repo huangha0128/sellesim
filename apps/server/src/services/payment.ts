@@ -6,7 +6,7 @@ import { sendEsimEmail, sendRenewEmail } from './email';
 import { readDisplayConfig, DEFAULT_DISPLAY_CONFIG } from '../pricing/priceOverride';
 import { readMaxRefundRejectCount } from './refund';
 import { config } from '../config';
-import { unbindTigerPackages } from '../tiger';
+import { blacklistIccid, unbindTigerPackages } from '../tiger';
 import type { RefundDeps } from './refund';
 
 /**
@@ -254,9 +254,10 @@ export function buildRefundDeps(prisma: PrismaClient, orderNo: string): RefundDe
     deleteEsimByOrderId: async (orderId) => {
       const esim = await prisma.esim.findUnique({ where: { orderId } });
       if (!esim) return;
-      // 退款先解绑 Tiger 该 ICCID 上的套餐，再删本地记录（ICCID 回卡池）
+      // 退款先解绑 Tiger 该 ICCID 上的套餐，再删本地记录，随后 ICCID 列入黑名单，禁止再次绑定下单
       await unbindTigerPackages(esim);
       await prisma.esim.delete({ where: { orderId } });
+      await blacklistIccid(prisma, esim.iccid, 'refund');
     },
     alipayRefund: async (params) => {
       const order = await prisma.order.findUnique({ where: { orderNo } });

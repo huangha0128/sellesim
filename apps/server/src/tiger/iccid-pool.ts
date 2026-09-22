@@ -47,10 +47,32 @@ export async function iccidPoolCount(prisma: PrismaClient, fetcher?: IccidFetche
   return (await resolvePool(prisma, fetcher)).length;
 }
 
-/** 取一张尚未在本地 esim 表中使用过的 ICCID；池子为空或无可用卡时返回 null */
+/** 取一张尚未在本地 esim 表中使用过、且不在黑名单中的 ICCID；无可用卡返回 null */
 export async function getAvailableIccid(prisma: PrismaClient, fetcher?: IccidFetcher): Promise<string | null> {
   const ids = await resolvePool(prisma, fetcher);
   if (ids.length === 0) return null;
   const used = new Set((await prisma.esim.findMany({ select: { iccid: true } })).map((e) => e.iccid));
-  return ids.find((i) => !used.has(i)) || null;
+  const blacklisted = new Set(
+    (await prisma.cardBlacklist.findMany({ select: { iccid: true } })).map((b) => b.iccid),
+  );
+  return ids.find((i) => !used.has(i) && !blacklisted.has(i)) || null;
+}
+
+/** 将一张 ICCID 加入黑名单：退款解绑套餐后永久禁止再次绑定套餐下单 */
+export async function blacklistIccid(
+  prisma: PrismaClient,
+  iccid: string,
+  reason = 'refund',
+): Promise<void> {
+  const trimmed = String(iccid || '').trim();
+  if (!trimmed) return;
+  try {
+    await prisma.cardBlacklist.create({ data: { iccid: trimmed, reason } });
+    console.log(`[tiger] ICCID 已列入黑名单：${trimmed}（${reason}）`);
+  } catch (e: any) {
+    // P2002 = iccid 唯一键冲突，说明已被拉黑，忽略
+    if (e?.code !== 'P2002') {
+      console.warn(`[tiger] ICCID 写入黑名单失败（${trimmed}）：${e?.message || e}`);
+    }
+  }
 }

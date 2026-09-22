@@ -252,6 +252,14 @@ model Card {
   updatedAt DateTime @updatedAt
 }
 
+// ICCID blacklist: after refund-unbind the card is permanently banned from being reused to bind a package / place an order.
+model CardBlacklist {
+  id        String   @id @default(uuid())
+  iccid     String   @unique
+  reason    String   @default("refund") // refund: blacklisted after refund unbind; admin: manually blacklisted in admin panel
+  createdAt DateTime @default(now())
+}
+
 // Local pricing override for TigerESIM packages.
 // One row per tiger package id. price=null means use Tiger original price.
 // onSale=false hides the package from public endpoints (miniapp / h5).
