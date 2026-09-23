@@ -22,6 +22,8 @@ export interface RefundDeps {
   updateOrder(orderNo: string, data: Record<string, any>): Promise<any>;
   findEsimByOrderId(orderId: string): Promise<any | null>;
   deleteEsimByOrderId(orderId: string): Promise<void>;
+  /** 实时校验 eSIM 是否已在 Tiger 侧激活（查不到/未配置时返回 false，回落本地状态） */
+  checkEsimActivated?(esim: any): Promise<boolean>;
   alipayRefund(params: {
     outTradeNo: string;
     refundAmount: string;
@@ -66,6 +68,7 @@ export function clearMaxRefundRejectCache(): void {
 
 /**
  * 用户申请退款：仅待激活（status=paid 且未激活）订单可申请。
+ * 已激活的套餐禁止退款（本地 esim 状态 + Tiger 实时状态双重校验）。
  * 被拒绝后可再次申请，但同一订单累计拒绝次数 >= 后台配置上限时禁止再次发起。
  */
 export async function applyRefundRequest(
@@ -83,6 +86,14 @@ export async function applyRefundRequest(
   }
   if (order.status !== 'paid') {
     throw new Error('仅待激活订单可申请退款');
+  }
+  // 已激活的套餐不允许退款：本地状态 + Tiger 实时状态双重校验，明确提示用户
+  const esim = await deps.findEsimByOrderId(order.id);
+  if (esim && esim.status !== 'pending') {
+    throw new Error('套餐已激活，无法申请退款');
+  }
+  if (esim && deps.checkEsimActivated && (await deps.checkEsimActivated(esim))) {
+    throw new Error('套餐已激活，无法申请退款');
   }
   if (order.refundStatus === 'requested') {
     throw new Error('退款申请已提交，请耐心等待处理');

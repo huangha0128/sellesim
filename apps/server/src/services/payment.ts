@@ -7,6 +7,7 @@ import { readDisplayConfig, DEFAULT_DISPLAY_CONFIG } from '../pricing/priceOverr
 import { readMaxRefundRejectCount } from './refund';
 import { config } from '../config';
 import { blacklistIccid, unbindTigerPackages } from '../tiger';
+import { resolveEsimActivation } from '../tiger/activation';
 import type { RefundDeps } from './refund';
 
 /**
@@ -251,6 +252,12 @@ export function buildRefundDeps(prisma: PrismaClient, orderNo: string): RefundDe
     findUserOrder: (userId, no) => prisma.order.findFirst({ where: { orderNo: no, userId } }),
     updateOrder: (no, data) => prisma.order.update({ where: { orderNo: no }, data }),
     findEsimByOrderId: (orderId) => prisma.esim.findUnique({ where: { orderId } }),
+    // Tiger 实时激活状态为准；查询失败返回 null 时回落本地状态判断
+    checkEsimActivated: async (esim) => {
+      if (!esim?.iccid) return false;
+      const resolved = await resolveEsimActivation(esim);
+      return resolved?.status === 'activated';
+    },
     deleteEsimByOrderId: async (orderId) => {
       const esim = await prisma.esim.findUnique({ where: { orderId } });
       if (!esim) return;

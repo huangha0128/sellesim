@@ -36,7 +36,7 @@ function makeDeps(overrides: Partial<RefundDeps> = {}): RefundDeps {
     findOrder: vi.fn().mockResolvedValue(order),
     findUserOrder: vi.fn().mockResolvedValue(order),
     updateOrder: vi.fn(async (orderNo, data) => ({ ...order, ...data })),
-    findEsimByOrderId: vi.fn().mockResolvedValue({ id: 'esim-1', orderId: 'order-1' }),
+    findEsimByOrderId: vi.fn().mockResolvedValue({ id: 'esim-1', orderId: 'order-1', status: 'pending' }),
     deleteEsimByOrderId: vi.fn(async () => {}),
     alipayRefund: vi.fn(async () => ({ code: '10000', tradeNo: '20260817220011119999' })),
   };
@@ -52,6 +52,31 @@ describe('applyRefundRequest 用户申请退款', () => {
   it('未支付（非待激活）订单不可申请', async () => {
     const deps = makeDeps({ findUserOrder: vi.fn().mockResolvedValue(makeOrder({ status: 'pending' })) });
     await expect(applyRefundRequest(deps, 'user-1', 'DPH1234567890')).rejects.toThrow('仅待激活订单可申请退款');
+  });
+
+  it('eSIM 已激活（本地状态）不可申请', async () => {
+    const deps = makeDeps({
+      findEsimByOrderId: vi
+        .fn()
+        .mockResolvedValue({ id: 'esim-1', orderId: 'order-1', status: 'activated' }),
+    });
+    await expect(applyRefundRequest(deps, 'user-1', 'DPH1234567890')).rejects.toThrow('套餐已激活，无法申请退款');
+    expect(deps.updateOrder).not.toHaveBeenCalled();
+  });
+
+  it('eSIM 本地待激活但 Tiger 实时已激活不可申请', async () => {
+    const deps = makeDeps({ checkEsimActivated: vi.fn().mockResolvedValue(true) });
+    await expect(applyRefundRequest(deps, 'user-1', 'DPH1234567890')).rejects.toThrow('套餐已激活，无法申请退款');
+    expect(deps.updateOrder).not.toHaveBeenCalled();
+  });
+
+  it('Tiger 实时校验未激活时可正常申请', async () => {
+    const deps = makeDeps({
+      findUserOrder: vi.fn().mockResolvedValue(makeOrder({ refundStatus: null })),
+      checkEsimActivated: vi.fn().mockResolvedValue(false),
+    });
+    const result = await applyRefundRequest(deps, 'user-1', 'DPH1234567890');
+    expect(result.requested).toBe(true);
   });
 
   it('已退款订单不可申请', async () => {
@@ -70,11 +95,28 @@ describe('applyRefundRequest 用户申请退款', () => {
     await expect(applyRefundRequest(deps, 'user-1', 'DPH1234567890')).rejects.toThrow('退款申请已提交');
   });
 
-  it('申请被拒绝后不可再次申请', async () => {
+  it('被拒绝次数未达上限时仍可再次申请，并清空上一轮拒绝信息', async () => {
     const deps = makeDeps({
-      findUserOrder: vi.fn().mockResolvedValue(makeOrder({ refundStatus: 'rejected' })),
+      findUserOrder: vi
+        .fn()
+        .mockResolvedValue(makeOrder({ refundStatus: 'rejected', refundRejectCount: 1 })),
+      getMaxRejectCount: vi.fn().mockResolvedValue(3),
     });
-    await expect(applyRefundRequest(deps, 'user-1', 'DPH1234567890')).rejects.toThrow('已被拒绝');
+    const result = await applyRefundRequest(deps, 'user-1', 'DPH1234567890');
+    expect(result.requested).toBe(true);
+    const data = (deps.updateOrder as any).mock.calls[0][1];
+    expect(data.refundRejectReason).toBeNull();
+    expect(data.refundRejectedAt).toBeNull();
+  });
+
+  it('被拒绝次数达上限后不可再次申请', async () => {
+    const deps = makeDeps({
+      findUserOrder: vi
+        .fn()
+        .mockResolvedValue(makeOrder({ refundStatus: 'rejected', refundRejectCount: 3 })),
+      getMaxRejectCount: vi.fn().mockResolvedValue(3),
+    });
+    await expect(applyRefundRequest(deps, 'user-1', 'DPH1234567890')).rejects.toThrow('已达上限');
   });
 
   it('申请成功时写入 refundStatus=requested 并记录申请时间与原因', async () => {
