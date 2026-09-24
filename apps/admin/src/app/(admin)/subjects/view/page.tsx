@@ -86,6 +86,7 @@ export default function SubjectDetailPage() {
   // 信息编辑
   const [editForm, setEditForm] = useState({
     name: '',
+    username: '',
     contactName: '',
     contactPhone: '',
     callbackUrl: '',
@@ -95,6 +96,11 @@ export default function SubjectDetailPage() {
     remark: '',
   });
   const [saving, setSaving] = useState(false);
+
+  // 门户账号（重置密码）
+  const [resetPwdOpen, setResetPwdOpen] = useState(false);
+  const [resetPwdValue, setResetPwdValue] = useState('admin123456');
+  const [resetPwdSaving, setResetPwdSaving] = useState(false);
 
   // 密钥
   const [addKeyOpen, setAddKeyOpen] = useState(false);
@@ -150,6 +156,7 @@ export default function SubjectDetailPage() {
         setSubject(s);
         setEditForm({
           name: s.name,
+          username: s.username || '',
           contactName: s.contactName || '',
           contactPhone: s.contactPhone || '',
           callbackUrl: s.callbackUrl || '',
@@ -269,6 +276,9 @@ export default function SubjectDetailPage() {
 
   const saveInfo = async () => {
     if (!editForm.name.trim()) return toast.warning('请输入主体名称');
+    if (editForm.username.trim() && !/^[a-zA-Z0-9_-]{3,32}$/.test(editForm.username.trim())) {
+      return toast.warning('门户用户名需为 3-32 位字母、数字、下划线或连字符');
+    }
     setSaving(true);
     try {
       const quotaLimitVal = editForm.quotaLimit.trim() === '' ? null : Number(editForm.quotaLimit);
@@ -277,6 +287,7 @@ export default function SubjectDetailPage() {
       if (splitVal != null && (!Number.isFinite(splitVal) || splitVal < 0 || splitVal > 100)) return toast.warning('分成比例需在 0-100 之间');
       const res = await adminApi.updateSubject(id, {
         name: editForm.name.trim(),
+        username: editForm.username.trim() || undefined,
         contactName: editForm.contactName.trim() || null,
         contactPhone: editForm.contactPhone.trim() || null,
         callbackUrl: editForm.callbackUrl.trim() || null,
@@ -296,6 +307,26 @@ export default function SubjectDetailPage() {
       toast.error(getErrorMessage(e, '保存失败'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const submitResetPassword = async () => {
+    if (resetPwdValue.length < 8) return toast.warning('重置密码至少 8 位');
+    setResetPwdSaving(true);
+    try {
+      const res = await adminApi.resetSubjectPassword(id, resetPwdValue);
+      const body = unwrap<{ username: string | null; password: string }>(res);
+      if (body.code === 0) {
+        toast.success(`密码已重置为：${body.data.password}，请通知伙伴使用新密码登录`);
+        setResetPwdOpen(false);
+        setResetPwdValue('admin123456');
+      } else {
+        toast.error(body.message || '重置失败');
+      }
+    } catch (e) {
+      toast.error(getErrorMessage(e, '重置失败'));
+    } finally {
+      setResetPwdSaving(false);
     }
   };
 
@@ -529,6 +560,13 @@ export default function SubjectDetailPage() {
                 <Field label="状态">
                   <Input value={subject.status === 'active' ? 'active（启用）' : 'suspended（停用）'} readOnly />
                 </Field>
+                <Field label="门户登录用户名">
+                  <Input
+                    value={editForm.username}
+                    onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
+                    placeholder="3-32 位字母、数字、-_"
+                  />
+                </Field>
                 <Field label="联系人">
                   <Input value={editForm.contactName} onChange={(e) => setEditForm({ ...editForm, contactName: e.target.value })} />
                 </Field>
@@ -597,6 +635,41 @@ export default function SubjectDetailPage() {
                 <Button size="sm" onClick={saveInfo} disabled={saving}>
                   {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                   保存
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 门户账号 */}
+          <Card className="panel-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-[15px] text-ink">门户账号</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="rounded-lg border border-dashed bg-muted/40 px-4 py-3 text-[12px] text-muted-foreground">
+                伙伴使用本账号在 /partner 门户登录。伙伴忘记密码时，可在此重置（默认重置为 admin123456），请将新密码告知伙伴。
+              </div>
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="w-28 shrink-0 text-[12.5px] text-muted-foreground">登录用户名</div>
+                {subject.username ? (
+                  <code className="rounded-lg bg-muted/70 px-3 py-2 font-mono text-[12.5px] text-ink">
+                    {subject.username}
+                  </code>
+                ) : (
+                  <span className="text-[12.5px] text-muted-foreground">
+                    未初始化（服务重启后自动补初始账号 admin/admin123456，也可在上方信息编辑中设置）
+                  </span>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="ml-auto"
+                  onClick={() => {
+                    setResetPwdValue('admin123456');
+                    setResetPwdOpen(true);
+                  }}
+                >
+                  <KeyRound className="h-4 w-4" /> 重置密码
                 </Button>
               </div>
             </CardContent>
@@ -1171,6 +1244,35 @@ export default function SubjectDetailPage() {
             </Button>
             <Button onClick={submitSettle} disabled={settleSaving}>
               {settleSaving ? '提交中…' : '确认结清'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 重置门户密码弹窗 */}
+      <Dialog open={resetPwdOpen} onOpenChange={setResetPwdOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>重置伙伴门户密码</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <Field label="新密码（至少 8 位）*">
+              <Input
+                value={resetPwdValue}
+                onChange={(e) => setResetPwdValue(e.target.value)}
+                placeholder="默认 admin123456"
+              />
+            </Field>
+            <p className="text-[12px] text-muted-foreground">
+              重置后请立即将新密码告知伙伴；伙伴也可在门户个人中心自行修改密码。
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setResetPwdOpen(false)} disabled={resetPwdSaving}>
+              取消
+            </Button>
+            <Button onClick={submitResetPassword} disabled={resetPwdSaving}>
+              {resetPwdSaving ? '重置中…' : '确认重置'}
             </Button>
           </DialogFooter>
         </DialogContent>

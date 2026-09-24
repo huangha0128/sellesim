@@ -900,6 +900,10 @@ export default (prisma: PrismaClient) => {
     if (keyId.length <= 14) return keyId.slice(0, 6) + '…' + keyId.slice(-4);
     return keyId.slice(0, 12) + '…' + keyId.slice(-4);
   }
+  /** 门户账号默认初始用户名 / 密码 */
+  const DEFAULT_PORTAL_USERNAME = 'admin';
+  const DEFAULT_PORTAL_PASSWORD = 'admin123456';
+  const USERNAME_RE = /^[a-zA-Z0-9_-]{3,32}$/;
 
   /** GET /api/admin/subjects 主体列表（含密钥数、订单数） */
   router.get('/subjects', async (req: Request, res: Response) => {
@@ -908,17 +912,30 @@ export default (prisma: PrismaClient) => {
         orderBy: { createdAt: 'desc' },
         include: { _count: { select: { keys: true, orders: true } } },
       });
-      res.json({ code: 0, data: { subjects } });
+      // 脱敏：不下发口令哈希与盐
+      const safe = subjects.map(({ passwordHash: _ph, salt: _salt, ...rest }) => rest);
+      res.json({ code: 0, data: { subjects: safe } });
     } catch (e: any) {
       res.status(500).json({ code: 1, message: '查询失败：' + e.message });
     }
   });
 
-  /** POST /api/admin/subjects 创建主体（自动生成合成用户 + 第一把 live 密钥，密钥仅一次返回） */
+  /** POST /api/admin/subjects 创建主体（自动生成合成用户 + 第一把 live 密钥 + 门户初始账号，密钥仅一次返回） */
   router.post('/subjects', async (req: Request, res: Response) => {
-    const { name, contactName, contactPhone, callbackUrl, defaultMarkupPercent, quotaLimit, splitPercent, remark } = req.body || {};
+    const { name, username, password, contactName, contactPhone, callbackUrl, defaultMarkupPercent, quotaLimit, splitPercent, remark } = req.body || {};
     if (!name) return res.json({ code: 1, message: '请输入主体名称' });
+    const portalUsername = String(username || DEFAULT_PORTAL_USERNAME).trim();
+    if (!USERNAME_RE.test(portalUsername)) {
+      return res.json({ code: 1, message: '门户用户名需为 3-32 位字母、数字、下划线或连字符' });
+    }
+    const portalPassword = String(password || DEFAULT_PORTAL_PASSWORD);
+    if (portalPassword.length < 8) {
+      return res.json({ code: 1, message: '门户密码至少 8 位' });
+    }
     try {
+      const exists = await prisma.subject.findUnique({ where: { username: portalUsername } });
+      if (exists) return res.json({ code: 1, message: `门户用户名 ${portalUsername} 已被占用` });
+      const salt = genSalt();
       const result = await prisma.$transaction(async (tx) => {
         const user = await tx.user.create({
           data: { alipayUserId: `sub_${crypto.randomBytes(6).toString('hex')}`, nickname: `主体-${name}` },
@@ -926,6 +943,9 @@ export default (prisma: PrismaClient) => {
         const subject = await tx.subject.create({
           data: {
             name: String(name),
+            username: portalUsername,
+            salt,
+            passwordHash: hashPassword(portalPassword, salt),
             status: 'active',
             contactName: contactName || null,
             contactPhone: contactPhone || null,
@@ -949,11 +969,30 @@ export default (prisma: PrismaClient) => {
           id: result.subject.id,
           name: result.subject.name,
           status: result.subject.status,
+          account: { username: portalUsername, password: portalPassword },
           key: { keyId: result.key.keyId, keySecret: result.key.keySecret, mode: result.key.mode },
         },
       });
     } catch (e: any) {
       res.status(500).json({ code: 1, message: '创建主体失败：' + e.message });
+    }
+  });
+
+  /** POST /api/admin/subjects/:id/reset-password 后台重置伙伴门户密码（伙伴忘记密码时）body: { password? } */
+  router.post('/subjects/:id/reset-password', async (req: Request, res: Response) => {
+    const portalPassword = String((req.body || {}).password || DEFAULT_PORTAL_PASSWORD);
+    if (portalPassword.length < 8) return res.json({ code: 1, message: '重置密码至少 8 位' });
+    try {
+      const subject = await prisma.subject.findUnique({ where: { id: req.params.id } });
+      if (!subject) return res.json({ code: 1, message: '主体不存在' });
+      const salt = genSalt();
+      await prisma.subject.update({
+        where: { id: subject.id },
+        data: { salt, passwordHash: hashPassword(portalPassword, salt) },
+      });
+      res.json({ code: 0, data: { username: subject.username, password: portalPassword } });
+    } catch (e: any) {
+      res.status(500).json({ code: 1, message: '重置密码失败：' + e.message });
     }
   });
 
@@ -965,21 +1004,32 @@ export default (prisma: PrismaClient) => {
         include: { keys: { orderBy: { createdAt: 'asc' } }, prices: true },
       });
       if (!s) return res.json({ code: 1, message: '主体不存在' });
+      // 脱敏：密钥密文与口令哈希/盐均不下发
+      const { passwordHash: _ph, salt: _salt, ...rest } = s;
       res.json({
         code: 0,
-        data: { subject: { ...s, keys: s.keys.map((k) => ({ ...k, keySecret: undefined, keyId: maskKeyId(k.keyId) })) } },
+        data: { subject: { ...rest, keys: s.keys.map((k) => ({ ...k, keySecret: undefined, keyId: maskKeyId(k.keyId) })) } },
       });
     } catch (e: any) {
       res.status(500).json({ code: 1, message: '查询失败：' + e.message });
     }
   });
 
-  /** PUT /api/admin/subjects/:id 改资料/状态/回调地址/默认加价/授信额度/分成比例 */
+  /** PUT /api/admin/subjects/:id 改资料/状态/回调地址/默认加价/授信额度/分成比例/门户用户名 */
   router.put('/subjects/:id', async (req: Request, res: Response) => {
-    const { name, contactName, contactPhone, callbackUrl, defaultMarkupPercent, quotaLimit, splitPercent, remark, status } = req.body || {};
+    const { name, username, contactName, contactPhone, callbackUrl, defaultMarkupPercent, quotaLimit, splitPercent, remark, status } = req.body || {};
     try {
       const data: any = {};
       if (name !== undefined) data.name = String(name);
+      if (username !== undefined) {
+        const uname = String(username).trim();
+        if (!USERNAME_RE.test(uname)) {
+          return res.json({ code: 1, message: '门户用户名需为 3-32 位字母、数字、下划线或连字符' });
+        }
+        const dup = await prisma.subject.findUnique({ where: { username: uname } });
+        if (dup && dup.id !== req.params.id) return res.json({ code: 1, message: `门户用户名 ${uname} 已被占用` });
+        data.username = uname;
+      }
       if (contactName !== undefined) data.contactName = contactName || null;
       if (contactPhone !== undefined) data.contactPhone = contactPhone || null;
       if (callbackUrl !== undefined) data.callbackUrl = callbackUrl || null;
@@ -989,7 +1039,8 @@ export default (prisma: PrismaClient) => {
       if (splitPercent !== undefined) data.splitPercent = splitPercent == null ? null : Number(splitPercent);
       if (status !== undefined && ['active', 'suspended'].includes(status)) data.status = status;
       if (!Object.keys(data).length) return res.json({ code: 1, message: '没有需要更新的字段' });
-      const subject = await prisma.subject.update({ where: { id: req.params.id }, data });
+      const updated = await prisma.subject.update({ where: { id: req.params.id }, data });
+      const { passwordHash: _ph, salt: _salt, ...subject } = updated;
       res.json({ code: 0, data: { subject } });
     } catch (e: any) {
       res.status(500).json({ code: 1, message: '更新失败：' + e.message });

@@ -81,6 +81,9 @@ model ExternalApp {
 model Subject {
   id                   String                 @id @default(uuid())
   name                 String
+  username             String?                @unique @map("username") // partner portal login username (unique)
+  passwordHash         String?                @map("password_hash") // scrypt hash (same scheme as AdminUser)
+  salt                 String?
   status               String                 @default("active")
   callbackUrl          String?                @map("callback_url")
   defaultMarkupPercent Float?                 @map("default_markup_percent")

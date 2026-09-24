@@ -11,6 +11,7 @@ export interface SubjectInfo {
   id: string;
   name: string;
   status: string;
+  username?: string | null;
 }
 
 export function getToken(): string | null {

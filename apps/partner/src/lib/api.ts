@@ -77,6 +77,7 @@ export interface LoginSubject {
   id: string;
   name: string;
   status: string;
+  username?: string | null;
 }
 export interface LoginResult {
   token: string;
@@ -87,6 +88,7 @@ export interface SubjectInfo {
   id: string;
   name: string;
   status: string;
+  username?: string | null;
   callbackUrl?: string | null;
   defaultMarkupPercent?: number | null;
   splitPercent?: number | null;
@@ -253,10 +255,14 @@ function qs(params: Record<string, string | number | undefined>): string {
 // ---------- 接口 ----------
 export const api = {
   // 登录（/api/open/v1/auth/login 免鉴权）
-  login: (keyId: string, keySecret: string) =>
-    request<LoginResult>('/auth/login', { method: 'POST', body: { keyId, keySecret } }),
+  login: (username: string, password: string) =>
+    request<LoginResult>('/auth/login', { method: 'POST', body: { username, password } }),
 
   me: () => request<MeResult>('/me'),
+
+  /** 自助修改门户登录密码 body: { oldPassword, newPassword } */
+  changePassword: (oldPassword: string, newPassword: string) =>
+    request<{ changed: boolean }>('/me/password', { method: 'PUT', body: { oldPassword, newPassword } }),
 
   /** 自助更新 Webhook 回调地址（需写接口签名） */
   updateCallback: (callbackUrl: string) =>

@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { genAppSecret } from '../utils/hmac';
 import { PrismaClient } from '@prisma/client';
 import { openAuth, OpenAuthRequest } from '../middleware/openAuth';
+import { genSalt, hashPassword, verifyPassword } from '../middleware/adminAuth';
 import { listAllPackagesView, getPackageView } from '../tiger/view';
 import { resolveSubjectPrice, applySubjectPrices } from '../services/subjectPricing';
 import { resolveSettlePricesForList, resolveSettlePrice, quotaView, restoreWallet, applyDeposit } from '../services/quota';
@@ -98,6 +99,7 @@ export default (prisma: PrismaClient) => {
         id: s.id,
         name: s.name,
         status: s.status,
+        username: s.username,
         callbackUrl: s.callbackUrl,
         defaultMarkupPercent: s.defaultMarkupPercent,
         splitPercent: s.splitPercent ?? null,
@@ -105,6 +107,27 @@ export default (prisma: PrismaClient) => {
       quota: { quotaLimit: q.quotaLimit, usedQuota: q.usedQuota, availableQuota: q.availableQuota, balance: q.balance },
       keys: s.keys.map((k) => ({ keyId: k.keyId, mode: k.mode })),
     });
+  });
+
+  /** PUT /me/password 主体自改门户登录密码 body: { oldPassword, newPassword } */
+  router.put('/me/password', async (req: OpenAuthRequest, res: Response) => {
+    const { oldPassword, newPassword } = (req.body || {}) as { oldPassword?: string; newPassword?: string };
+    if (!oldPassword || !newPassword) {
+      return err(res, 400, 400, '请填写原密码与新密码');
+    }
+    if (String(newPassword).length < 8) {
+      return err(res, 400, 400, '新密码至少 8 位');
+    }
+    const s = await prisma.subject.findUnique({ where: { id: req.subject!.id } });
+    if (!s || !s.salt || !s.passwordHash || !verifyPassword(String(oldPassword), s.salt, s.passwordHash)) {
+      return err(res, 400, 400, '原密码不正确');
+    }
+    const salt = genSalt();
+    await prisma.subject.update({
+      where: { id: s.id },
+      data: { salt, passwordHash: hashPassword(String(newPassword), salt) },
+    });
+    ok(res, { changed: true });
   });
 
   /** PUT /me 主体自改 Webhook 回调地址（无需后台，自助配置） */

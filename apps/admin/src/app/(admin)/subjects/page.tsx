@@ -45,6 +45,8 @@ export default function SubjectsPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [form, setForm] = useState({
     name: '',
+    username: 'admin',
+    password: 'admin123456',
     contactName: '',
     contactPhone: '',
     callbackUrl: '',
@@ -55,9 +57,11 @@ export default function SubjectsPage() {
   });
   const [creating, setCreating] = useState(false);
 
-  // 创建成功：一次性展示 keySecret
+  // 创建成功：一次性展示初始账号与 keySecret
   const [createdSecret, setCreatedSecret] = useState<{
     name: string;
+    username: string;
+    password: string;
     keyId: string;
     keySecret: string;
     mode: string;
@@ -85,16 +89,22 @@ export default function SubjectsPage() {
   }, []);
 
   const openCreate = () => {
-    setForm({ name: '', contactName: '', contactPhone: '', callbackUrl: '', defaultMarkupPercent: '', quotaLimit: '', splitPercent: '', remark: '' });
+    setForm({ name: '', username: 'admin', password: 'admin123456', contactName: '', contactPhone: '', callbackUrl: '', defaultMarkupPercent: '', quotaLimit: '', splitPercent: '', remark: '' });
     setCreateOpen(true);
   };
 
   const submitCreate = async () => {
     if (!form.name.trim()) return toast.warning('请输入主体名称');
+    if (!/^[a-zA-Z0-9_-]{3,32}$/.test(form.username.trim())) {
+      return toast.warning('门户用户名需为 3-32 位字母、数字、下划线或连字符');
+    }
+    if (form.password.length < 8) return toast.warning('门户密码至少 8 位');
     setCreating(true);
     try {
       const res = await adminApi.createSubject({
         name: form.name.trim(),
+        username: form.username.trim(),
+        password: form.password,
         contactName: form.contactName.trim() || undefined,
         contactPhone: form.contactPhone.trim() || undefined,
         callbackUrl: form.callbackUrl.trim() || undefined,
@@ -104,11 +114,13 @@ export default function SubjectsPage() {
         splitPercent: form.splitPercent.trim() === '' ? undefined : Number(form.splitPercent),
         remark: form.remark.trim() || undefined,
       });
-      const body = unwrap<{ id: string; name: string; status: string; key: { keyId: string; keySecret: string; mode: string } }>(res);
+      const body = unwrap<{ id: string; name: string; status: string; account: { username: string; password: string }; key: { keyId: string; keySecret: string; mode: string } }>(res);
       if (body.code === 0) {
         setCreateOpen(false);
         setCreatedSecret({
           name: body.data.name,
+          username: body.data.account.username,
+          password: body.data.account.password,
           keyId: body.data.key.keyId,
           keySecret: body.data.key.keySecret,
           mode: body.data.key.mode,
@@ -150,7 +162,7 @@ export default function SubjectsPage() {
       <Card className="panel-card">
         <CardContent className="flex flex-wrap items-center gap-3 pt-5">
           <div className="text-[12.5px] text-muted-foreground">
-            接入开放平台 /api/open/v1 的个人主体。主体与密钥只由平台创建；创建后仅一次展示 keySecret，需管理员立即复制保存。
+            接入开放平台 /api/open/v1 的个人主体。主体、门户账号与密钥只由平台创建；创建后仅一次展示初始密码与 keySecret，伙伴登录门户后可自行修改密码，忘记密码可在详情页重置。
           </div>
           <div className="ml-auto">
             <Button size="sm" onClick={openCreate}>
@@ -177,7 +189,8 @@ export default function SubjectsPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>名称</TableHead>
-                  <TableHead>状态</TableHead>
+              <TableHead>门户账号</TableHead>
+              <TableHead>状态</TableHead>
                   <TableHead>密钥</TableHead>
                   <TableHead>订单</TableHead>
                   <TableHead>联系人</TableHead>
@@ -197,6 +210,13 @@ export default function SubjectsPage() {
                       <Link href={`/subjects/view?id=${s.id}`} className="font-medium text-ink hover:text-primary">
                         {s.name}
                       </Link>
+                    </TableCell>
+                    <TableCell>
+                      {s.username ? (
+                        <span className="font-mono text-[12.5px]">{s.username}</span>
+                      ) : (
+                        <span className="text-muted-foreground">未初始化</span>
+                      )}
                     </TableCell>
                     <TableCell>
                       {s.status === 'active' ? (
@@ -271,7 +291,7 @@ export default function SubjectsPage() {
             <DialogTitle>创建主体</DialogTitle>
           </DialogHeader>
           <div className="rounded-lg border border-dashed bg-muted/40 px-4 py-3 text-[12px] text-muted-foreground">
-            创建后系统将自动生成内部用户与一把 <code className="font-mono">live</code> 密钥，keySecret 仅在此时展示一次。
+            创建后系统将自动生成内部用户、一把 <code className="font-mono">live</code> 密钥与门户登录账号；keySecret 与初始密码仅在此时展示一次。伙伴登录门户后可自行修改密码。
           </div>
           <div className="grid gap-4">
             <Field label="主体名称 *">
@@ -281,6 +301,22 @@ export default function SubjectsPage() {
                 placeholder="如 张三数码"
               />
             </Field>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="门户登录用户名">
+                <Input
+                  value={form.username}
+                  onChange={(e) => setForm({ ...form, username: e.target.value })}
+                  placeholder="默认 admin"
+                />
+              </Field>
+              <Field label="门户初始密码">
+                <Input
+                  value={form.password}
+                  onChange={(e) => setForm({ ...form, password: e.target.value })}
+                  placeholder="默认 admin123456"
+                />
+              </Field>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <Field label="联系人">
                 <Input value={form.contactName} onChange={(e) => setForm({ ...form, contactName: e.target.value })} placeholder="选填" />
@@ -343,19 +379,27 @@ export default function SubjectsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* 创建成功：一次性密钥 */}
+      {/* 创建成功：一次性展示初始账号与密钥 */}
       <Dialog open={!!createdSecret} onOpenChange={(o) => !o && setCreatedSecret(null)}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
-            <DialogTitle>主体已创建，请保存密钥</DialogTitle>
+            <DialogTitle>主体已创建，请保存账号与密钥</DialogTitle>
           </DialogHeader>
           <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-[12.5px] text-amber-800">
-            这是唯一一次展示 <code className="font-mono">keySecret</code> 的机会，关闭后不再显示。请立即把以下凭证复制并安全交付给主体，丢失只能走密钥轮换。
+            这是唯一一次展示初始密码与 <code className="font-mono">keySecret</code> 的机会，关闭后不再显示。请立即把以下凭证复制并安全交付给主体；伙伴忘记密码时可在本页详情中重置。
           </div>
           <div className="space-y-3">
             <Field label="主体名称">
               <Input value={createdSecret?.name || ''} readOnly />
             </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="门户用户名">
+                <Input value={createdSecret?.username || ''} readOnly className="font-mono" />
+              </Field>
+              <Field label="门户初始密码">
+                <Input value={createdSecret?.password || ''} readOnly className="font-mono" />
+              </Field>
+            </div>
             <Field label="keyId（公开）">
               <Input value={createdSecret?.keyId || ''} readOnly className="font-mono" />
             </Field>

@@ -231,6 +231,7 @@ export interface Subject {
   id: string;
   name: string;
   status: string;
+  username?: string | null;
   callbackUrl?: string | null;
   defaultMarkupPercent?: number | null;
   contactName?: string | null;
@@ -325,6 +326,8 @@ export const adminApi = {
   getSubjects: () => http.get('/admin/subjects'),
   createSubject: (data: {
     name: string;
+    username?: string;
+    password?: string;
     contactName?: string;
     contactPhone?: string;
     callbackUrl?: string;
@@ -338,6 +341,7 @@ export const adminApi = {
     id: string,
     data: {
       name?: string;
+      username?: string;
       contactName?: string | null;
       contactPhone?: string | null;
       callbackUrl?: string | null;
@@ -349,6 +353,9 @@ export const adminApi = {
     },
   ) => http.put(`/admin/subjects/${id}`, data),
   suspendSubject: (id: string) => http.delete(`/admin/subjects/${id}`),
+  /** 后台重置伙伴门户密码（不传 password 默认重置为 admin123456） */
+  resetSubjectPassword: (id: string, password?: string) =>
+    http.post(`/admin/subjects/${id}/reset-password`, { password }),
 
   getSubjectKeys: (id: string) => http.get(`/admin/subjects/${id}/keys`),
   addSubjectKey: (id: string, data: { mode?: string; name?: string }) =>

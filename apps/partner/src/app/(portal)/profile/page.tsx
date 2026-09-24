@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Wallet, Copy, Check, Plus, KeyRound } from 'lucide-react';
+import { Wallet, Copy, Check, Plus, KeyRound, Lock, UserCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import {
@@ -52,6 +52,13 @@ export default function ProfilePage() {
   const [keySubmitting, setKeySubmitting] = useState(false);
   const [newKey, setNewKey] = useState<CreateKeyResult | null>(null);
 
+  // 修改登录密码
+  const [pwdOpen, setPwdOpen] = useState(false);
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pwdSaving, setPwdSaving] = useState(false);
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -97,6 +104,25 @@ export default function ProfilePage() {
       toast.error(getErrorMessage(e, '创建密钥失败'));
     } finally {
       setKeySubmitting(false);
+    }
+  }
+
+  async function submitChangePassword() {
+    if (!oldPassword || !newPassword) return toast.warning('请填写原密码与新密码');
+    if (newPassword.length < 8) return toast.warning('新密码至少 8 位');
+    if (newPassword !== confirmPassword) return toast.warning('两次输入的新密码不一致');
+    setPwdSaving(true);
+    try {
+      await api.changePassword(oldPassword, newPassword);
+      toast.success('密码已修改，请使用新密码登录');
+      setPwdOpen(false);
+      setOldPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (e) {
+      toast.error(getErrorMessage(e, '修改失败'));
+    } finally {
+      setPwdSaving(false);
     }
   }
 
@@ -163,6 +189,49 @@ export default function ProfilePage() {
               {me && me.keys.map((k) => <KeyRow key={k.keyId} keyId={k.keyId} />)}
               {!me?.keys?.length && <div className="text-[12.5px] text-muted-foreground">暂无启用密钥</div>}
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 账号安全 */}
+      <Card className="panel-card">
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-[15px] text-ink">
+              <UserCircle className="h-4 w-4 text-primary" />
+              账号安全
+            </CardTitle>
+            <CardDescription>门户登录账号与密码管理</CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="w-32 shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              登录用户名
+            </div>
+            <code className="flex-1 select-all truncate rounded-lg bg-muted/70 px-3 py-2 font-mono text-[12.5px] text-ink">
+              {subj?.username || '—'}
+            </code>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="w-32 shrink-0 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              登录密码
+            </div>
+            <div className="flex-1 text-[12.5px] text-muted-foreground">
+              定期修改密码可保障账户安全；如忘记密码，请联系平台在后台重置。
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setOldPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+                setPwdOpen(true);
+              }}
+            >
+              <Lock className="h-3.5 w-3.5" /> 修改密码
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -272,6 +341,55 @@ export default function ProfilePage() {
           </div>
           <DialogFooter>
             <Button onClick={() => setNewKey(null)}>我已保存</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 修改登录密码 */}
+      <Dialog open={pwdOpen} onOpenChange={setPwdOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Lock className="h-4 w-4 text-primary" /> 修改登录密码
+            </DialogTitle>
+            <DialogDescription>修改成功后需使用新密码重新登录。</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <label className="text-[12.5px] text-muted-foreground">原密码</label>
+              <Input
+                type="password"
+                value={oldPassword}
+                onChange={(e) => setOldPassword(e.target.value)}
+                placeholder="请输入原密码"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[12.5px] text-muted-foreground">新密码（至少 8 位）</label>
+              <Input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="请输入新密码"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[12.5px] text-muted-foreground">确认新密码</label>
+              <Input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                placeholder="请再次输入新密码"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPwdOpen(false)} disabled={pwdSaving}>
+              取消
+            </Button>
+            <Button onClick={submitChangePassword} disabled={pwdSaving}>
+              {pwdSaving ? '保存中…' : '确认修改'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

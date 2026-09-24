@@ -23,7 +23,9 @@ RUN pnpm --filter @sellsim/web build
 
 # ---------- 运行阶段（一次性铺盘任务）----------
 FROM alpine:3.20
-RUN apk add --no-cache rsync
+# 国内服务器无法直连 dl-cdn.alpinelinux.org，先切换到阿里云镜像源
+RUN sed -i 's|dl-cdn.alpinelinux.org|mirrors.aliyun.com|g' /etc/apk/repositories || true; \
+    apk add --no-cache rsync
 WORKDIR /deploy
 COPY --from=build /app/apps/web/dist /dist
 COPY apps/web/entrypoint.sh /entrypoint.sh
