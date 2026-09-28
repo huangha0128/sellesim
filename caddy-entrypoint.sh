@@ -37,6 +37,10 @@ $CADDY_DOMAIN {
 
     encode gzip zstd
 
+    handle /ws* {
+        reverse_proxy server:6660
+    }
+
     handle /api/* {
         reverse_proxy server:6660
     }
@@ -65,6 +69,10 @@ else
     cat > "$CADDYFILE" << 'EOF'
 :80 {
     encode gzip zstd
+
+    handle /ws* {
+        reverse_proxy server:6660
+    }
 
     handle /api/* {
         reverse_proxy server:6660
