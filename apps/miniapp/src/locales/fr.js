@@ -35,7 +35,8 @@ export default {
     about: 'À propos',
     supportedModels: 'Modèles compatibles eSIM',
     usageNotice: 'Avis d\'utilisation eSIM',
-    contact: 'Nous contacter'
+    contact: 'Nous contacter',
+    chat: 'Assistance en ligne'
   },
   index: {
     slogan: 'Données dans 200+ destinations dans le monde',
@@ -98,7 +99,24 @@ export default {
     emailLabel: 'E-mail officiel',
     responseTip: 'Nous répondrons à votre e-mail dès que possible, généralement sous 1 à 2 jours ouvrables.',
     copyEmail: 'Copier',
-    copied: 'E-mail copié'
+    copied: 'E-mail copié',
+    chatTitle: 'Assistance en ligne',
+    chatSub: 'Réponse instantanée par l\'IA, agent humain à la demande'
+  },
+  chat: {
+    placeholder: 'Saisissez votre question…',
+    send: 'Envoyer',
+    transferBtn: 'Agent humain',
+    transferred: 'Agent humain',
+    transferConfirm: 'Passer à un agent humain ?',
+    transferring: 'Connexion à un agent humain…',
+    transferredTip: 'Un agent humain va vous aider',
+    closed: 'Conversation terminée',
+    aiNotice: 'L\'assistant IA est là. Pour les cas complexes, touchez « Agent humain ».',
+    humanNotice: 'Un agent humain vous aide',
+    sendFailed: 'Échec de l\'envoi, veuillez réessayer',
+    offlineTip: 'Erreur réseau, veuillez réessayer',
+    emptyHint: 'Bonjour, je suis Xiao Y. Comment puis-je vous aider ?'
   },
   about: {
     slogan: 'Données mondiales, achetez et utilisez immédiatement',

@@ -1,4 +1,5 @@
-const BASE_URL = 'https://www.bjyyxx.com/api';
+// const BASE_URL = 'https://www.bjyyxx.com/api';
+const BASE_URL = 'http://8.138.193.6/api';
 
 import { pickCountryName } from './countryLocales';
 
@@ -156,6 +157,26 @@ export const api = {
 
   async updateProfile(userId, data) {
     return request('POST', '/auth/update-profile', { userId, ...data });
+  },
+
+  // ===== 在线客服（AI + 人工）=====
+  async createChatSession(data) {
+    return request('POST', '/chat/sessions', data || {});
+  },
+  async getChatSession(id) {
+    return request('GET', `/chat/sessions/${id}`);
+  },
+  async sendChatMessage(id, content) {
+    return request('POST', `/chat/sessions/${id}/messages`, { content });
+  },
+  async transferChat(id) {
+    return request('POST', `/chat/sessions/${id}/transfer`, {});
+  },
+  async closeChat(id) {
+    return request('POST', `/chat/sessions/${id}/close`, {});
+  },
+  async pollChatMessages(id, afterId) {
+    return request('GET', `/chat/sessions/${id}/messages?afterId=${encodeURIComponent(afterId || '')}`);
   },
 
   async getHomeData() {

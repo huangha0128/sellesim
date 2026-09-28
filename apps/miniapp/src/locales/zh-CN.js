@@ -35,7 +35,8 @@ export default {
     about: '关于我们',
     supportedModels: '支持 eSIM 机型汇总',
     usageNotice: 'eSIM 使用须知',
-    contact: '联系我们'
+    contact: '联系我们',
+    chat: '在线客服'
   },
   index: {
     slogan: '全球 200+ 地区流量',
@@ -98,7 +99,24 @@ export default {
     emailLabel: '官方邮箱',
     responseTip: '收到您的邮件后，我们将尽快回复，通常为 1-2 个工作日。',
     copyEmail: '复制邮箱',
-    copied: '邮箱已复制'
+    copied: '邮箱已复制',
+    chatTitle: '在线客服',
+    chatSub: 'AI 智能解答，可随时转人工'
+  },
+  chat: {
+    placeholder: '请输入您的问题…',
+    send: '发送',
+    transferBtn: '转人工',
+    transferred: '已转人工',
+    transferConfirm: '确定要转接人工客服吗？',
+    transferring: '正在转接人工客服，请稍候…',
+    transferredTip: '已接入人工客服，请描述您的问题',
+    closed: '会话已结束',
+    aiNotice: 'AI 客服为您服务，如问题复杂可点击「转人工」',
+    humanNotice: '人工客服正在为您服务',
+    sendFailed: '发送失败，请重试',
+    offlineTip: '网络异常，请稍后重试',
+    emptyHint: '您好，我是客服小 Y，有什么可以帮您？'
   },
   about: {
     slogan: '全球流量，即买即用',

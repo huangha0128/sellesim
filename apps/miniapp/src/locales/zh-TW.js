@@ -35,7 +35,8 @@ export default {
     about: '關於我們',
     supportedModels: '支援 eSIM 機型彙總',
     usageNotice: 'eSIM 使用須知',
-    contact: '聯絡我們'
+    contact: '聯絡我們',
+    chat: '線上客服'
   },
   index: {
     slogan: '全球 200+ 地區流量',
@@ -98,7 +99,24 @@ export default {
     emailLabel: '官方信箱',
     responseTip: '收到您的郵件後，我們將盡快回覆，通常為 1-2 個工作日。',
     copyEmail: '複製信箱',
-    copied: '信箱已複製'
+    copied: '信箱已複製',
+    chatTitle: '線上客服',
+    chatSub: 'AI 智慧解答，可隨時轉人工'
+  },
+  chat: {
+    placeholder: '請輸入您的問題…',
+    send: '傳送',
+    transferBtn: '轉人工',
+    transferred: '已轉人工',
+    transferConfirm: '確定要轉接人工客服嗎？',
+    transferring: '正在轉接人工客服，請稍候…',
+    transferredTip: '已接入人工客服，請描述您的問題',
+    closed: '對話已結束',
+    aiNotice: 'AI 客服為您服務，問題較複雜可點「轉人工」',
+    humanNotice: '人工客服正在為您服務',
+    sendFailed: '傳送失敗，請重試',
+    offlineTip: '網路異常，請稍後重試',
+    emptyHint: '您好，我是客服小 Y，有什麼可以幫您？'
   },
   about: {
     slogan: '全球流量，即買即用',

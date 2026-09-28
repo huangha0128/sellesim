@@ -10,6 +10,18 @@
     </view>
 
     <view class="page-body">
+      <!-- 在线客服入口 -->
+      <view class="chat-entry" hover-class="chat-entry--hover" @tap="goChat">
+        <view class="chat-entry-icon-wrap">
+          <image class="chat-entry-icon" src="/static/icons/prof-help.png" mode="aspectFit" />
+        </view>
+        <view class="chat-entry-main">
+          <text class="chat-entry-title">{{ $t('contact.chatTitle') }}</text>
+          <text class="chat-entry-sub">{{ $t('contact.chatSub') }}</text>
+        </view>
+        <text class="chat-entry-arrow">›</text>
+      </view>
+
       <!-- 官方邮箱卡片 -->
       <view class="card email-card">
         <text class="card-title">{{ $t('contact.emailLabel') }}</text>
@@ -41,6 +53,9 @@ export default {
     setNavTitle('pageTitle.contact')
   },
   methods: {
+    goChat() {
+      uni.navigateTo({ url: '/pages/chat/chat' })
+    },
     copyEmail() {
       uni.setClipboardData({
         data: this.email,
@@ -100,6 +115,64 @@ export default {
   margin-top: 10rpx;
   font-size: 25rpx;
   color: $ink-3;
+}
+
+/* ============ 在线客服入口 ============ */
+.chat-entry {
+  display: flex;
+  align-items: center;
+  background: $brand;
+  border-radius: $radius-lg;
+  padding: 28rpx 30rpx;
+  margin-bottom: 20rpx;
+  box-shadow: $shadow-sm;
+  transition: opacity 0.15s ease;
+
+  &--hover {
+    opacity: 0.85;
+  }
+}
+
+.chat-entry-icon-wrap {
+  width: 68rpx;
+  height: 68rpx;
+  border-radius: 18rpx;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 24rpx;
+}
+
+.chat-entry-icon {
+  width: 38rpx;
+  height: 38rpx;
+}
+
+.chat-entry-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-entry-title {
+  font-size: 31rpx;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: 1rpx;
+}
+
+.chat-entry-sub {
+  margin-top: 6rpx;
+  font-size: 23rpx;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.chat-entry-arrow {
+  font-size: 40rpx;
+  color: #ffffff;
+  margin-left: 12rpx;
 }
 
 /* ============ 邮箱卡片 ============ */

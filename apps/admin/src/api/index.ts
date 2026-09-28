@@ -204,6 +204,42 @@ export interface Settings {
   displayCurrency: 'CNY' | 'USD';
   usdCnyRate: number;
   maxRefundRejectCount?: number; // 退款申请被拒绝次数上限（后台可配置）
+  // AI 客服配置
+  aiProvider?: 'openai' | 'bailian';
+  aiOpenaiBaseUrl?: string;
+  aiOpenaiApiKey?: string;
+  aiOpenaiModel?: string;
+  aiBailianApiKey?: string;
+  aiBailianModel?: string;
+  aiSystemPrompt?: string;
+}
+
+// ---- 在线客服（AI + 人工）----
+export interface SupportUser {
+  nickname?: string;
+  avatar?: string;
+  email?: string;
+}
+export interface SupportSession {
+  id: string;
+  status: string; // ai | human | closed
+  needHuman?: boolean;
+  lastMessage?: string | null;
+  lastSender?: string | null;
+  unreadAdmin?: number;
+  unreadUser?: number;
+  updatedAt?: string;
+  createdAt?: string;
+  user?: SupportUser;
+}
+export interface SupportMessage {
+  id: string;
+  role: string; // user | ai | admin | system
+  content: string;
+  needHuman?: boolean;
+  category?: string | null;
+  adminName?: string | null;
+  createdAt?: string;
 }
 
 // ---- Open API v2：主体 / 密钥 / 定价 ----
@@ -322,7 +358,22 @@ export const adminApi = {
     displayCurrency?: 'CNY' | 'USD';
     usdCnyRate?: number;
     maxRefundRejectCount?: number;
+    aiProvider?: 'openai' | 'bailian';
+    aiOpenaiBaseUrl?: string;
+    aiOpenaiApiKey?: string;
+    aiOpenaiModel?: string;
+    aiBailianApiKey?: string;
+    aiBailianModel?: string;
+    aiSystemPrompt?: string;
   }) => http.put('/admin/settings', data),
+
+  // ---- 在线客服（AI + 人工）----
+  getSupportSessions: (params?: { status?: string; unread?: 0 | 1; page?: number; pageSize?: number }) =>
+    http.get('/admin/chat/sessions', { params }),
+  getSupportSession: (id: string) => http.get(`/admin/chat/sessions/${id}`),
+  replySupportSession: (id: string, content: string) =>
+    http.post(`/admin/chat/sessions/${id}/messages`, { content }),
+  closeSupportSession: (id: string) => http.post(`/admin/chat/sessions/${id}/close`),
 
   // ---- Open API v2：主体 / 密钥 / 定价 ----
   getSubjects: () => http.get('/admin/subjects'),

@@ -35,7 +35,8 @@ export default {
     about: 'About Us',
     supportedModels: 'Supported eSIM Devices',
     usageNotice: 'eSIM Usage Notice',
-    contact: 'Contact Us'
+    contact: 'Contact Us',
+    chat: 'Online Support'
   },
   index: {
     slogan: 'Data in 200+ destinations worldwide',
@@ -96,7 +97,24 @@ export default {
     emailLabel: 'Official Email',
     responseTip: 'We will reply to your email as soon as possible, usually within 1-2 business days.',
     copyEmail: 'Copy Email',
-    copied: 'Email copied'
+    copied: 'Email copied',
+    chatTitle: 'Online Support',
+    chatSub: 'AI answers instantly, human agent on request'
+  },
+  chat: {
+    placeholder: 'Type your question…',
+    send: 'Send',
+    transferBtn: 'Human agent',
+    transferred: 'Human agent',
+    transferConfirm: 'Transfer to a human agent?',
+    transferring: 'Connecting you to a human agent…',
+    transferredTip: 'A human agent is here to help',
+    closed: 'Conversation closed',
+    aiNotice: 'AI assistant is here. For complex issues, tap "Human agent".',
+    humanNotice: 'A human agent is helping you',
+    sendFailed: 'Failed to send, please retry',
+    offlineTip: 'Network error, please retry',
+    emptyHint: 'Hi, I am Xiao Y. How can I help you?'
   },
   about: {
     slogan: 'Global data, buy and use instantly',

@@ -35,7 +35,8 @@ export default {
     about: '当社について',
     supportedModels: '対応 eSIM 機種一覧',
     usageNotice: 'eSIM 利用上の注意',
-    contact: 'お問い合わせ'
+    contact: 'お問い合わせ',
+    chat: 'オンラインサポート'
   },
   index: {
     slogan: '世界 200 以上の地域でデータ通信',
@@ -98,7 +99,24 @@ export default {
     emailLabel: '公式メール',
     responseTip: 'メールを受信後、できるだけ早くご返信します（通常1〜2営業日以内）。',
     copyEmail: 'メールをコピー',
-    copied: 'メールをコピーしました'
+    copied: 'メールをコピーしました',
+    chatTitle: 'オンラインサポート',
+    chatSub: 'AI が即時に回答、必要なら有人対応へ'
+  },
+  chat: {
+    placeholder: '質問を入力してください…',
+    send: '送信',
+    transferBtn: '有人対応',
+    transferred: '有人対応',
+    transferConfirm: '有人対応に切り替えますか？',
+    transferring: '有人対応に接続中です。しばらくお待ちください…',
+    transferredTip: '有人対応に接続しました。ご相談内容をご記入ください',
+    closed: '会話は終了しました',
+    aiNotice: 'AI サポートが対応中です。複雑な問題は「有人対応」をタップしてください',
+    humanNotice: '有人対応が対応中です',
+    sendFailed: '送信に失敗しました。もう一度お試しください',
+    offlineTip: '通信エラーです。もう一度お試しください',
+    emptyHint: 'こんにちは、サポートの小Yです。何かお困りですか？'
   },
   about: {
     slogan: 'グローバルデータ、買ってすぐ使える',

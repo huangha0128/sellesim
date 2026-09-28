@@ -151,6 +151,17 @@
 
       <!-- ===== 使用须知 ===== -->
       <view id="sec-notice" class="sec-anchor">
+      <!-- 温馨提示 -->
+      <view class="notice-card">
+        <view class="notice-header">
+          <view class="notice-dot"></view>
+          <text class="notice-title">{{ fmt('detail.noticeTitle') }}</text>
+          <view class="notice-collapse-icon">∨</view>
+        </view>
+        <view class="notice-divider"></view>
+        <text class="notice-txt">{{ fmt('detail.noticeText') }}</text>
+      </view>
+
       <!-- 安装步骤 -->
       <view class="info-section">
         <text class="info-title">{{ fmt('detail.installTitle') }}</text>
@@ -175,17 +186,6 @@
           <text class="link-text">{{ fmt('detail.usageNotice') }}</text>
           <text class="link-arrow">›</text>
         </view>
-      </view>
-
-      <!-- 注意事项 -->
-      <view class="notice-card">
-        <view class="notice-header">
-          <view class="notice-dot"></view>
-          <text class="notice-title">{{ fmt('detail.noticeTitle') }}</text>
-          <view class="notice-collapse-icon">∨</view>
-        </view>
-        <view class="notice-divider"></view>
-        <text class="notice-txt">{{ fmt('detail.noticeText') }}</text>
       </view>
       </view><!-- /sec-notice -->
 

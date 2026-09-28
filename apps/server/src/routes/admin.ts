@@ -12,6 +12,7 @@ import {
 } from '../services/refund';
 import { sendRefundEmail } from '../services/email';
 import { buildRefundDeps } from '../services/payment';
+import { clearAiCache } from '../services/ai';
 import { genAppSecret } from '../utils/hmac';
 import { clearWhitelistCache, clearSettingsCache } from '../pricing/priceOverride';
 import {
@@ -523,7 +524,22 @@ export default (prisma: PrismaClient) => {
   /** GET /api/admin/settings 读取全局设置：展示货币 + USD⇄CNY 汇率 + 退款拒绝次数上限 */
   router.get('/settings', async (_req: Request, res: Response) => {
     const rows = await prisma.setting.findMany({
-      where: { key: { in: ['displayCurrency', 'usdCnyRate', 'maxRefundRejectCount'] } },
+      where: {
+        key: {
+          in: [
+            'displayCurrency',
+            'usdCnyRate',
+            'maxRefundRejectCount',
+            'aiProvider',
+            'aiOpenaiBaseUrl',
+            'aiOpenaiApiKey',
+            'aiOpenaiModel',
+            'aiBailianApiKey',
+            'aiBailianModel',
+            'aiSystemPrompt',
+          ],
+        },
+      },
     });
     const map = new Map(rows.map((r) => [r.key, r.value]));
     const maxReject = Number(map.get('maxRefundRejectCount'));
@@ -537,6 +553,13 @@ export default (prisma: PrismaClient) => {
             Number.isFinite(maxReject) && maxReject >= 1
               ? Math.floor(maxReject)
               : DEFAULT_MAX_REFUND_REJECT_COUNT,
+          aiProvider: map.get('aiProvider') === 'bailian' ? 'bailian' : 'openai',
+          aiOpenaiBaseUrl: map.get('aiOpenaiBaseUrl') || '',
+          aiOpenaiApiKey: map.get('aiOpenaiApiKey') || '',
+          aiOpenaiModel: map.get('aiOpenaiModel') || '',
+          aiBailianApiKey: map.get('aiBailianApiKey') || '',
+          aiBailianModel: map.get('aiBailianModel') || '',
+          aiSystemPrompt: map.get('aiSystemPrompt') || '',
         },
       },
     });
@@ -549,7 +572,18 @@ export default (prisma: PrismaClient) => {
    */
   router.put('/settings', async (req: Request, res: Response) => {
     try {
-      const { displayCurrency, usdCnyRate, maxRefundRejectCount } = req.body || {};
+      const {
+        displayCurrency,
+        usdCnyRate,
+        maxRefundRejectCount,
+        aiProvider,
+        aiOpenaiBaseUrl,
+        aiOpenaiApiKey,
+        aiOpenaiModel,
+        aiBailianApiKey,
+        aiBailianModel,
+        aiSystemPrompt,
+      } = req.body || {};
       const writes = [];
       if (displayCurrency === 'USD' || displayCurrency === 'CNY') {
         writes.push(
@@ -587,10 +621,41 @@ export default (prisma: PrismaClient) => {
         );
         clearMaxRefundRejectCache();
       }
+      // ---- AI 客服配置 ----
+      if (aiProvider === 'openai' || aiProvider === 'bailian') {
+        writes.push(
+          prisma.setting.upsert({
+            where: { key: 'aiProvider' },
+            update: { value: aiProvider },
+            create: { key: 'aiProvider', value: aiProvider },
+          }),
+        );
+      }
+      const aiStrWrites: [string, string][] = [
+        ['aiOpenaiBaseUrl', aiOpenaiBaseUrl],
+        ['aiOpenaiApiKey', aiOpenaiApiKey],
+        ['aiOpenaiModel', aiOpenaiModel],
+        ['aiBailianApiKey', aiBailianApiKey],
+        ['aiBailianModel', aiBailianModel],
+        ['aiSystemPrompt', aiSystemPrompt],
+      ];
+      for (const [key, val] of aiStrWrites) {
+        if (val !== undefined && val !== null) {
+          const v = String(val);
+          writes.push(
+            prisma.setting.upsert({
+              where: { key },
+              update: { value: v },
+              create: { key, value: v },
+            }),
+          );
+        }
+      }
       if (writes.length === 0) {
-        return res.json({ code: 1, message: '请至少提供 displayCurrency、usdCnyRate 或 maxRefundRejectCount' });
+        return res.json({ code: 1, message: '请至少提供 displayCurrency、usdCnyRate、maxRefundRejectCount 或 AI 客服配置' });
       }
       await prisma.$transaction(writes);
+      clearAiCache();
       await refreshAfterOverride();
       res.json({ code: 0, data: { saved: true } });
     } catch (e: any) {

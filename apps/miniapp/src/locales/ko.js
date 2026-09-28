@@ -35,7 +35,8 @@ export default {
     about: '회사 소개',
     supportedModels: 'eSIM 지원 기기 목록',
     usageNotice: 'eSIM 사용 안내',
-    contact: '문의하기'
+    contact: '문의하기',
+    chat: '온라인 상담'
   },
   index: {
     slogan: '전 세계 200여 개 지역 데이터',
@@ -98,7 +99,24 @@ export default {
     emailLabel: '공식 이메일',
     responseTip: '메일을 받은 후 최대한 빨리 답변드리며, 보통 영업일 기준 1~2일이 소요됩니다.',
     copyEmail: '이메일 복사',
-    copied: '이메일이 복사되었습니다'
+    copied: '이메일이 복사되었습니다',
+    chatTitle: '온라인 상담',
+    chatSub: 'AI가 즉시 답변, 필요 시 상담원 연결'
+  },
+  chat: {
+    placeholder: '질문을 입력하세요…',
+    send: '보내기',
+    transferBtn: '상담원',
+    transferred: '상담원 연결됨',
+    transferConfirm: '상담원에게 연결할까요?',
+    transferring: '상담원에게 연결 중입니다…',
+    transferredTip: '상담원이 연결되었습니다. 문의 내용을 남겨주세요',
+    closed: '대화가 종료되었습니다',
+    aiNotice: 'AI 상담이 진행 중입니다. 복잡한 문제는 "상담원"을 눌러주세요',
+    humanNotice: '상담원이 도움을 드리고 있습니다',
+    sendFailed: '전송에 실패했습니다. 다시 시도하세요',
+    offlineTip: '네트워크 오류입니다. 다시 시도하세요',
+    emptyHint: '안녕하세요, 상담 소Y입니다. 무엇을 도와드릴까요?'
   },
   about: {
     slogan: '글로벌 데이터, 사서 바로 사용',

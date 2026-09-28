@@ -54,6 +54,7 @@ model User {
   esims        Esim[]
   externalApp  ExternalApp?
   subject      Subject?
+  chatSessions ChatSession[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 }
@@ -281,6 +282,54 @@ model PackagePrice {
 model Setting {
   key   String @id
   value String
+}
+
+// AI + human customer support session.
+// status: ai (AI replying) | human (escalated, admin replying) | closed
+// unreadAdmin: count of messages from user yet to be read by admin
+// unreadUser: count of messages from admin yet to be read by user
+model ChatSession {
+  id          String        @id @default(uuid())
+  userId      String        @map("user_id")
+  user        User          @relation(fields: [userId], references: [id])
+  status      String        @default("ai")
+  needHuman   Boolean       @default(false) @map("need_human")
+  lastMessage String?       @map("last_message") @db.Text
+  lastSender  String?       @map("last_sender") // user | ai | admin | system
+  unreadAdmin Int           @default(0) @map("unread_admin")
+  unreadUser  Int           @default(0) @map("unread_user")
+  closedAt    DateTime?     @map("closed_at")
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  messages    ChatMessage[]
+
+  @@index([userId, createdAt])
+  @@index([status, updatedAt])
+}
+
+// One message within a support session.
+// role: user | ai | admin | system
+// For AI replies, needHuman/category hold the structured escalation judgment from the LLM,
+// and userContent/aiRequest/aiResponse store observability traces (user question, prompt, raw response).
+model ChatMessage {
+  id          String       @id @default(uuid())
+  sessionId   String       @map("session_id")
+  session     ChatSession  @relation(fields: [sessionId], references: [id])
+  role        String
+  content     String       @db.Text
+  needHuman   Boolean      @default(false) @map("need_human")
+  category    String?      @map("category") // order | refund | install | connection | other
+  userContent String?      @map("user_content") @db.LongText
+  aiRequest   String?      @map("ai_request") @db.LongText
+  aiResponse  String?      @map("ai_response") @db.LongText
+  adminId     String?      @map("admin_id")
+  adminName   String?      @map("admin_name")
+  readByUser  Boolean      @default(true) @map("read_by_user")
+  readByAdmin Boolean      @default(true) @map("read_by_admin")
+  createdAt   DateTime     @default(now())
+
+  @@index([sessionId, createdAt])
+  @@index([sessionId, id])
 }
 
 // Open platform v2: refund record. Supports full/partial and multiple refunds
