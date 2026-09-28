@@ -10,6 +10,13 @@ import { broadcastToSession } from '../services/chatHub';
 export default (prisma: PrismaClient) => {
   const router = Router();
 
+  // 会话空闲上限：超过该时长无新对话则归档旧会话并开启新会话（后台保留存档）。
+  const SESSION_IDLE_MS = 30 * 60 * 1000;
+
+  function isIdle(session: { updatedAt: Date }): boolean {
+    return Date.now() - new Date(session.updatedAt).getTime() > SESSION_IDLE_MS;
+  }
+
   // Helper: load a session owned by the current user, else 404.
   async function ownedSession(userId: string | undefined, id: string, res: Response) {
     if (!id) return null;
@@ -26,13 +33,22 @@ export default (prisma: PrismaClient) => {
     return { lastSender: sender, lastMessage: content.slice(0, 200) };
   }
 
-  // POST /api/chat/sessions  create (or reuse the open one)
+  // POST /api/chat/sessions  create (or reuse the recent open one)
   router.post('/sessions', authMiddleware, async (req: AuthRequest, res: Response) => {
     const existing = await prisma.chatSession.findFirst({
       where: { userId: req.userId, status: { not: 'closed' } },
       orderBy: { updatedAt: 'desc' },
     });
-    if (existing) return res.json({ code: 0, data: { session: existing } });
+
+    // 空闲超过 30min 的旧会话：归档（closed）并新建会话，避免把隔了很旧的对话捞回来。
+    if (existing && isIdle(existing)) {
+      await prisma.chatSession.update({
+        where: { id: existing.id },
+        data: { status: 'closed', closedAt: new Date(), lastSender: 'system', lastMessage: '会话超时已归档' },
+      });
+      broadcastToSession(existing.id, { type: 'status', session: { id: existing.id, status: 'closed' } });
+    }
+    if (existing && !isIdle(existing)) return res.json({ code: 0, data: { session: existing } });
 
     const session = await prisma.chatSession.create({ data: { userId: req.userId as string } });
     res.json({ code: 0, data: { session } });
@@ -45,16 +61,29 @@ export default (prisma: PrismaClient) => {
 
     const messages = await prisma.chatMessage.findMany({
       where: { sessionId: session.id },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' }, // 先取最新 50 条再反转为升序，避免顶掉/刷回旧消息
       take: 50,
     });
+    messages.reverse();
     res.json({ code: 0, data: { session, messages } });
   });
 
   // POST /api/chat/sessions/:id/messages  body { content }
   router.post('/sessions/:id/messages', authMiddleware, async (req: AuthRequest, res: Response) => {
-    const session = await ownedSession(req.userId, req.params.id, res);
+    let session = await ownedSession(req.userId, req.params.id, res);
     if (!session) return;
+
+    // 旧会话空闲超时：归档并自动开启新会话，本次消息写入新会话（客户端据 rotated=true 切换）。
+    let rotated = false;
+    if (isIdle(session)) {
+      await prisma.chatSession.update({
+        where: { id: session.id },
+        data: { status: 'closed', closedAt: new Date(), lastSender: 'system', lastMessage: '会话超时已归档' },
+      });
+      broadcastToSession(session.id, { type: 'status', session: { id: session.id, status: 'closed' } });
+      session = await prisma.chatSession.create({ data: { userId: req.userId as string } });
+      rotated = true;
+    }
 
     const content = String((req.body || {}).content || '').trim();
     if (!content) return res.json({ code: 1, message: '请输入内容' });
@@ -118,9 +147,9 @@ export default (prisma: PrismaClient) => {
 
     // 实时推送：新消息 + 最新会话状态（客户端按 id 去重，避免重连/并发导致的重复渲染）
     const newMessages = [userMsg, ...(aiMsg ? [aiMsg] : []), ...(sysMsg ? [sysMsg] : [])];
-    broadcastToSession(session.id, { type: 'messages', session: final, messages: newMessages });
+    broadcastToSession(session.id, { type: 'messages', session: final, messages: newMessages, rotated });
 
-    res.json({ code: 0, data: { session: final, messages: newMessages } });
+    res.json({ code: 0, data: { session: final, messages: newMessages, rotated } });
   });
 
   // POST /api/chat/sessions/:id/transfer  manual request for a human

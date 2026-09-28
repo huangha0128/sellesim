@@ -85,7 +85,8 @@ export default {
       loading: true,
       wsTask: null, // SocketTask
       wsReconnectTimer: null,
-      wsClosed: true // 标记是否主动断开
+      wsClosed: true, // 标记是否主动断开
+      subscribedId: '' // 当前已在 WS 上订阅的 sessionId，会话切换时用于退订/重订
     }
   },
   onLoad(options) {
@@ -151,8 +152,9 @@ export default {
       try {
         const res = await api.getChatSession(this.sessionId)
         if (res.code === 0) {
-          this.messages = res.data.messages || []
           this.status = res.data.session.status
+          // 按 id 合并追加（不整体替换），确保历史加载或重连时不会把旧批次刷回来
+          this.mergeMessages(res.data.messages || [])
           this.scrollBottom()
         }
       } catch (e) {
@@ -182,6 +184,7 @@ export default {
         // 订阅当前会话，开始接收实时推送
         if (this.wsTask) {
           this.wsTask.send({ data: JSON.stringify({ type: 'subscribe', sessionId: this.sessionId }) })
+          this.subscribedId = this.sessionId
         }
       })
 
@@ -214,6 +217,17 @@ export default {
         this.teardownWs()
         this.scheduleReconnect()
       })
+    },
+    // 会话切换（如超时归档后服务端返回新会话）：退订旧会话并订阅新会话
+    resubscribe() {
+      if (!this.wsTask) return
+      const old = this.subscribedId
+      this.subscribedId = ''
+      if (old && old !== this.sessionId) {
+        this.wsTask.send({ data: JSON.stringify({ type: 'unsubscribe', sessionId: old }) })
+      }
+      this.wsTask.send({ data: JSON.stringify({ type: 'subscribe', sessionId: this.sessionId }) })
+      this.subscribedId = this.sessionId
     },
     // 清理当前 SocketTask（不触发重连）
     teardownWs() {
@@ -266,6 +280,17 @@ export default {
         }
         // 移除乐观消息，再按 id 去重合入服务端确认消息（WS 推送和 HTTP 响应都来源同一批，去重避免重复）
         this.messages = this.messages.filter((m) => !m.id.startsWith('local_'))
+
+        // 会话超时归档（30min 无新对话）：服务端自动开了新会话，这里切换到新会话并清空旧消息
+        if (res.data.rotated && res.data.session) {
+          this.sessionId = res.data.session.id
+          this.status = res.data.session.status || 'ai'
+          this.messages = []
+          this.resubscribe()
+          this.loadHistory()
+          return
+        }
+
         this.mergeMessages(res.data.messages || [])
         if (res.data.session && res.data.session.status) this.status = res.data.session.status
         this.scrollBottom()
@@ -287,7 +312,6 @@ export default {
             if (res.code === 0 && res.data.session) {
               this.status = res.data.session.status
               uni.showToast({ title: this.$t('chat.transferring'), icon: 'none' })
-              await this.loadHistory()
               this.scrollBottom()
             }
           } catch (e) {
