@@ -83,7 +83,9 @@ export default {
       input: '',
       aiThinking: false,
       loading: true,
-      pollTimer: null
+      wsTask: null, // SocketTask
+      wsReconnectTimer: null,
+      wsClosed: true // 标记是否主动断开
     }
   },
   onLoad(options) {
@@ -105,10 +107,10 @@ export default {
     this.bootstrap()
   },
   onUnload() {
-    this.stopPolling()
+    this.closeWs()
   },
   onHide() {
-    this.stopPolling()
+    // 页面隐藏不断开，保持实时接收；仅在卸载时断开
   },
   methods: {
     async bootstrap() {
@@ -117,7 +119,7 @@ export default {
         uni.navigateTo({ url: '/pages/login/login' })
         return
       }
-      if (this.sessionId) return // 已初始化，保持轮询
+      if (this.sessionId) return // 已初始化，保持实时连接
 
       // 支持从订单/其它页面带 sessionId 进入
       const queryId = this.entryId
@@ -142,7 +144,7 @@ export default {
         this.status = session.status
         this.loading = false
         await this.loadHistory()
-        this.startPolling()
+        this.connectWs()
       }
     },
     async loadHistory() {
@@ -157,31 +159,84 @@ export default {
         /* ignore */
       }
     },
-    startPolling() {
-      this.stopPolling()
-      this.pollTimer = setInterval(async () => {
-        if (!this.sessionId) return
-        try {
-          const after = this.messages.length ? this.messages[this.messages.length - 1].id : ''
-          const res = await api.pollChatMessages(this.sessionId, after)
-          if (res.code !== 0) return
-          const session = res.data.session || {}
-          if (session.status && session.status !== this.status) this.status = session.status
-          const list = res.data.messages || []
-          if (list.length) {
-            this.messages = this.messages.concat(list)
-            this.scrollBottom()
-          }
-        } catch (e) {
-          /* 网络抖动忽略，下一轮再试 */
-        }
-      }, 3000)
-    },
-    stopPolling() {
-      if (this.pollTimer) {
-        clearInterval(this.pollTimer)
-        this.pollTimer = null
+    // 按 id 去重，仅追加不存在的消息，从根上避免重复渲染
+    mergeMessages(incoming) {
+      if (!Array.isArray(incoming) || !incoming.length) return
+      const existing = new Set(this.messages.map((m) => m.id))
+      const added = incoming.filter((m) => m && m.id && !existing.has(m.id))
+      if (added.length) {
+        this.messages = this.messages.concat(added)
+        this.scrollBottom()
       }
+    },
+    connectWs() {
+      if (!this.sessionId) return
+      // 避免重复建连
+      if (this.wsTask) return
+      this.wsClosed = false
+
+      const task = api.connectChatSocket()
+      this.wsTask = task
+
+      task.onOpen(() => {
+        // 订阅当前会话，开始接收实时推送
+        if (this.wsTask) {
+          this.wsTask.send({ data: JSON.stringify({ type: 'subscribe', sessionId: this.sessionId }) })
+        }
+      })
+
+      task.onMessage((res) => {
+        let msg
+        try {
+          msg = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
+        } catch (e) {
+          return
+        }
+        if (!msg || !msg.type) return
+        if (msg.type === 'messages') {
+          if (msg.session && msg.session.status && msg.session.status !== this.status) {
+            this.status = msg.session.status
+          }
+          this.mergeMessages(msg.messages)
+          return
+        }
+        if (msg.type === 'status') {
+          if (msg.session && msg.session.status) this.status = msg.session.status
+        }
+      })
+
+      task.onError(() => {
+        this.teardownWs()
+        this.scheduleReconnect()
+      })
+
+      task.onClose(() => {
+        this.teardownWs()
+        this.scheduleReconnect()
+      })
+    },
+    // 清理当前 SocketTask（不触发重连）
+    teardownWs() {
+      if (this.wsTask) {
+        try { this.wsTask.close({}) } catch (e) { /* ignore */ }
+      }
+      this.wsTask = null
+    },
+    closeWs() {
+      this.wsClosed = true
+      if (this.wsReconnectTimer) {
+        clearTimeout(this.wsReconnectTimer)
+        this.wsReconnectTimer = null
+      }
+      this.teardownWs()
+    },
+    scheduleReconnect() {
+      if (this.wsClosed || !this.sessionId) return
+      if (this.wsReconnectTimer) return
+      this.wsReconnectTimer = setTimeout(() => {
+        this.wsReconnectTimer = null
+        this.connectWs()
+      }, 3000)
     },
     onInput() {
       this.$forceUpdate()
@@ -209,12 +264,9 @@ export default {
           this.messages = this.messages.filter((m) => !m.id.startsWith('local_'))
           return
         }
-        // 移除乐观消息，再追加服务端确认消息（按 id 去重）
+        // 移除乐观消息，再按 id 去重合入服务端确认消息（WS 推送和 HTTP 响应都来源同一批，去重避免重复）
         this.messages = this.messages.filter((m) => !m.id.startsWith('local_'))
-        const incoming = res.data.messages || []
-        for (const m of incoming) {
-          if (!this.messages.some((x) => x.id === m.id)) this.messages.push(m)
-        }
+        this.mergeMessages(res.data.messages || [])
         if (res.data.session && res.data.session.status) this.status = res.data.session.status
         this.scrollBottom()
       } catch (e) {
@@ -222,8 +274,6 @@ export default {
         this.messages = this.messages.filter((m) => !m.id.startsWith('local_'))
       } finally {
         this.aiThinking = false
-        this.stopPolling()
-        this.startPolling()
       }
     },
     async onTransfer() {

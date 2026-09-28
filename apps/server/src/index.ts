@@ -1,4 +1,5 @@
 import express from 'express';
+import http from 'http';
 import crypto from 'crypto';
 import path from 'path';
 import cors from 'cors';
@@ -16,6 +17,7 @@ import openRoutes from './routes/open';
 import openAuthRoutes from './routes/open-auth';
 import chatRoutes from './routes/chat';
 import adminChatRoutes from './routes/admin-chat';
+import { initChatHub, type ChatSocket } from './services/chatHub';
 import { refreshPackageCache, PACKAGE_REFRESH_INTERVAL_MS } from './tiger/view';
 import { retryPendingWebhooks, retryPendingSubjectWebhooks } from './services/webhook';
 import { genSalt, hashPassword } from './middleware/adminAuth';
@@ -83,7 +85,24 @@ async function bootstrapAdminUser() {
 
 const PORT = process.env.PORT || 6660;
 
-app.listen(PORT, () => {
+const server = http.createServer(app);
+
+// 在线客服 WebSocket：订阅鉴权
+//  - admin：放行（后台人工客服可查看任意会话）
+//  - user ：仅可订阅属于自己（userId 匹配）的会话
+initChatHub(server, async (socket: ChatSocket, sessionId: string) => {
+  if (socket.role === 'admin') return true;
+  if (socket.role === 'user' && socket.identity) {
+    const session = await prisma.chatSession.findUnique({
+      where: { id: sessionId },
+      select: { userId: true },
+    });
+    return !!session && session.userId === socket.identity;
+  }
+  return false;
+});
+
+server.listen(PORT, () => {
   console.log(` YYeSim 服务器运行在 http://localhost:${PORT}`);
 });
 

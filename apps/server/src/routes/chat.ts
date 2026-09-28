@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { generateAiReply } from '../services/ai';
+import { broadcastToSession } from '../services/chatHub';
 
 // User-facing AI + human customer support chat.
 // Mounted at /api/chat. All endpoints require miniapp user auth and are scoped by userId.
@@ -65,6 +66,7 @@ export default (prisma: PrismaClient) => {
     });
 
     let aiMsg: any = null;
+    let sysMsg: any = null;
 
     if (session.status === 'ai') {
       // Gather recent conversation (ignore system/admin bubbles for the LLM).
@@ -102,7 +104,7 @@ export default (prisma: PrismaClient) => {
           where: { id: session.id },
           data: { status: 'human', needHuman: true },
         });
-        await prisma.chatMessage.create({
+        sysMsg = await prisma.chatMessage.create({
           data: { sessionId: session.id, role: 'system', content: '已为您转接人工客服，请稍候。' },
         });
       }
@@ -114,7 +116,11 @@ export default (prisma: PrismaClient) => {
       data: { unreadAdmin: { increment: 1 }, ...lastInfo(sender, content) },
     });
 
-    res.json({ code: 0, data: { session: final, messages: aiMsg ? [userMsg, aiMsg] : [userMsg] } });
+    // 实时推送：新消息 + 最新会话状态（客户端按 id 去重，避免重连/并发导致的重复渲染）
+    const newMessages = [userMsg, ...(aiMsg ? [aiMsg] : []), ...(sysMsg ? [sysMsg] : [])];
+    broadcastToSession(session.id, { type: 'messages', session: final, messages: newMessages });
+
+    res.json({ code: 0, data: { session: final, messages: newMessages } });
   });
 
   // POST /api/chat/sessions/:id/transfer  manual request for a human
@@ -130,11 +136,12 @@ export default (prisma: PrismaClient) => {
       where: { id: session.id },
       data: { status: 'human', needHuman: true, unreadAdmin: { increment: 1 }, lastSender: 'system', lastMessage: '转人工' },
     });
-    await prisma.chatMessage.create({
+    const sysMsg = await prisma.chatMessage.create({
       data: { sessionId: session.id, role: 'system', content: '已为您转接人工客服，请稍候。' },
     });
 
     const updated = await prisma.chatSession.findUnique({ where: { id: session.id } });
+    broadcastToSession(session.id, { type: 'messages', session: updated, messages: [sysMsg] });
     res.json({ code: 0, data: { session: updated } });
   });
 
@@ -147,6 +154,7 @@ export default (prisma: PrismaClient) => {
       where: { id: session.id },
       data: { status: 'closed', closedAt: new Date() },
     });
+    broadcastToSession(session.id, { type: 'status', session: updated });
     res.json({ code: 0, data: { session: updated } });
   });
 

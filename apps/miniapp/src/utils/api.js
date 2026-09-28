@@ -179,6 +179,16 @@ export const api = {
     return request('GET', `/chat/sessions/${id}/messages?afterId=${encodeURIComponent(afterId || '')}`);
   },
 
+  // ===== 客服 WebSocket 连接 =====
+  // 用 uni.connectSocket 建立到 /ws 的实时连接（token 通过 query 传递，兼容小程序入参）。
+  connectChatSocket() {
+    const token = getToken();
+    const origin = BASE_URL.replace(/^https?:\/\//, '').replace(/\/api\/?$/, '');
+    const proto = /^https:\/\//.test(BASE_URL) ? 'wss' : 'ws';
+    const url = `${proto}://${origin}/ws?token=${encodeURIComponent(token)}`;
+    return uni.connectSocket({ url, complete: () => {} });
+  },
+
   async getHomeData() {
     const [countriesRes, hotRes, minRes] = await Promise.all([
       request('GET', '/countries'),

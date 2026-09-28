@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { adminAuth, AdminAuthRequest } from '../middleware/adminAuth';
+import { broadcastToSession } from '../services/chatHub';
 
 // Admin-side customer support endpoints. Mounted at /api/admin/chat, admin auth required.
 
@@ -88,6 +89,9 @@ export default (prisma: PrismaClient) => {
       },
     });
 
+    // 实时推送给用户端（以及订阅该会话的其它后台连接）
+    broadcastToSession(session.id, { type: 'messages', session: updated, messages: [msg] });
+
     res.json({ code: 0, data: { session: updated, messages: [msg] } });
   });
 
@@ -100,6 +104,8 @@ export default (prisma: PrismaClient) => {
       where: { id: session.id },
       data: { status: 'closed', closedAt: new Date() },
     });
+
+    broadcastToSession(session.id, { type: 'status', session: updated });
     res.json({ code: 0, data: { session: updated } });
   });
 

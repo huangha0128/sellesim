@@ -19,6 +19,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { adminApi, unwrap, getErrorMessage, type SupportSession, type SupportMessage } from '@/api';
+import { getToken } from '@/lib/auth';
 
 const SENDER_META: Record<string, { name: string; align: string; bubble: string }> = {
   user: { name: '用户', align: 'items-start', bubble: 'bg-primary/10 text-ink' },
@@ -74,27 +75,7 @@ export default function SupportViewPage() {
     [id],
   );
 
-  // Poll for new user messages while viewing (no need to fetch until new ones arrive).
-  const poll = useCallback(async () => {
-    if (!id) return;
-    try {
-      const res = await adminApi.getSupportSession(id);
-      const body = unwrap<{ session: SupportSession; messages: SupportMessage[] }>(res);
-      setSession((prev) => (prev ? body.data.session : prev));
-      const after = messagesRef.current;
-      const newOnes = body.data.messages.filter((m) => !after.includes(m.id));
-      if (newOnes.length) {
-        lastId.current = body.data.messages[body.data.messages.length - 1].id;
-        setMessages(body.data.messages);
-        scrollBottom();
-      }
-      messagesRef.current = body.data.messages.map((m) => m.id);
-    } catch (e) {
-      /* ignore */
-    }
-  }, [id]);
-
-  // Keep a ref of current message ids so poll can compare.
+  // Keep a ref of current message ids so realtime merge can compare (id-level dedup).
   const messagesRef = useRef<string[]>([]);
   useEffect(() => {
     messagesRef.current = messages.map((m) => m.id);
@@ -108,9 +89,69 @@ export default function SupportViewPage() {
     }
     setId(sid);
     load();
-    const timer = setInterval(() => poll(), 3000);
-    return () => clearInterval(timer);
-  }, [load, poll, router]);
+
+    // 实时接收新消息：连接 /ws，订阅本会话，按 id 去重合并，替代 3s 轮询
+    let ws: WebSocket | null = null;
+    let closed = false;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    const ensureWs = () => {
+      if (closed || ws) return;
+      const token = getToken() || '';
+      const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
+      ws = new WebSocket(`${proto}://${window.location.host}/ws?token=${encodeURIComponent(token)}`);
+
+      ws.onopen = () => {
+        ws?.send(JSON.stringify({ type: 'subscribe', sessionId: sid }));
+      };
+
+      ws.onmessage = (ev) => {
+        let msg: any;
+        try {
+          msg = JSON.parse(ev.data);
+        } catch {
+          return;
+        }
+        if (!msg || !msg.type) return;
+        if (msg.type === 'messages') {
+          if (msg.session) setSession((prev) => (prev ? { ...prev, ...msg.session } : prev));
+          const list: SupportMessage[] = msg.messages || [];
+          const cur = messagesRef.current;
+          const fresh = list.filter((m) => m && m.id && !cur.includes(m.id));
+          if (fresh.length) {
+            lastId.current = fresh[fresh.length - 1].id;
+            setMessages((prev) => [...prev, ...fresh]);
+            scrollBottom();
+          }
+        }
+        if (msg.type === 'status' && msg.session) {
+          setSession((prev) => (prev ? { ...prev, ...msg.session } : prev));
+        }
+      };
+
+      ws.onerror = () => {
+        try { ws?.close(); } catch { /* ignore */ }
+      };
+
+      ws.onclose = () => {
+        ws = null;
+        if (!closed && !reconnectTimer) {
+          reconnectTimer = setTimeout(() => {
+            reconnectTimer = null;
+            ensureWs();
+          }, 3000);
+        }
+      };
+    };
+
+    ensureWs();
+    return () => {
+      closed = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      try { ws?.close(); } catch { /* ignore */ }
+      ws = null;
+    };
+  }, [load, router]);
 
   const sendReply = async () => {
     const content = reply.trim();
