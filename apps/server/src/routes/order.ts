@@ -129,19 +129,28 @@ export default (prisma: PrismaClient) => {
   /**
    * POST /api/orders/:orderNo/refund-request 用户申请退款
    * - 仅待激活（status=paid 且 eSIM 未激活）订单可申请
+   * - reason 文字原因必填；images 为可选凭证图片（上传接口返回的相对 URL，最多 3 张）
    * - 提交后进入后台审批流程（refundStatus=requested）
    */
   router.post('/:orderNo/refund-request', authMiddleware, async (req: AuthRequest, res: Response) => {
     if (!req.userId) {
       return res.json({ code: 401, message: '未登录' });
     }
-    const { reason } = req.body || {};
+    const { reason, images } = req.body || {};
+    if (typeof reason !== 'string' || !reason.trim()) {
+      return res.json({ code: 1, message: '请填写退款原因' });
+    }
+    // 图片仅接受上传接口产出的相对地址，过滤掉外部/非法链接
+    const imageList = Array.isArray(images)
+      ? images.filter((u: any) => typeof u === 'string' && u.startsWith('/api/uploads/'))
+      : [];
     try {
       const result = await applyRefundRequest(
         buildRefundDeps(prisma, req.params.orderNo),
         req.userId,
         req.params.orderNo,
         typeof reason === 'string' ? reason : undefined,
+        imageList,
       );
       res.json({ code: 0, data: result });
     } catch (e: any) {

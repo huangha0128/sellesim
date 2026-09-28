@@ -126,6 +126,16 @@
           <text class="refund-banner-title">{{ fmt('orders.refundApplying') }}</text>
         </view>
         <view v-if="order.refundReason" class="refund-banner-sub">{{ fmt('orders.refundReasonLabel') }}：{{ order.refundReason }}</view>
+        <view v-if="parseRefundImages(order.refundImages).length" class="refund-thumbs">
+          <image
+            v-for="(u, i) in parseRefundImages(order.refundImages)"
+            :key="i"
+            class="refund-thumb"
+            :src="refundImageUrl(u)"
+            mode="aspectFill"
+            @click="previewRefundImages(parseRefundImages(order.refundImages), i)"
+          />
+        </view>
         <text class="refund-banner-sub">{{ fmt('orders.refundApplyingSub') }}</text>
       </view>
 
@@ -164,6 +174,16 @@
           <view v-if="r.reason" class="refund-history-sub">
             <text class="refund-history-label">{{ fmt('orders.refundReasonLabel') }}：</text>{{ r.reason }}
           </view>
+          <view v-if="parseRefundImages(r.images).length" class="refund-thumbs refund-thumbs--history">
+            <image
+              v-for="(u, i) in parseRefundImages(r.images)"
+              :key="i"
+              class="refund-thumb"
+              :src="refundImageUrl(u)"
+              mode="aspectFill"
+              @click="previewRefundImages(parseRefundImages(r.images), i)"
+            />
+          </view>
           <view v-if="r.rejectReason" class="refund-history-sub">
             <text class="refund-history-label">{{ fmt('orders.rejectReasonLabel') }}：</text>{{ r.rejectReason }}
           </view>
@@ -185,6 +205,17 @@
             :maxlength="200"
             :adjust-position="false"
           />
+          <view class="popup-field-label">{{ fmt('orders.refundImagesTitle') }}</view>
+          <view class="refund-picker">
+            <view v-for="(img, i) in refundImagesInput" :key="i" class="refund-picker-item">
+              <image class="refund-picker-img" :src="img" mode="aspectFill" @click="previewRefundImage(i)" />
+              <view class="refund-picker-del" @click.stop="removeRefundImage(i)">×</view>
+            </view>
+            <view v-if="refundImagesInput.length < 3" class="refund-picker-add" @click="chooseRefundImages">
+              <text class="refund-picker-plus">+</text>
+              <text class="refund-picker-txt">{{ fmt('orders.refundImagesAdd') }}</text>
+            </view>
+          </view>
           <view class="popup-actions">
             <view class="popup-btn cancel" @tap="closeRefundForm">{{ fmt('orders.cancel') }}</view>
             <view class="popup-btn submit" :class="{ disabled: submitting }" @tap="submitRefund">
@@ -205,7 +236,7 @@
 </template>
 
 <script>
-import { api } from '@/utils/api'
+import { api, resolveAssetUrl } from '@/utils/api'
 import { store } from '@/store'
 import { formatDate, formatDateTime } from '@/utils/format'
 import { setNavTitle, t as translate } from '@/locales'
@@ -237,6 +268,8 @@ export default {
       loading: true,
       showRefundForm: false,
       refundReasonInput: '',
+      // 待上传的凭证图片本地路径（最多 3 张）
+      refundImagesInput: [],
       submitting: false,
       kbHeight: 0,
       maxRefundRejectCount: 3
@@ -411,7 +444,51 @@ export default {
     },
     openRefundForm() {
       this.refundReasonInput = ''
+      this.refundImagesInput = []
       this.showRefundForm = true
+    },
+    // 解析后端存储的凭证图片 JSON 字符串为地址数组
+    parseRefundImages(raw) {
+      if (!raw) return []
+      try {
+        const arr = typeof raw === 'string' ? JSON.parse(raw) : raw
+        return Array.isArray(arr) ? arr.filter((u) => typeof u === 'string' && u) : []
+      } catch (e) {
+        return []
+      }
+    },
+    refundImageUrl(url) {
+      return resolveAssetUrl(url)
+    },
+    previewRefundImages(list, index) {
+      const urls = (list || []).map((u) => resolveAssetUrl(u))
+      if (!urls.length) return
+      uni.previewImage({ urls, current: urls[index] || urls[0] })
+    },
+    chooseRefundImages() {
+      const remain = 3 - this.refundImagesInput.length
+      if (remain <= 0) {
+        uni.showToast({ title: this.fmt('orders.refundImagesLimit'), icon: 'none' })
+        return
+      }
+      uni.chooseImage({
+        count: remain,
+        sizeType: ['compressed'],
+        sourceType: ['album', 'camera'],
+        success: (res) => {
+          const list = (res && (res.tempFilePaths || res.tempFiles)) || []
+          const paths = (Array.isArray(list) ? list : [])
+            .map((p) => (typeof p === 'string' ? p : (p && p.path) || ''))
+            .filter(Boolean)
+          this.refundImagesInput = this.refundImagesInput.concat(paths).slice(0, 3)
+        }
+      })
+    },
+    removeRefundImage(index) {
+      this.refundImagesInput.splice(index, 1)
+    },
+    previewRefundImage(index) {
+      this.previewRefundImages(this.refundImagesInput, index)
     },
     // 点击遮罩关闭：软键盘弹起期间屏蔽，避免点按输入框时被误判为点击遮罩而关闭弹窗
     onMaskTap() {
@@ -431,12 +508,23 @@ export default {
       }
       this.submitting = true
       try {
-        const res = await api.refundRequest(this.orderNo, reason)
+        // 先逐张上传凭证图片（可选，任一失败即中止提交，避免半截数据）
+        const images = []
+        for (const filePath of this.refundImagesInput) {
+          const up = await api.uploadRefundImage(filePath)
+          if (!up || up.code !== 0 || !up.data || !up.data.url) {
+            uni.showToast({ title: (up && up.message) || this.fmt('orders.refundImagesFailed'), icon: 'none' })
+            return
+          }
+          images.push(up.data.url)
+        }
+        const res = await api.refundRequest(this.orderNo, reason, images)
         if (res.code === 0) {
           this.showRefundForm = false
           uni.showToast({ title: this.fmt('orders.refundAppliedToast'), icon: 'none' })
           this.order.refundStatus = 'requested'
           this.order.refundReason = reason
+          this.order.refundImages = images.length ? JSON.stringify(images) : null
           this.load()
         } else if (res.code === 401) {
           uni.navigateTo({ url: '/pages/login/login' })
@@ -1057,6 +1145,88 @@ export default {
   font-size: 26rpx;
   color: $ink;
   box-sizing: border-box;
+}
+
+.popup-field-label {
+  margin-top: 24rpx;
+  font-size: 24rpx;
+  color: $ink-3;
+}
+
+.refund-picker {
+  margin-top: 16rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.refund-picker-item {
+  position: relative;
+  width: 140rpx;
+  height: 140rpx;
+}
+
+.refund-picker-img {
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: $radius;
+  background: $bg-page;
+}
+
+.refund-picker-del {
+  position: absolute;
+  top: -12rpx;
+  right: -12rpx;
+  width: 40rpx;
+  height: 40rpx;
+  line-height: 38rpx;
+  text-align: center;
+  font-size: 32rpx;
+  color: #ffffff;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+}
+
+.refund-picker-add {
+  width: 140rpx;
+  height: 140rpx;
+  border: 2rpx dashed $line;
+  border-radius: $radius;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: $bg-page;
+}
+
+.refund-picker-plus {
+  font-size: 44rpx;
+  color: $ink-3;
+  line-height: 1;
+}
+
+.refund-picker-txt {
+  margin-top: 6rpx;
+  font-size: 20rpx;
+  color: $ink-3;
+}
+
+.refund-thumbs {
+  margin-top: 14rpx;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.refund-thumbs--history {
+  margin-top: 12rpx;
+}
+
+.refund-thumb {
+  width: 140rpx;
+  height: 140rpx;
+  border-radius: $radius;
+  background: $bg-page;
 }
 
 .popup-actions {

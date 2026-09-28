@@ -275,9 +275,14 @@ export function buildRefundDeps(prisma: PrismaClient, orderNo: string): RefundDe
       return alipayProvider.refund(params);
     },
     getMaxRejectCount: readMaxRefundRejectCount,
-    createRefundRequest: async (orderId, reason) =>
+    createRefundRequest: async (orderId, reason, images) =>
       prisma.refundRequest.create({
-        data: { orderId, status: 'requested', reason: reason || null },
+        data: {
+          orderId,
+          status: 'requested',
+          reason: reason || null,
+          images: images && images.length ? JSON.stringify(images) : null,
+        },
       }),
     resolveRefundRequest: async (orderId, status, data) => {
       // 只结算该订单最新一条仍在「待处理」的申请记录，避免消费旧的申请

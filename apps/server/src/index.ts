@@ -11,6 +11,7 @@ import adminRoutes from './routes/admin';
 import authRoutes from './routes/auth';
 import alipayRoutes from './routes/alipay';
 import externalRoutes from './routes/external';
+import uploadRoutes from './routes/upload';
 import openRoutes from './routes/open';
 import openAuthRoutes from './routes/open-auth';
 import { refreshPackageCache, PACKAGE_REFRESH_INTERVAL_MS } from './tiger/view';
@@ -41,6 +42,8 @@ app.use('/api/esims', esimRoutes(prisma));
 app.use('/api/admin', adminRoutes(prisma));
 app.use('/api/alipay', alipayRoutes(prisma));
 app.use('/api/external', externalRoutes(prisma));
+// 退款凭证图片上传/读取（图片存 MySQL，多实例负载均衡下均可访问）
+app.use('/api/uploads', uploadRoutes(prisma));
 app.use('/api/open/v1', openAuthRoutes(prisma)); // public: POST /auth/login (portal login)
 app.use('/api/open/v1', openRoutes(prisma)); // protected: openAuth (key or portal JWT)
 

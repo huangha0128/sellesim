@@ -117,6 +117,38 @@ function request(method, path, data) {
   });
 }
 
+// 上传单个文件（multipart/form-data），返回后端解析后的 JSON
+function uploadFile(path, filePath, name = 'file') {
+  return new Promise((resolve, reject) => {
+    const token = getToken();
+    const header = {};
+    if (token) header['Authorization'] = `Bearer ${token}`;
+    uni.uploadFile({
+      url: `${BASE_URL}${path}`,
+      filePath,
+      name,
+      header,
+      success: (res) => {
+        try {
+          resolve(typeof res.data === 'string' ? JSON.parse(res.data) : res.data);
+        } catch (e) {
+          reject(e);
+        }
+      },
+      fail: (err) => reject(err),
+    });
+  });
+}
+
+// 把后端返回的相对资源地址（如 /api/uploads/x.jpg）补全为可直接访问的绝对地址
+const ASSET_ORIGIN = BASE_URL.replace(/\/api\/?$/, '');
+
+export function resolveAssetUrl(url) {
+  if (!url) return '';
+  if (/^https?:\/\//.test(url)) return url;
+  return `${ASSET_ORIGIN}${url.startsWith('/') ? '' : '/'}${url}`;
+}
+
 export const api = {
   async login(authCode) {
     return request('POST', '/auth/login', { authCode });
@@ -252,8 +284,13 @@ export const api = {
     return res;
   },
 
-  async refundRequest(orderNo, reason) {
-    return request('POST', `/orders/${orderNo}/refund-request`, { reason });
+  async refundRequest(orderNo, reason, images) {
+    return request('POST', `/orders/${orderNo}/refund-request`, { reason, images });
+  },
+
+  // 上传退款凭证图片，成功返回 { code:0, data:{ url } }
+  async uploadRefundImage(filePath) {
+    return uploadFile('/uploads/image', filePath);
   },
 
   async createPayment(orderNo, buyerOpenId, buyerId) {

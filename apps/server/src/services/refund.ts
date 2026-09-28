@@ -32,8 +32,8 @@ export interface RefundDeps {
   }): Promise<AlipayRefundResult>;
   /** 退款申请被拒绝次数上限（后台可配置），缺省读取 Setting.maxRefundRejectCount */
   getMaxRejectCount?(): Promise<number>;
-  /** 每次用户申请时追加一条退款申请记录（requested），用于订单退款历史 */
-  createRefundRequest?(orderId: string, reason?: string): Promise<any>;
+  /** 每条申请允许附加的凭证图片（相对 URL），随申请一起落库 */
+  createRefundRequest?(orderId: string, reason?: string, images?: string[]): Promise<any>;
   /** 后台处理（拒绝/同意）时更新该订单最新一条待处理申请记录 */
   resolveRefundRequest?(
     orderId: string,
@@ -76,11 +76,17 @@ export async function applyRefundRequest(
   userId: string,
   orderNo: string,
   reason?: string,
+  images?: string[],
 ) {
   const order = await deps.findUserOrder(userId, orderNo);
   if (!order) {
     throw new Error('订单不存在');
   }
+  const reasonText = typeof reason === 'string' ? reason.trim() : '';
+  // 凭证图片：过滤空值，最多保留 3 张
+  const imageList = Array.isArray(images)
+    ? images.filter((u) => typeof u === 'string' && u.trim()).map((u) => u.trim()).slice(0, 3)
+    : [];
   if (order.status === 'refunded' || order.refundedAt) {
     throw new Error('订单已退款，无需重复申请');
   }
@@ -117,12 +123,14 @@ export async function applyRefundRequest(
     ...(order.refundStatus === 'rejected'
       ? { refundRejectReason: null, refundRejectedAt: null }
       : {}),
-    ...(reason ? { refundReason: reason } : {}),
+    ...(reasonText ? { refundReason: reasonText } : {}),
+    // 每次申请都以本次提交的图片为准；未传图片则清空，避免沿用上一轮凭证
+    refundImages: imageList.length ? JSON.stringify(imageList) : null,
   });
 
   // 落一条「本次申请」记录，供订单退款历史查看
   if (deps.createRefundRequest) {
-    await deps.createRefundRequest(order.id, reason);
+    await deps.createRefundRequest(order.id, reasonText || undefined, imageList);
   }
 
   return { order: updated, requested: true };

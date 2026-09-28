@@ -40,6 +40,36 @@ const refundStepText: Record<string, { text: string; cls: string }> = {
   approved: { text: '已同意', cls: 'text-emerald-700 bg-emerald-50 border-emerald-200' },
 };
 
+// 解析后端存储的凭证图片 JSON 字符串为地址数组
+function parseImages(raw?: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter((u) => typeof u === 'string' && u) : [];
+  } catch {
+    return [];
+  }
+}
+
+// 用户上传的退款凭证缩略图（点击可在新窗口查看大图）
+function RefundImages({ raw }: { raw?: string | null }) {
+  const imgs = parseImages(raw);
+  if (!imgs.length) return null;
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      {imgs.map((u) => (
+        <a key={u} href={u} target="_blank" rel="noreferrer" className="block">
+          <img
+            src={u}
+            alt="退款凭证"
+            className="h-20 w-20 rounded-md border object-cover"
+          />
+        </a>
+      ))}
+    </div>
+  );
+}
+
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -234,6 +264,11 @@ export default function OrdersPage() {
             确认对订单 <span className="font-mono font-medium text-ink">{approveTarget?.orderNo}</span>（¥
             {approveTarget?.price}）同意退款？退款将按原支付渠道原路退回，成功后该订单的 eSIM 将失效并归还卡片。
           </div>
+          <div className="rounded-lg border p-3 text-[13px] leading-relaxed">
+            <div className="text-muted-foreground">用户申请原因</div>
+            <div className="mt-1 text-ink">{approveTarget?.refundReason || '—'}</div>
+            <RefundImages raw={approveTarget?.refundImages} />
+          </div>
           <div className="space-y-1.5">
             <Label className="text-[12.5px] text-muted-foreground">备注原因（可选）</Label>
             <Textarea value={reason} rows={2} onChange={(e) => setReason(e.target.value)} placeholder="请输入备注原因" />
@@ -258,6 +293,11 @@ export default function OrdersPage() {
           <div className="rounded-lg bg-muted/60 p-4 text-[13px] leading-relaxed text-muted-foreground">
             确认拒绝订单 <span className="font-mono font-medium text-ink">{rejectTarget?.orderNo}</span>（¥
             {rejectTarget?.price}）的退款申请？拒绝后用户端将显示拒绝理由。
+          </div>
+          <div className="rounded-lg border p-3 text-[13px] leading-relaxed">
+            <div className="text-muted-foreground">用户申请原因</div>
+            <div className="mt-1 text-ink">{rejectTarget?.refundReason || '—'}</div>
+            <RefundImages raw={rejectTarget?.refundImages} />
           </div>
           <div className="space-y-1.5">
             <Label className="text-[12.5px] text-muted-foreground">拒绝理由（必填）</Label>
@@ -301,6 +341,7 @@ export default function OrdersPage() {
                       <span className="text-ink">{r.reason}</span>
                     </div>
                   ) : null}
+                  <RefundImages raw={r.images} />
                   {r.rejectReason ? (
                     <div className="mt-1">
                       <span className="text-muted-foreground">拒绝理由：</span>

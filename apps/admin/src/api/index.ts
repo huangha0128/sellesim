@@ -97,6 +97,7 @@ export interface RefundRecord {
   id: string;
   status: 'requested' | 'rejected' | 'approved';
   reason?: string | null;
+  images?: string | null;
   rejectReason?: string | null;
   operator?: string | null;
   approvedAt?: string | null;
@@ -116,6 +117,7 @@ export interface Order {
   refundedAt?: string | null;
   refundStatus?: string | null;
   refundReason?: string | null;
+  refundImages?: string | null;
   refundRequestedAt?: string | null;
   refundRejectReason?: string | null;
   refundRejectedAt?: string | null;
