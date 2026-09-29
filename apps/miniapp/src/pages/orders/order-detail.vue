@@ -190,9 +190,10 @@
         </view>
       </view>
 
-      <view v-if="canApplyRefund" class="bottom-cta">
+      <!-- 退款入口暂时隐藏（改由在线客服 AI 的退款工具受理），需要恢复时取消注释即可 -->
+      <!-- <view v-if="canApplyRefund" class="bottom-cta">
         <view class="refund-btn" hover-class="refund-btn--hover" @click="openRefundForm">{{ fmt('orders.refundApply') }}</view>
-      </view>
+      </view> -->
 
 <!--      <view v-if="showRefundForm" class="popup-mask" :style="refundMaskStyle" @click.self="onMaskTap">-->
       <view v-if="showRefundForm" class="popup-mask" :style="refundMaskStyle">

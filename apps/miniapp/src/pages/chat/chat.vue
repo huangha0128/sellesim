@@ -94,6 +94,7 @@ export default {
       pollTimer: null, // HTTP 增量轮询（兜底，WS 不稳定时也能收到人工回复）
       wsClosed: true, // 标记是否主动断开
       subscribedId: '', // 当前已在 WS 上订阅的 sessionId，会话切换时用于退订/重订
+      globalBound: false, // 是否已降级绑定全局 socket 事件（SocketTask 不可用时）
       // 自动滚动：仅在「用户已滚到底部」时，新消息到达才自动滚到最新，避免打断回看历史
       stickyBottom: true,
       scrollTarget: '', // scroll-into-view 取值变化才会触发滚动，滚动后复位为 ''
@@ -162,8 +163,14 @@ export default {
         this.status = session.status
         this.loading = false
         await this.loadHistory()
-        this.connectWs()
+        // 先启动 HTTP 增量轮询：即便 WS 在个别端（如支付宝）不可用或抛错，也能保证人工回复按时到达
         this.startPolling()
+        // WS 建连单独兜底，任何异常都不能阻断轮询
+        try {
+          this.connectWs()
+        } catch (e) {
+          this.scheduleReconnect()
+        }
       }
     },
     async loadHistory() {
@@ -226,6 +233,11 @@ export default {
       this.wsClosed = false
 
       const task = api.connectChatSocket()
+      // 部分端（支付宝小程序）uni.connectSocket 可能不返回 SocketTask；退回全局 socket 事件 API
+      if (!task || typeof task.onOpen !== 'function') {
+        this.bindGlobalSocket()
+        return
+      }
       this.wsTask = task
 
       task.onOpen(() => {
@@ -270,15 +282,52 @@ export default {
         this.scheduleReconnect()
       })
     },
+    // 兜底：uni.connectSocket 未返回 SocketTask 时，改用全局 socket 事件 API（支付宝/微信均支持）
+    bindGlobalSocket() {
+      if (this.globalBound) {
+        // 已绑定过，只需确保连接存在（再次调用 connectChatSocket 即重连，全局回调仍生效）
+        api.connectChatSocket()
+        return
+      }
+      this.globalBound = true
+      uni.onSocketOpen(() => {
+        try { uni.sendSocketMessage({ data: JSON.stringify({ type: 'subscribe', sessionId: this.sessionId }) }) } catch (e) { /* ignore */ }
+        this.subscribedId = this.sessionId
+        this.fetchIncremental()
+      })
+      uni.onSocketMessage((res) => {
+        let msg
+        try {
+          msg = typeof res.data === 'string' ? JSON.parse(res.data) : res.data
+        } catch (e) {
+          return
+        }
+        if (!msg || !msg.type) return
+        if (msg.session && msg.session.id && msg.session.id !== this.sessionId) return
+        if (msg.type === 'messages') {
+          if (msg.session && msg.session.status) this.status = msg.session.status
+          this.mergeMessages(msg.messages)
+        } else if (msg.type === 'status') {
+          if (msg.session && msg.session.status) this.status = msg.session.status
+        }
+      })
+      uni.onSocketError(() => this.scheduleReconnect())
+      uni.onSocketClose(() => this.scheduleReconnect())
+    },
+    // 统一发送（SocketTask 与全局 API 两种模式都兼容）
+    wsSend(data) {
+      if (this.wsTask && typeof this.wsTask.send === 'function') {
+        try { this.wsTask.send({ data }) } catch (e) { /* ignore */ }
+      } else {
+        try { uni.sendSocketMessage({ data }) } catch (e) { /* ignore */ }
+      }
+    },
     // 会话切换（如超时归档后服务端返回新会话）：退订旧会话并订阅新会话
     resubscribe() {
-      if (!this.wsTask) return
       const old = this.subscribedId
       this.subscribedId = ''
-      if (old && old !== this.sessionId) {
-        this.wsTask.send({ data: JSON.stringify({ type: 'unsubscribe', sessionId: old }) })
-      }
-      this.wsTask.send({ data: JSON.stringify({ type: 'subscribe', sessionId: this.sessionId }) })
+      if (old && old !== this.sessionId) this.wsSend(JSON.stringify({ type: 'unsubscribe', sessionId: old }))
+      this.wsSend(JSON.stringify({ type: 'subscribe', sessionId: this.sessionId }))
       this.subscribedId = this.sessionId
       // 会话切换后用 HTTP 兜底拉一口，避免切换瞬间丢消息
       this.fetchIncremental()

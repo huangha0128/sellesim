@@ -4,6 +4,7 @@ import {
   queryData,
   queryPackages,
   recommendPackages,
+  requestRefund,
 } from './aiTools';
 import { retrieveKb } from './vector';
 
@@ -59,8 +60,15 @@ const DEFAULT_SYSTEM_PROMPT = `你是在线客服小 Y，服务于「YYeSim」eS
 - get_orders：查当前用户真实订单；get_data_usage：查用户真实 eSIM/流量；
 - search_kb：从向量知识库检索产品知识（安装、退款、上网、购买等）；
 - get_packages：查平台在售套餐目录（国家/流量/天数/价格）；
-- recommend_package：按目的地推荐套餐（参数 region=国家）。
+- recommend_package：按目的地推荐套餐（参数 region=国家）；
+- request_refund：为用户提交退款申请（参数 reason=退款原因【必填】、orderNo=订单号【可选】）。
 工具结果为空 = 平台没有该信息，绝不能编造缺省值来自圆其说。
+
+## 退款处理流程（重要）
+当用户表达「要退款 / 退钱 / 申请退款」时：
+1. 如果用户还没有说明退款原因，先追问一句「请问您退款的原因是？」，拿到用户明确说明的原因后再进行下一步；**不要在未获得原因时调用 request_refund**。
+2. 拿到原因后调用 request_refund（reason 填用户给出的原因；用户若指定了订单号则一并填 orderNo）。
+3. 工具返回结果后按结果如实回复用户（成功=已提交、等待审核、原路退回；失败=如实说明失败原因）。绝不能编造「已退款成功」。
 
 ## 输出要求（非常重要）
 你必须只输出一个 JSON 对象，不要输出任何其它文字/围栏代码块。结构：
@@ -135,6 +143,22 @@ const TOOLS = [
       },
     },
   },
+  {
+    type: 'function',
+    function: {
+      name: 'request_refund',
+      description:
+        '为用户提交退款申请。用户表达「要退款/退钱/申请退款」时使用。调用前必须先向用户询问并拿到明确的退款原因；reason 必填，且必须是用户原话表达的原因，不得臆测。仅「待激活」订单可退款。',
+      parameters: {
+        type: 'object',
+        properties: {
+          reason: { type: 'string', description: '用户的退款原因（必填）。必须来自用户明确表达，未拿到原因时不要调用本工具，先询问用户。' },
+          orderNo: { type: 'string', description: '要退款的订单号（可选）。用户未指定时留空，系统会取该用户最近一笔待激活订单；多笔时会请你与用户确认。' },
+        },
+        required: ['reason'],
+      },
+    },
+  },
 ] as const;
 
 /**
@@ -170,6 +194,11 @@ async function runToolCalls(
         if (!result) {
           result = '未检索到该目的地的在售套餐，建议用户在首页按目的地查找并下单，或咨询更具体的国家/地区。';
         }
+      } else if (name === 'request_refund') {
+        let arg: any = {};
+        try { arg = JSON.parse(c.function.arguments || '{}'); } catch { /* ignore */ }
+        const r = await requestRefund(prisma, userId, arg);
+        result = r.reply;
       } else {
         result = `未知工具：${name}`;
       }

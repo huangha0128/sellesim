@@ -156,3 +156,66 @@ export async function recommendPackages(
     category: 'plan',
   };
 }
+
+// ---- refund tool -----------------------------------------------------------
+
+/**
+ * Submit a user refund request on behalf of the AI customer service.
+ * IMPORTANT: only call this AFTER the user has explicitly given a reason.
+ * Reuses the same business logic as POST /api/orders/:orderNo/refund-request.
+ */
+export async function requestRefund(
+  prisma: PrismaClient,
+  userId: string | undefined,
+  arg: { reason?: string; orderNo?: string },
+): Promise<{ reply: string; category: string }> {
+  if (!userId) {
+    return { reply: '用户未登录，无法提交退款申请，请引导用户先登录后再试。', category: 'refund' };
+  }
+  const reason = String(arg?.reason || '').trim();
+  if (!reason) {
+    // Tool schema marks reason as required; if the model still calls it empty, tell the model to ask first.
+    return {
+      reply: '尚未获得退款原因：请先用一句话询问用户为什么退款，拿到用户明确说明的原因后再调用本工具。',
+      category: 'refund',
+    };
+  }
+
+  // Resolve the target order: explicit orderNo, else the single refundable order.
+  let orderNo = String(arg?.orderNo || '').trim();
+  if (!orderNo) {
+    const candidates = await prisma.order.findMany({
+      where: { userId, status: 'paid' },
+      orderBy: { createdAt: 'desc' },
+      take: 6,
+    });
+    if (!candidates.length) {
+      return {
+        reply: '该用户名下没有可申请退款的订单（仅「待激活」订单支持退款，已激活套餐无法退款）。请如实告知用户。',
+        category: 'refund',
+      };
+    }
+    if (candidates.length > 1) {
+      const lines = candidates.map(
+        (o, i) => `${i + 1}. ${o.pkgName || o.gb + 'GB'}｜订单号 ${o.orderNo}｜${fmtDate(o.createdAt)}`,
+      );
+      return {
+        reply: `该用户有多笔待激活订单，请先和用户确认要退款哪一笔（把下列订单号发给用户，让用户选择）：\n${lines.join('\n')}`,
+        category: 'refund',
+      };
+    }
+    orderNo = candidates[0].orderNo;
+  }
+
+  try {
+    const { applyRefundRequest } = await import('./refund');
+    const { buildRefundDeps } = await import('./payment');
+    await applyRefundRequest(buildRefundDeps(prisma, orderNo), userId, orderNo, reason);
+    return {
+      reply: `退款申请已提交成功（订单 ${orderNo}）。请告知用户：平台审核通过后款项将原路退回，可在「我的订单」查看进度。`,
+      category: 'refund',
+    };
+  } catch (e: any) {
+    return { reply: `退款申请未成功：${e?.message || '未知错误'}。请如实告知用户失败原因，不要编造成功。`, category: 'refund' };
+  }
+}
