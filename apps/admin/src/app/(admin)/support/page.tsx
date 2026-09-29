@@ -71,25 +71,34 @@ export default function SupportPage() {
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setErrorMsg('');
-    try {
-      const params: any = { status: status || undefined, unread: unreadOnly ? 1 : 0, page, pageSize };
-      if (filter) params.keyword = filter;
-      const res = await adminApi.getSupportSessions(params);
-      const body = unwrap<{ sessions: SupportSession[]; total: number }>(res);
-      setSessions(body.data.sessions || []);
-      setTotal(body.data.total || 0);
-    } catch (e) {
-      setErrorMsg(getErrorMessage(e, '加载客服会话失败'));
-    } finally {
-      setLoading(false);
-    }
-  }, [status, unreadOnly, page, filter]);
+  const load = useCallback(
+    async (silent = false) => {
+      if (!silent) setLoading(true);
+      setErrorMsg('');
+      try {
+        const params: any = { status: status || undefined, unread: unreadOnly ? 1 : 0, page, pageSize };
+        if (filter) params.keyword = filter;
+        const res = await adminApi.getSupportSessions(params);
+        const body = unwrap<{ sessions: SupportSession[]; total: number }>(res);
+        setSessions(body.data.sessions || []);
+        setTotal(body.data.total || 0);
+      } catch (e) {
+        if (!silent) setErrorMsg(getErrorMessage(e, '加载客服会话失败'));
+      } finally {
+        if (!silent) setLoading(false);
+      }
+    },
+    [status, unreadOnly, page, filter],
+  );
 
   useEffect(() => {
     load();
+  }, [load]);
+
+  // 列表实时刷新兜底：后台无 WS 订阅，靠轻量轮询让用户新消息自动出现（静默，不闪烁）
+  useEffect(() => {
+    const t = setInterval(() => load(true), 10000);
+    return () => clearInterval(t);
   }, [load]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -104,7 +113,7 @@ export default function SupportPage() {
             </span>
             <CardTitle className="text-[15px] text-ink">在线客服会话</CardTitle>
           </div>
-          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+          <Button variant="outline" size="sm" onClick={() => load()} disabled={loading}>
             <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
             刷新
           </Button>

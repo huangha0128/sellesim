@@ -85,6 +85,7 @@ export default {
       loading: true,
       wsTask: null, // SocketTask
       wsReconnectTimer: null,
+      pollTimer: null, // HTTP 增量轮询（兜底，WS 不稳定时也能收到人工回复）
       wsClosed: true, // 标记是否主动断开
       subscribedId: '' // 当前已在 WS 上订阅的 sessionId，会话切换时用于退订/重订
     }
@@ -146,6 +147,7 @@ export default {
         this.loading = false
         await this.loadHistory()
         this.connectWs()
+        this.startPolling()
       }
     },
     async loadHistory() {
@@ -257,6 +259,21 @@ export default {
       }
       this.wsTask.send({ data: JSON.stringify({ type: 'subscribe', sessionId: this.sessionId }) })
       this.subscribedId = this.sessionId
+      // 会话切换后用 HTTP 兜底拉一口，避免切换瞬间丢消息
+      this.fetchIncremental()
+    },
+    // HTTP 增量轮询兜底：WS 不可达/不稳定时，仍能定期补齐人工回复
+    startPolling() {
+      if (this.pollTimer) return
+      this.pollTimer = setInterval(() => {
+        this.fetchIncremental()
+      }, 8000)
+    },
+    stopPolling() {
+      if (this.pollTimer) {
+        clearInterval(this.pollTimer)
+        this.pollTimer = null
+      }
     },
     // 清理当前 SocketTask（不触发重连）
     teardownWs() {
@@ -271,6 +288,7 @@ export default {
         clearTimeout(this.wsReconnectTimer)
         this.wsReconnectTimer = null
       }
+      this.stopPolling()
       this.teardownWs()
     },
     scheduleReconnect() {
