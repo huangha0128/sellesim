@@ -165,10 +165,35 @@ export default {
     mergeMessages(incoming) {
       if (!Array.isArray(incoming) || !incoming.length) return
       const existing = new Set(this.messages.map((m) => m.id))
-      const added = incoming.filter((m) => m && m.id && !existing.has(m.id))
+      const added = []
+      const seen = new Set()
+      for (const m of incoming) {
+        if (!m || !m.id || existing.has(m.id) || seen.has(m.id)) continue
+        seen.add(m.id)
+        added.push(m)
+      }
       if (added.length) {
         this.messages = this.messages.concat(added)
         this.scrollBottom()
+      }
+    },
+    // WS 重连/订阅后，用「当前已有消息的最大真实 id」走 HTTP 增量兜底，确保不漏任何人工回复
+    async fetchIncremental() {
+      if (!this.sessionId) return
+      let lastId = ''
+      for (const m of this.messages) {
+        if (!m.id || String(m.id).startsWith('local_')) continue
+        if (String(m.id) > String(lastId)) lastId = String(m.id)
+      }
+      try {
+        const res = await api.pollChatMessages(this.sessionId, lastId)
+        if (res.code !== 0) return
+        if (res.data && res.data.session && res.data.session.status) {
+          this.status = res.data.session.status
+        }
+        this.mergeMessages((res.data && res.data.messages) || [])
+      } catch (e) {
+        /* ignore */
       }
     },
     connectWs() {
@@ -185,6 +210,8 @@ export default {
         if (this.wsTask) {
           this.wsTask.send({ data: JSON.stringify({ type: 'subscribe', sessionId: this.sessionId }) })
           this.subscribedId = this.sessionId
+          // 重连成功后用 HTTP 增量兜底，补回断线期间漏掉的人工回复/状态消息
+          this.fetchIncremental()
         }
       })
 
@@ -196,6 +223,8 @@ export default {
           return
         }
         if (!msg || !msg.type) return
+        // 只处理「当前会话」的推送，杜绝残留/旧会话订阅的广播把历史串入当前消息列表
+        if (msg.session && msg.session.id && msg.session.id !== this.sessionId) return
         if (msg.type === 'messages') {
           if (msg.session && msg.session.status && msg.session.status !== this.status) {
             this.status = msg.session.status
