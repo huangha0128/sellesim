@@ -1,4 +1,6 @@
 import { PrismaClient } from '@prisma/client';
+import { queryOrders, queryData } from './aiTools';
+import { matchKb } from './knowledge';
 
 // ---------------------------------------------------------------------------
 // AI customer-service adapter layer.
@@ -7,7 +9,11 @@ import { PrismaClient } from '@prisma/client';
 //   aiOpenaiBaseUrl / aiOpenaiApiKey / aiOpenaiModel
 //   aiBailianApiKey / aiBailianModel   (baseUrl is fixed to dashscope compatible-mode)
 //   aiSystemPrompt (optional override of the built-in knowledge-base prompt)
-// Both providers use the OpenAI-compatible chat completions endpoint and return JSON.
+// Both providers use the OpenAI-compatible chat completions endpoint.
+//
+// Tool calling (function calling): instead of server-side keyword intent
+// detection, the LLM itself decides which tool to call (get_orders /
+// get_data_usage / search_faq) to fetch real data, then summarizes into JSON.
 // ---------------------------------------------------------------------------
 
 export interface AiConfig {
@@ -78,6 +84,78 @@ export function clearAiCache(): void {
   aiCache = null;
 }
 
+// Number of tool-call rounds allowed before forcing a final answer.
+const MAX_TOOL_ROUNDS = 3;
+
+// OpenAI-compatible function-calling tool schemas. The LLM decides which to call.
+const TOOLS = [
+  {
+    type: 'function',
+    function: {
+      name: 'get_orders',
+      description: '查询当前登录用户的最近订单列表（状态、套餐、金额、时间）。当用户询问订单状态、订单情况、买了什么、订单号时调用。',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_data_usage',
+      description: '查询当前登录用户拥有的 eSIM 及其剩余流量与有效期。当用户询问流量还剩多少、用了多少、eSIM 情况时调用。',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_faq',
+      description: '在平台的常见问题知识库中检索。当用户询问安装步骤、激活、退款规则、到国外无法上网、流量用完等产品问题时调用，以获取准确的产品知识。',
+      parameters: {
+        type: 'object',
+        properties: { query: { type: 'string', description: '用户的原始问题文本' } },
+        required: ['query'],
+      },
+    },
+  },
+] as const;
+
+/**
+ * Execute tool calls against real data (scoped by userId) and return per-id
+ * result strings that get fed back to the LLM as tool messages.
+ */
+async function runToolCalls(
+  prisma: PrismaClient,
+  userId: string | undefined,
+  calls: { id: string; function: { name: string; arguments: string } }[],
+): Promise<{ id: string; output: string }[]> {
+  const out: { id: string; output: string }[] = [];
+  for (const c of calls || []) {
+    const name = (c.function?.name || '').toLowerCase();
+    let result = '';
+    try {
+      if (name === 'get_orders') {
+        result = (await queryOrders(prisma, userId)).reply;
+      } else if (name === 'get_data_usage') {
+        result = (await queryData(prisma, userId)).reply;
+      } else if (name === 'search_faq') {
+        let arg: any = {};
+        try { arg = JSON.parse(c.function.arguments || '{}'); } catch { /* ignore */ }
+        const kb = await matchKb(prisma, arg.query || '');
+        result = kb ? `【知识库】${kb}` : '';
+      } else {
+        result = `未知工具：${name}`;
+      }
+    } catch (e: any) {
+      result = `查询失败：${e?.message || '未知错误'}`;
+    }
+    console.log(`[ai][tool] name=${name} userId=${userId} output=${result.slice(0, 200)}`);
+    out.push({ id: c.id, output: result });
+  }
+  return out;
+}
+
+// ---- LLM call ----------------------------------------------------------------
+
 async function readAiConfig(prisma: PrismaClient): Promise<AiConfig> {
   const rows = await prisma.setting.findMany({
     where: { key: { startsWith: 'ai' } },
@@ -114,15 +192,32 @@ export async function loadAiConfig(prisma: PrismaClient): Promise<AiConfig> {
 
 // ---- LLM call ----------------------------------------------------------------
 interface RawChatResp {
-  content?: string;
+  message?: { content?: string | null; tool_calls?: any[] };
   status?: number;
   error?: string;
 }
 
-async function callChatCompletions(cfg: AiConfig, messages: ChatMsg[]): Promise<RawChatResp> {
+interface ChatCompletionsOpts {
+  tools?: any;
+  toolChoice?: string;
+  jsonMode?: boolean;
+}
+
+async function callChatCompletions(cfg: AiConfig, messages: ChatMsg[], opts: ChatCompletionsOpts = {}): Promise<RawChatResp> {
   const url = `${cfg.baseUrl}/chat/completions`;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), DEFAULT_AI_TIMEOUT_MS);
+  const body: any = {
+    model: cfg.model,
+    messages,
+    temperature: 0,
+  };
+  if (opts.tools) {
+    body.tools = opts.tools;
+    body.tool_choice = opts.toolChoice || 'auto';
+  } else if (opts.jsonMode) {
+    body.response_format = { type: 'json_object' };
+  }
   try {
     const resp = await fetch(url, {
       method: 'POST',
@@ -130,12 +225,7 @@ async function callChatCompletions(cfg: AiConfig, messages: ChatMsg[]): Promise<
         'Content-Type': 'application/json',
         Authorization: `Bearer ${cfg.apiKey}`,
       },
-      body: JSON.stringify({
-        model: cfg.model,
-        messages,
-        temperature: 0,
-        response_format: { type: 'json_object' },
-      }),
+      body: JSON.stringify(body),
       signal: controller.signal,
     });
     if (!resp.ok) {
@@ -143,7 +233,7 @@ async function callChatCompletions(cfg: AiConfig, messages: ChatMsg[]): Promise<
       return { status: resp.status, error: errText.slice(0, 500) };
     }
     const json: any = await resp.json();
-    return { content: json?.choices?.[0]?.message?.content };
+    return { message: json?.choices?.[0]?.message };
   } finally {
     clearTimeout(timer);
   }
@@ -170,14 +260,18 @@ const FALLBACK_REPLY = '抱歉，我暂时无法完成回复。已为您转接�
 
 /**
  * Generate an AI reply for a conversation history.
- * opts.kbContext: optional grounded knowledge (KB) text appended to the system prompt.
- * Returns the reply text plus the structured escalation judgment and full
- * request/response dumps for observability.
+ * opts.userId: the current user id, enables real tool calls (orders / data / KB).
+ * opts.kbContext: optional pre-grounded knowledge injected into the system prompt.
+ *
+ * Flow: send the conversation + tool schemas. If the model emits tool_calls, the
+ * tools are executed against real data and their outputs are fed back, then the
+ * model produces the final JSON reply. Falls back to generating a reply from the
+ * injected kbContext when no tool is needed.
  */
 export async function generateAiReply(
   prisma: PrismaClient,
   history: ChatMsg[],
-  opts?: { kbContext?: string },
+  opts?: { userId?: string; kbContext?: string },
 ): Promise<AiReply> {
   const cfg = await loadAiConfig(prisma);
 
@@ -198,39 +292,81 @@ export async function generateAiReply(
   }
 
   const messages: ChatMsg[] = [{ role: 'system', content: systemPrompt }, ...history];
-
-  const requestDump = JSON.stringify({ url: `${cfg.baseUrl}/chat/completions`, model: cfg.model, messages });
+  const requestDump: any = { url: `${cfg.baseUrl}/chat/completions`, model: cfg.model, systemPrompt };
+  const responseDump: any = [];
   const t0 = Date.now();
 
-  const raw = await callChatCompletions(cfg, messages);
+  let finalContent = '';
+  let token = utf8id();
 
-  if (!raw.content) {
-    console.error(
-      `[ai] LLM 调用失败 provider=${cfg.provider} model=${cfg.model} status=${raw.status} error=${raw.error}`, 
+  for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+    // First round offer tools; later rounds (with tool results) force JSON output.
+    const useTools = round === 0;
+    const raw = await callChatCompletions(
+      cfg,
+      messages as ChatMsg[],
+      useTools ? { tools: TOOLS, toolChoice: 'auto' } : { jsonMode: true },
     );
+
+    if (!raw.message) {
+      console.error(`[ai] LLM 调用失败 provider=${cfg.provider} model=${cfg.model} status=${raw.status} error=${raw.error}`);
+      return {
+        reply: FALLBACK_REPLY,
+        needHuman: true,
+        category: 'other',
+        requestDump: JSON.stringify(requestDump),
+        responseDump: JSON.stringify({ error: raw }),
+      };
+    }
+
+    responseDump.push({ round, message: raw.message });
+    const toolCalls = raw.message.tool_calls || [];
+    if (toolCalls.length) {
+      // Execute tools and append assistant + tool messages for the next round.
+      messages.push({ role: 'assistant', content: '', tool_calls: toolCalls } as any);
+      const results = await runToolCalls(prisma, opts?.userId, toolCalls);
+      for (const r of results) {
+        messages.push({ role: 'tool', tool_call_id: r.id, content: r.output } as any);
+      }
+      continue;
+    }
+
+    finalContent = raw.message.content || '';
+    break;
+  }
+
+  if (!finalContent) {
+    // Model never produced a textual answer (all rounds were tool calls).
+    console.error(`[ai] 工具循环结束仍无最终回答 userId=${opts?.userId}`);
     return {
       reply: FALLBACK_REPLY,
       needHuman: true,
       category: 'other',
-      requestDump,
-      responseDump: JSON.stringify(raw),
+      requestDump: JSON.stringify({ ...requestDump, messages, token }),
+      responseDump: JSON.stringify(responseDump),
     };
   }
 
-  const parsed = parseAiJson(raw.content);
+  const parsed = parseAiJson(finalContent);
   const reply = (parsed.reply || '').trim();
   const needHuman = parsed.need_human === true || !reply;
   const category = ['order', 'refund', 'install', 'connection', 'other'].includes(parsed.category || '')
     ? (parsed.category as string)
     : 'other';
 
-  console.log(`[ai] provider=${cfg.provider} model=${cfg.model} latency=${Date.now() - t0}ms needHuman=${needHuman} category=${category}\n[ai] prompt=${JSON.stringify(messages)}\n[ai] raw=${raw.content}`);
+  console.log(`[ai] provider=${cfg.provider} model=${cfg.model} latency=${Date.now() - t0}ms needHuman=${needHuman} category=${category} token=${token}\n[ai] prompt=${JSON.stringify(messages.map((m) => ({ role: m.role, content: (m as any).content, tool_calls: (m as any).tool_calls })))}\n[ai] raw=${finalContent}`);
 
   return {
     reply: reply || FALLBACK_REPLY,
     needHuman,
     category,
-    requestDump,
-    responseDump: raw.content,
+    requestDump: JSON.stringify({ ...requestDump, messages, token }),
+    responseDump: JSON.stringify(responseDump),
   };
+}
+
+// Minimal unique id for observability trace linkage (no crypto dependency).
+let _idSeq = 0;
+function utf8id(): string {
+  return `d${Date.now().toString(36)}${(_idSeq++).toString(36)}`;
 }

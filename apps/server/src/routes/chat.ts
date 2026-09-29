@@ -1,9 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
-import { generateAiReply, AiReply } from '../services/ai';
-import { matchKb } from '../services/knowledge';
-import { queryOrders, queryData } from '../services/aiTools';
+import { generateAiReply } from '../services/ai';
 import { broadcastToSession } from '../services/chatHub';
 
 // User-facing AI + human customer support chat.
@@ -14,28 +12,6 @@ export default (prisma: PrismaClient) => {
 
   // 会话空闲上限：超过该时长无新对话则归档旧会话并开启新会话（后台保留存档）。
   const SESSION_IDLE_MS = 30 * 60 * 1000;
-
-  // Local tool intent detection for the quick actions (reliable, no LLM needed).
-  function detectToolIntent(text: string): 'order' | 'data' | 'install' | 'faq' | null {
-    const c = (text || '').toLowerCase();
-    const has = (...kws: string[]) => kws.some((k) => c.includes(k.toLowerCase()));
-    if (has('我的订单', '订单状态', '订单情况', '查订单', '看看我的订单')) return 'order';
-    if (has('剩余流量', '流量还有', '还剩多少', '流量还剩', '用多少', '用量', '余量', '查询流量')) return 'data';
-    if (has('安装步骤', '如何安装', '怎么安装', '怎么装', '激活码', '如何激活', '步骤')) return 'install';
-    if (has('常见问题', '有什么功能', '你能做什么', 'faq')) return 'faq';
-    return null;
-  }
-
-  /** Build a fully-local AI reply from a KB match (no LLM dependency). */
-  function localKbReply(kbText: string, category: string, query: string): AiReply {
-    return {
-      reply: kbText,
-      needHuman: false,
-      category,
-      requestDump: JSON.stringify({ type: 'kb', query }),
-      responseDump: kbText,
-    };
-  }
 
   function isIdle(session: { updatedAt: Date }): boolean {
     return Date.now() - new Date(session.updatedAt).getTime() > SESSION_IDLE_MS;
@@ -122,43 +98,22 @@ export default (prisma: PrismaClient) => {
     let sysMsg: any = null;
 
     if (session.status === 'ai') {
-      let result: AiReply;
-      const intent = detectToolIntent(content);
-
-      if (intent === 'order' || intent === 'data') {
-        // 本地工具：查真实订单/流量数据，稳定不依赖大模型。
-        const tool = intent === 'order' ? await queryOrders(prisma, req.userId) : await queryData(prisma, req.userId);
-        result = {
-          reply: tool.reply,
-          needHuman: tool.reply.includes('转人工') || tool.reply.includes('人工客服'),
-          category: tool.category,
-          requestDump: JSON.stringify({ type: 'tool', intent, query: content }),
-          responseDump: tool.reply,
-        };
-        console.log(`[ai][tool] intent=${intent} userId=${req.userId}\n[ai][tool] reply=${tool.reply}`);
-      } else {
-        // 安装步骤 / 常见问题：优先直接采用知识库，命中即本地作答。
-        const kbText = await matchKb(prisma, content);
-        if (kbText && (intent === 'install' || intent === 'faq')) {
-          result = localKbReply(kbText, intent === 'install' ? 'install' : 'other', content);
-          console.log(`[ai][tool] kb intent=${intent} userId=${req.userId}`);
-        } else {
-          // 一般问题：把相关知识库作为落地上下文交给大模型。
-          const recent = await prisma.chatMessage.findMany({
-            where: { sessionId: session.id, role: { in: ['user', 'ai'] } },
-            orderBy: { createdAt: 'desc' },
-            take: 12,
-          });
-          const history: { role: 'user' | 'assistant'; content: string }[] = recent
-            .slice()
-            .reverse()
-            .map((m) => ({
-              role: m.role === 'ai' ? ('assistant' as const) : ('user' as const),
-              content: m.content,
-            }));
-          result = await generateAiReply(prisma, history, { kbContext: kbText || undefined });
-        }
-      }
+      // AI 阶段：交由 LLM 决定是否调用工具（get_orders / get_data_usage / search_faq）
+      // 获取真实订单/流量/知识库数据，再汇总为最终回答。不再做服务器端关键词意图识别。
+      const recent = await prisma.chatMessage.findMany({
+        where: { sessionId: session.id, role: { in: ['user', 'ai'] } },
+        orderBy: { createdAt: 'desc' },
+        take: 12,
+      });
+      const history: { role: 'user' | 'assistant'; content: string }[] = recent
+        .slice()
+        .reverse()
+        .map((m) => ({
+          role: m.role === 'ai' ? ('assistant' as const) : ('user' as const),
+          content: m.content,
+        }));
+      const result = await generateAiReply(prisma, history, { userId: req.userId });
+      console.log(`[ai] userId=${req.userId} needHuman=${result.needHuman} category=${result.category}`);
 
       aiMsg = await prisma.chatMessage.create({
         data: {
