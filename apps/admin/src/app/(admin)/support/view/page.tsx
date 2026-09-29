@@ -44,12 +44,25 @@ export default function SupportViewPage() {
   const [loading, setLoading] = useState(true);
   const [confirmClose, setConfirmClose] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const msgBoxRef = useRef<HTMLDivElement>(null);
   const lastId = useRef('');
+  // 是否停在底部：仅在靠近底部时，新消息到达才自动滚动，避免打断回看历史
+  const atBottomRef = useRef(true);
 
   const scrollBottom = () => {
     setTimeout(() => {
       bottomRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
     }, 50);
+  };
+
+  const isAtBottom = () => {
+    const el = msgBoxRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 60;
+  };
+
+  const onScroll = () => {
+    atBottomRef.current = isAtBottom();
   };
 
   const load = useCallback(
@@ -121,7 +134,7 @@ export default function SupportViewPage() {
           if (fresh.length) {
             lastId.current = fresh[fresh.length - 1].id;
             setMessages((prev) => [...prev, ...fresh]);
-            scrollBottom();
+            if (atBottomRef.current) scrollBottom();
           }
         }
         if (msg.type === 'status' && msg.session) {
@@ -238,7 +251,7 @@ export default function SupportViewPage() {
         </CardHeader>
         <CardContent className="flex h-[60vh] flex-col p-0">
           {/* 消息区 */}
-          <div className="flex-1 space-y-3 overflow-y-auto p-4">
+          <div className="flex-1 space-y-3 overflow-y-auto p-4" ref={msgBoxRef} onScroll={onScroll}>
             {loading ? (
               <p className="py-10 text-center text-sm text-muted-foreground">加载中…</p>
             ) : messages.length === 0 ? (

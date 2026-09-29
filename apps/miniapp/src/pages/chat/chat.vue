@@ -1,9 +1,10 @@
 <template>
   <view class="chat-page">
-    <!-- 状态横幅 -->
-    <view v-if="status === 'closed'" class="status-banner">{{ $t('chat.closed') }}</view>
-    <view v-else-if="status === 'human'" class="status-banner human">{{ $t('chat.humanNotice') }}</view>
-    <view v-else-if="!messageCount" class="status-banner ai">{{ $t('chat.emptyHint') }}</view>
+    <!-- 状态横幅：常显且固定（sticky），不随消息滚动 -->
+    <view class="status-banner" :class="{ human: status === 'human' }">
+      <text v-if="status === 'closed'">{{ $t('chat.closed') }}</text>
+      <text v-else>{{ $t('chat.humanNotice') }}</text>
+    </view>
 
     <!-- 新会话快捷入口 -->
     <view v-if="status === 'ai' && !messageCount" class="quick-area">
@@ -16,7 +17,7 @@
     </view>
 
     <!-- 消息列表 -->
-    <scroll-view class="msg-list" scroll-y :scroll-into-view="scrollAnchor" scroll-with-animation>
+    <scroll-view class="msg-list" scroll-y :scroll-into-view="scrollTarget" scroll-with-animation @scroll="onScroll">
       <view class="msg-wrap">
         <!-- 会话开始欢迎语 -->
         <view class="notice-row" v-if="!messages.length">
@@ -92,7 +93,11 @@ export default {
       wsReconnectTimer: null,
       pollTimer: null, // HTTP 增量轮询（兜底，WS 不稳定时也能收到人工回复）
       wsClosed: true, // 标记是否主动断开
-      subscribedId: '' // 当前已在 WS 上订阅的 sessionId，会话切换时用于退订/重订
+      subscribedId: '', // 当前已在 WS 上订阅的 sessionId，会话切换时用于退订/重订
+      // 自动滚动：仅在「用户已滚到底部」时，新消息到达才自动滚到最新，避免打断回看历史
+      stickyBottom: true,
+      scrollTarget: '', // scroll-into-view 取值变化才会触发滚动，滚动后复位为 ''
+      scrollViewH: 0 // msg-list 视口高度，用于判断是否接近底部
     }
   },
   onLoad(options) {
@@ -104,9 +109,6 @@ export default {
     },
     messageCount() {
       return this.messages.length
-    },
-    scrollAnchor() {
-      return 'bottom-anchor'
     },
     quickActions() {
       return [
@@ -120,6 +122,7 @@ export default {
   onShow() {
     setNavTitle('pageTitle.chat')
     this.bootstrap()
+    this.measureViewport()
   },
   onUnload() {
     this.closeWs()
@@ -189,7 +192,8 @@ export default {
       }
       if (added.length) {
         this.messages = this.messages.concat(added)
-        this.scrollBottom()
+        // 仅当用户停在底部时自动滚动（否则保留当前阅读位置，不打断回看历史）
+        if (this.stickyBottom) this.scrollBottom()
       }
     },
     // WS 重连/订阅后，用「当前已有消息的最新 createdAt」走 HTTP 时间游标增量兜底，确保不漏任何人工回复
@@ -324,11 +328,32 @@ export default {
     onInput() {
       this.$forceUpdate()
     },
+    // 滚动时跟踪是否停在底部：距离底部 <80rpx 视为「查看最新」，新消息到达才自动滚
+    onScroll(e) {
+      const d = (e && e.detail) || {}
+      const sh = d.scrollHeight || 0
+      const st = d.scrollTop || 0
+      if (sh && this.scrollViewH) {
+        this.stickyBottom = sh - st - this.scrollViewH < 80
+      }
+    },
+    // 满足「在底部」时才真正触发 scroll-into-view：清空再写回，让取值发生变化从而滚动到最新
     scrollBottom() {
+      if (!this.stickyBottom) return
+      this.scrollTarget = ''
       this.$nextTick(() => {
-        const q = uni.createSelectorQuery().in(this)
-        q.select('#bottom-anchor').boundingClientRect(() => {}).exec()
+        this.scrollTarget = 'bottom-anchor'
       })
+    },
+    measureViewport() {
+      if (!this.scrollViewH) {
+        const q = uni.createSelectorQuery().in(this)
+        q.select('.msg-list')
+          .boundingClientRect((rect) => {
+            if (rect) this.scrollViewH = rect.height
+          })
+          .exec()
+      }
     },
     async send() {
       if (!this.canSend) return
@@ -382,7 +407,8 @@ export default {
 
 <style lang="scss" scoped>
 .chat-page {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   background: $bg-page;
   display: flex;
   flex-direction: column;
@@ -390,6 +416,9 @@ export default {
 
 /* ============ 状态横幅 ============ */
 .status-banner {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   margin: 20rpx 24rpx 0;
   padding: 18rpx 24rpx;
   border-radius: $radius;
@@ -402,11 +431,6 @@ export default {
   &.human {
     background: $danger-light;
     color: $danger;
-  }
-
-  &.ai {
-    background: $teal-light;
-    color: $teal-deep;
   }
 }
 
@@ -562,6 +586,7 @@ export default {
   padding: 18rpx 24rpx calc(18rpx + env(safe-area-inset-bottom));
   background: #ffffff;
   border-top: 1rpx solid $line;
+  flex-shrink: 0;
 }
 
 .chat-input {
