@@ -172,16 +172,7 @@ export async function requestRefund(
   if (!userId) {
     return { reply: '用户未登录，无法提交退款申请，请引导用户先登录后再试。', category: 'refund' };
   }
-  const reason = String(arg?.reason || '').trim();
-  if (!reason) {
-    // Tool schema marks reason as required; if the model still calls it empty, tell the model to ask first.
-    return {
-      reply: '尚未获得退款原因：请先用一句话询问用户为什么退款，拿到用户明确说明的原因后再调用本工具。',
-      category: 'refund',
-    };
-  }
-
-  // Resolve the target order: explicit orderNo, else the single refundable order.
+  // 顺序：先确认「退哪一笔订单」，再确认「退款原因」，两者齐全才提交。
   let orderNo = String(arg?.orderNo || '').trim();
   if (!orderNo) {
     const candidates = await prisma.order.findMany({
@@ -195,16 +186,22 @@ export async function requestRefund(
         category: 'refund',
       };
     }
-    if (candidates.length > 1) {
-      const lines = candidates.map(
-        (o, i) => `${i + 1}. ${o.pkgName || o.gb + 'GB'}｜订单号 ${o.orderNo}｜${fmtDate(o.createdAt)}`,
-      );
-      return {
-        reply: `该用户有多笔待激活订单，请先和用户确认要退款哪一笔（把下列订单号发给用户，让用户选择）：\n${lines.join('\n')}`,
-        category: 'refund',
-      };
-    }
-    orderNo = candidates[0].orderNo;
+    const lines = candidates.map(
+      (o, i) => `${i + 1}. ${o.pkgName || o.gb + 'GB'}｜订单号 ${o.orderNo}｜${fmtDate(o.createdAt)}`,
+    );
+    return {
+      reply: `尚未确认要退哪一笔订单。请先把下列可退款（待激活）订单发给用户，询问「请问您要退哪一笔？」，用户选定后再询问退款原因，然后重新调用本工具并填上 orderNo 与 reason：\n${lines.join('\n')}`,
+      category: 'refund',
+    };
+  }
+
+  const reason = String(arg?.reason || '').trim();
+  if (!reason) {
+    // Tool schema marks reason as required; if the model still calls it empty, tell the model to ask first.
+    return {
+      reply: '订单已确认，但尚未获得退款原因：请询问用户「请问您退款的原因是？」，拿到用户明确说明的原因后再调用本工具。',
+      category: 'refund',
+    };
   }
 
   try {

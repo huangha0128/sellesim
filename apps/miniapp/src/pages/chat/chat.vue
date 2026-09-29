@@ -189,7 +189,20 @@ export default {
     // 按 id 去重，仅追加不存在的消息，从根上避免重复渲染
     mergeMessages(incoming) {
       if (!Array.isArray(incoming) || !incoming.length) return
-      const existing = new Set(this.messages.map((m) => m.id))
+      // 服务端回流的用户消息（WS 推送或 HTTP 响应）到达时，先摘掉对应的乐观占位 local_ 消息。
+      // 否则在 HTTP 响应（需等 AI 生成完，较慢）返回前，界面会短暂出现「同一条消息两遍」。
+      let base = this.messages
+      for (const m of incoming) {
+        if (!m || m.role !== 'user' || !m.content) continue
+        // 只摘最后一条同文占位，避免误删历史里内容相同的消息
+        for (let i = base.length - 1; i >= 0; i--) {
+          if (String(base[i].id).startsWith('local_') && base[i].role === 'user' && base[i].content === m.content) {
+            base = base.slice(0, i).concat(base.slice(i + 1))
+            break
+          }
+        }
+      }
+      const existing = new Set(base.map((m) => m.id))
       const added = []
       const seen = new Set()
       for (const m of incoming) {
@@ -197,8 +210,8 @@ export default {
         seen.add(m.id)
         added.push(m)
       }
-      if (added.length) {
-        this.messages = this.messages.concat(added)
+      if (base !== this.messages || added.length) {
+        this.messages = base.concat(added)
         // 仅当用户停在底部时自动滚动（否则保留当前阅读位置，不打断回看历史）
         if (this.stickyBottom) this.scrollBottom()
       }
