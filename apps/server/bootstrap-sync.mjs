@@ -53,6 +53,15 @@ async function main() {
   } catch (e) {
     console.warn('[bootstrap] seedKb skipped:', e?.message || e);
   }
+  // Vectorize the knowledge base into Qdrant for semantic RAG retrieval.
+  // Best-effort: if Qdrant / embeddings are unavailable, AI falls back to keyword KB.
+  try {
+    const { vectorizeKb } = await import('./dist/services/vector.js');
+    const n = await vectorizeKb(prisma);
+    console.log(`[bootstrap] KB vectorized into Qdrant (${n} chunks).`);
+  } catch (e) {
+    console.warn('[bootstrap] vectorizeKb skipped (RAG will fall back to keyword KB):', e?.message || e);
+  }
 }
 
 main()

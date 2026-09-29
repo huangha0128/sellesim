@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import { adminAuth } from '../middleware/adminAuth';
+import { syncKbEntryVector, deleteKbEntryVector } from '../services/vector';
 
 // Admin AI knowledge base management. Mounted at /api/admin/kb, admin auth required.
 // Used by the admin "知识库管理" page to list / create / update / toggle / delete entries.
@@ -54,6 +55,7 @@ export default (prisma: PrismaClient) => {
         sortOrder: Number.isFinite(Number(sortOrder)) ? Number(sortOrder) : 0,
       },
     });
+    await syncKbEntryVector(prisma, entry); // vectorize the new entry for RAG
     res.json({ code: 0, data: { entry } });
   });
 
@@ -82,6 +84,7 @@ export default (prisma: PrismaClient) => {
     if (!exists) return res.json({ code: 1, message: '词条不存在' });
 
     const entry = await prisma.kbEntry.update({ where: { id: req.params.id }, data });
+    await syncKbEntryVector(prisma, entry); // re-embed after update
     res.json({ code: 0, data: { entry } });
   });
 
@@ -90,6 +93,7 @@ export default (prisma: PrismaClient) => {
     const exists = await prisma.kbEntry.findUnique({ where: { id: req.params.id } });
     if (!exists) return res.json({ code: 1, message: '词条不存在' });
     await prisma.kbEntry.delete({ where: { id: req.params.id } });
+    await deleteKbEntryVector(prisma, req.params.id); // remove its vectors
     res.json({ code: 0, message: '已删除' });
   });
 

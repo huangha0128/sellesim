@@ -57,11 +57,6 @@
 
     <!-- 底部输入区 -->
     <view class="input-bar" v-if="status !== 'closed'">
-      <view class="transfer-btn" :class="{ disabled: status === 'human' }" @tap="onTransfer">
-        <image v-if="status !== 'human'" class="transfer-icon" src="/static/icons/prof-help.png" mode="aspectFit" />
-        <text v-if="status !== 'human'">{{ $t('chat.transferBtn') }}</text>
-        <text v-else class="transfer-done">✓ {{ $t('chat.transferred') }}</text>
-      </view>
       <input
         class="chat-input"
         v-model="input"
@@ -375,25 +370,6 @@ export default {
         this.aiThinking = false
       }
     },
-    async onTransfer() {
-      if (this.status === 'human' || this.status === 'closed' || !this.sessionId) return
-      uni.showModal({
-        title: this.$t('chat.transferConfirm'),
-        success: async (r) => {
-          if (!r.confirm) return
-          try {
-            const res = await api.transferChat(this.sessionId)
-            if (res.code === 0 && res.data.session) {
-              this.status = res.data.session.status
-              uni.showToast({ title: this.$t('chat.transferring'), icon: 'none' })
-              this.scrollBottom()
-            }
-          } catch (e) {
-            uni.showToast({ title: this.$t('chat.offlineTip'), icon: 'none' })
-          }
-        }
-      })
-    },
     systemText(m) {
       const c = m.content || ''
       if (c.includes('转接') || c.includes('转人工') || c.includes('transfer')) return this.$t('chat.transferredTip')
@@ -586,35 +562,6 @@ export default {
   padding: 18rpx 24rpx calc(18rpx + env(safe-area-inset-bottom));
   background: #ffffff;
   border-top: 1rpx solid $line;
-}
-
-.transfer-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8rpx;
-  height: 76rpx;
-  padding: 0 24rpx;
-  border-radius: 999rpx;
-  background: $brand-light;
-  color: $brand;
-  font-size: 24rpx;
-  font-weight: 600;
-  flex-shrink: 0;
-
-  &.disabled {
-    background: $teal-light;
-    color: $teal-deep;
-  }
-}
-
-.transfer-icon {
-  width: 30rpx;
-  height: 30rpx;
-}
-
-.transfer-done {
-  font-size: 24rpx;
 }
 
 .chat-input {

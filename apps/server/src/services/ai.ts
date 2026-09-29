@@ -1,6 +1,11 @@
 import { PrismaClient } from '@prisma/client';
-import { queryOrders, queryData } from './aiTools';
-import { matchKb } from './knowledge';
+import {
+  queryOrders,
+  queryData,
+  queryPackages,
+  recommendPackages,
+} from './aiTools';
+import { retrieveKb } from './vector';
 
 // ---------------------------------------------------------------------------
 // AI customer-service adapter layer.
@@ -41,40 +46,31 @@ const BAILIAN_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1';
 
 const DEFAULT_AI_TIMEOUT_MS = 30_000;
 
-// ---- built-in knowledge base (grounded on the miniapp FAQ) -----------------
-const DEFAULT_SYSTEM_PROMPT = `你是一个专业的 eSIM（嵌入式 SIM 卡）售前售后客服，服务于「YYeSim」平台。
-你的任务是根据下方产品知识回答用户的售前咨询与售后问题。回答要简洁、友好、准确，使用与用户提问相同的语言。
+// ---- built-in knowledge base + RAG grounding + hallucination guard -----------
+const DEFAULT_SYSTEM_PROMPT = `你是在线客服小 Y，服务于「YYeSim」eSIM 流量平台。你的任务是帮用户解决售前咨询与售后问题：根据你的工具查询到的【真实数据】和【知识库检索结果】来回答。回复要简洁、友好、准确，使用与用户提问相同的语言。不要暴露你是一个 AI 程序，始终保持专业客服的口吻。
 
-## 订单与退款
-- 查看订单：用户进入「我的 → 我的订单」查看全部订单，订单状态分为「待付款 / 待激活 / 已完成 / 已退款」。
-- 退款规则：仅「待激活」的订单可申请退款；用户进入订单详情点击「申请退款」，审核通过后款项原路退回支付账户。
-- 退款到账：审核通过后按支付渠道原路退回，实际到账以支付平台处理为准。
-- 修改邮箱：在「我的 → 我的邮箱地址」页面查看或修改，用于接收订单与激活通知。
+## 产品知识（内置）
+- 安装/激活：进入「我的 eSIM」点「查看激活码」，扫码或手动安装；建议到达目的地后再购买安装；激活码长期有效，套餐有效期自购买之日期。
+- 退款规则：仅「待激活」（未安装、未激活）订单可申请退款，审核通过后原路退回；已激活 eSIM 平台有权不予退款。
+- 上网/流量：到国外没网先确认已安装并开启「数据漫游」，仍不行可在系统设置手动选择当地运营商；套餐有效期自购买之日起算，续费时流量叠加、有效期顺延、激活码不变。
+- 查看：订单在「我的 → 我的订单」，eSIM 及剩余流量在「我的 eSIM」页面。
 
-## 安装与激活
-- 查看激活码：在「我的 eSIM」页面点击「查看激活码」，扫码安装或复制激活码手动安装。
-- 支持设备：iPhone XS/XR 及以上，以及部分三星、华为、小米等支持 eSIM 的机型。
-- 安装时机：建议到达目的地后再购买并安装，套餐有效天数自购买之日起算；不要提前占用有效期。
-- 激活码有效期：激活码长期有效，套餐有效期自购买之日期。
-
-## 上网与漫游
-- 到国外没网：确认 eSIM 已安装并开启「数据漫游」开关；仍无法上网可在系统设置中手动选择当地运营商网络。
-- 个人热点：大部分套餐支持开启个人热点，可共享流量。
-- 网速：套餐提供高速 4G/5G 网络，实际速度取决于当地运营商覆盖与信号环境。
-
-## 流量与套餐
-- 流量用完：已到期的 eSIM 可加购到该 eSIM（流量叠加、有效期顺延、激活码不变），也可直接购买新 eSIM。
-- 查看剩余流量：在「我的 eSIM」页面查看已购套餐的剩余流量与有效期。
-- 套餐有效期：自购买之日起算；续费时流量累加、到期时间顺延。
+## 你拥有的工具（按需调用，不要凭空编造）
+- get_orders：查当前用户真实订单；get_data_usage：查用户真实 eSIM/流量；
+- search_kb：从向量知识库检索产品知识（安装、退款、上网、购买等）；
+- get_packages：查平台在售套餐目录（国家/流量/天数/价格）；
+- recommend_package：按目的地推荐套餐（参数 region=国家）。
+工具结果为空 = 平台没有该信息，绝不能编造缺省值来自圆其说。
 
 ## 输出要求（非常重要）
-你必须只输出一个 JSON 对象，不要输出任何其它文字/围栏代码块。JSON 结构如下：
-{"reply": "给用户的回答文本", "need_human": true 或 false, "category": "order 或 refund 或 install 或 connection 或 other"}
+你必须只输出一个 JSON 对象，不要输出任何其它文字/围栏代码块。结构：
+{"reply": "给用户阅读的回答文本", "need_human": true 或 false, "category": "order 或 refund 或 install 或 connection 或 plan 或 other"}
 
-判断 need_human 的规则：
-- 只有当你能明确、完整地解答用户问题时才置 false。
-- 若涉及以下任一情况，必须置 need_human = true：无法通过现有知识确定答案、涉及退款失败/支付纠纷/账号安全/投诉等需要人工介入的敏感操作、你无法判断的具体个案、用户明确要求人工客服。
-category 可选值：order（订单）、refund（退款）、install（安装激活）、connection（上网连接）、other（其它）。`;
+回答与转人工规则：
+1. 不知道自己不知道：凡工具/知识库没有给出的数据（例如套餐具体价格、某订单、某张卡的流量），一律不要编造。缺数据就明确说「这个我暂时无法确认」，并建议用户到「我的订单 / 我的 eSIM / 首页」自助查看，或请人工客服协助。
+2. need_human 只有在两种情况下才置 true：A) 用户用了「转人工」「人工客服」「真人」「找客服」等明确要求人工的表述；B) 涉及退款失败/支付纠纷/账号安全/实名/投诉等用户要求人工介入的敏感操作。除此之外一律置 false，即使在售套餐查不到、数据拿不到也只能如实说明，不能把普通问题升级成转人工。
+3. 涉及「购买/下单」：用 get_packages / recommend_package 返回在售套餐，回复末尾引导用户到首页下单页自助购买（不要在对话里真正生成订单）。
+4. category：order（订单）、refund（退款）、install（安装激活）、connection（上网连接）、plan（套餐/流量）、other（其它）。`;
 
 // ---- cached config loader ---------------------------------------------------
 let aiCache: { config: AiConfig | null; at: number } | null = null;
@@ -88,6 +84,8 @@ export function clearAiCache(): void {
 const MAX_TOOL_ROUNDS = 3;
 
 // OpenAI-compatible function-calling tool schemas. The LLM decides which to call.
+// Data comes from REAL queries (user orders / eSIM data / whitelist catalog) and
+// the RAG vector knowledge base. The LLM never fabricates numbers it can't see.
 const TOOLS = [
   {
     type: 'function',
@@ -108,12 +106,32 @@ const TOOLS = [
   {
     type: 'function',
     function: {
-      name: 'search_faq',
-      description: '在平台的常见问题知识库中检索。当用户询问安装步骤、激活、退款规则、到国外无法上网、流量用完等产品问题时调用，以获取准确的产品知识。',
+      name: 'search_kb',
+      description: '在平台的向量知识库中检索。当用户询问安装步骤、激活、退款规则、到国外无法上网、流量用完、如何购买等产品问题时调用，以获取准确的产品知识。',
       parameters: {
         type: 'object',
         properties: { query: { type: 'string', description: '用户的原始问题文本' } },
         required: ['query'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'get_packages',
+      description: '查询当前平台在售的全部（白名单）eSIM 套餐目录（国家、流量、天数、价格）。当用户询问有哪些套餐、多少钱、怎么买、想了解可选套餐时调用。',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'recommend_package',
+      description: '根据用户提到的目的地/国家，推荐具体的在售套餐。当用户想去某地、需要多少流量、让我推荐套餐时调用。',
+      parameters: {
+        type: 'object',
+        properties: { region: { type: 'string', description: '目的地国家名称或地区代码，如「日本」「日本 jp 」' } },
+        required: ['region'],
       },
     },
   },
@@ -137,11 +155,21 @@ async function runToolCalls(
         result = (await queryOrders(prisma, userId)).reply;
       } else if (name === 'get_data_usage') {
         result = (await queryData(prisma, userId)).reply;
-      } else if (name === 'search_faq') {
+      } else if (name === 'search_kb') {
         let arg: any = {};
         try { arg = JSON.parse(c.function.arguments || '{}'); } catch { /* ignore */ }
-        const kb = await matchKb(prisma, arg.query || '');
-        result = kb ? `【知识库】${kb}` : '';
+        const kb = await retrieveKb(prisma, arg.query || '');
+        result = kb ? `【知识库】\n${kb}` : '';
+      } else if (name === 'get_packages') {
+        result = (await queryPackages(prisma)).reply;
+      } else if (name === 'recommend_package') {
+        let arg: any = {};
+        try { arg = JSON.parse(c.function.arguments || '{}'); } catch { /* ignore */ }
+        result = (await recommendPackages(prisma, arg.region || '')).reply;
+        // guide the user to order on the site when nothing grounded is found
+        if (!result) {
+          result = '未检索到该目的地的在售套餐，建议用户在首页按目的地查找并下单，或咨询更具体的国家/地区。';
+        }
       } else {
         result = `未知工具：${name}`;
       }
@@ -350,7 +378,7 @@ export async function generateAiReply(
   const parsed = parseAiJson(finalContent);
   const reply = (parsed.reply || '').trim();
   const needHuman = parsed.need_human === true || !reply;
-  const category = ['order', 'refund', 'install', 'connection', 'other'].includes(parsed.category || '')
+  const category = ['order', 'refund', 'install', 'connection', 'plan', 'other'].includes(parsed.category || '')
     ? (parsed.category as string)
     : 'other';
 

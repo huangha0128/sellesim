@@ -25,6 +25,10 @@ services:
       DATABASE_URL: mysql://${MYSQL_USER:-sellsim}:${MYSQL_PASSWORD:-sellsim-pass}@${MYSQL_HOST}:${MYSQL_DB_PORT:-1513}/${MYSQL_DATABASE:-sellsim}
       # 套餐缓存 Redis：留空则用进程内存降级；共享缓存时填主服地址 redis://<主服IP>:6379
       REDIS_URL: ${REDIS_URL:-}
+      # 向量知识库 Qdrant：edge 不跑 Qdrant，指向主服的 QDRANT_URL（如 http://<主服IP>:6333）；
+      # 留空则 AI 的 RAG 自动回退到关键词知识库。
+      QDRANT_URL: ${QDRANT_URL:-}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
       # JWT 签名密钥（必须与主服 .env 完全一致）
       JWT_SECRET: ${JWT_SECRET:-your-jwt-secret-key-change-in-production}
       # 管理后台账号（共享同一数据库，仅用于一致化引导，实际上主服已建）

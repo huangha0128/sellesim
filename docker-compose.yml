@@ -52,6 +52,24 @@ services:
     volumes:
       - sellsim-redis-data:/data
 
+  # ---------- 向量知识库（Qdrant：AI 客服 RAG 语义检索，取代纯关键词匹配）----------
+  qdrant:
+    # 国内服务器无法直连 docker.io，默认走 1panel 加速镜像；如需官方镜像改为 qdrant/qdrant
+    image: ${QDRANT_IMAGE:-docker.1panel.live/qdrant/qdrant}
+    container_name: sellsim-qdrant
+    restart: unless-stopped
+    ports:
+      # 默认仅本机可达。REST 在 6333，gRPC 在 6334
+      - "${QDRANT_BIND:-127.0.0.1}:${QDRANT_PORT:-6333}:6333"
+    volumes:
+      - sellsim-qdrant-data:/qdrant/storage
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:6333/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
   # ---------- 后端 API（Express + Prisma + MySQL）----------
   server:
     build:
@@ -66,9 +84,15 @@ services:
         required: false
       redis:
         condition: service_started
+      qdrant:
+        condition: service_healthy
+        required: false
     environment:
       TZ: Asia/Shanghai
       PORT: "6660"
+      # 向量知识库 Qdrant（RAG 语义检索；连不上时 AI 自动回退到关键词知识库）
+      QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
+      QDRANT_API_KEY: ${QDRANT_API_KEY:-}
       # 数据库连接串（应用通过 Prisma 访问 MySQL）
       # MYSQL_HOST 默认 mysql（内置容器服务名）；改外部云 MySQL 时填 IP/域名，端口用 MYSQL_DB_PORT
       DATABASE_URL: mysql://${MYSQL_USER:-sellsim}:${MYSQL_PASSWORD:-sellsim-pass}@${MYSQL_HOST:-mysql}:${MYSQL_DB_PORT:-3306}/${MYSQL_DATABASE:-sellsim}
@@ -197,5 +221,6 @@ services:
 volumes:
   sellsim-mysql-data:
   sellsim-redis-data:
+  sellsim-qdrant-data:
   caddy-data:
   caddy-config:

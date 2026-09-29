@@ -12,6 +12,16 @@ const ORDER_STATUS_TEXT: Record<string, string> = {
   refunded: '已退款',
 };
 
+const CURRENCY_SYMBOL: Record<string, string> = { CNY: '¥', USD: '$' };
+
+function priceText(p: any): string {
+  const n = Number(p?.price);
+  if (Number.isFinite(n)) {
+    return `${CURRENCY_SYMBOL[p?.currency] || ''}${n}`;
+  }
+  return '';
+}
+
 function fmtDate(d: Date | string | undefined): string {
   if (!d) return '未知';
   return new Date(d).toLocaleString('zh-CN', { hour12: false, dateStyle: 'short', timeStyle: 'short' });
@@ -81,6 +91,68 @@ export async function queryData(
   });
   return {
     reply: `您当前有 ${esims.length} 张 eSIM：\n${lines.join('\n')}`,
+    category: 'plan',
+  };
+}
+
+// ---- package catalog tools (grounded on the real Tiger whitelist) -----------
+
+/**
+ * Whitelisted (on-sale, priced) package catalog summary. Used by the AI to
+ * recommend / guide ordering. Prices are display-currency formatted.
+ */
+export async function queryPackages(prisma: PrismaClient): Promise<{ reply: string; category: string }> {
+  try {
+    const { listAllPackagesView } = await import('../tiger/view');
+    const list = await listAllPackagesView();
+    if (!list.length) {
+      return { reply: '当前暂无在售套餐，可稍后再试。', category: 'plan' };
+    }
+    // Group by country to keep the summary compact.
+    const groups = new Map<string, any[]>();
+    for (const p of list) {
+      const key = String(p.countryName || p.countryCode || '其他');
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(p);
+    }
+    const lines: string[] = [];
+    for (const [country, pkgs] of groups) {
+      const top = pkgs.slice(0, 3).map((p) => `${p.gb}GB/${p.days}天 ${priceText(p)}`).join('、');
+      lines.push(`${country}：${top}`);
+    }
+    return {
+      reply: `可选套餐（多国家、多价位，可在购买页筛选）：\n${lines
+        .slice(0, 8)
+        .map((l, i) => `${i + 1}. ${l}`)
+        .join('\n')}\n\n更多地区与详情请在首页按目的地选择并下单。`,
+      category: 'plan',
+    };
+  } catch (e: any) {
+    return { reply: '', category: 'plan' };
+  }
+}
+
+/** Recommend packages for a region/flow preference. Returns an empty reply when ungrounded. */
+export async function recommendPackages(
+  prisma: PrismaClient,
+  region: string,
+): Promise<{ reply: string; category: string }> {
+  const { listAllPackagesView } = await import('../tiger/view');
+  const list = await listAllPackagesView();
+  const kw = String(region || '').trim().toLowerCase();
+  if (!kw || !list.length) return { reply: '', category: 'plan' };
+  const matched = list.filter(
+    (p) =>
+      (p.countryName || '').toLowerCase().includes(kw) ||
+      (p.countryCode || '').toLowerCase().includes(kw),
+  );
+  if (!matched.length) return { reply: '', category: 'plan' };
+  const top = matched.slice(0, 3);
+  const lines = top.map(
+    (p, i) => `${i + 1}. ${p.countryName || p.countryCode} ${p.gb}GB / ${p.days}天 — ${priceText(p)}（${p.pkgName || 'eSIM'}）`,
+  );
+  return {
+    reply: `为您推荐以下套餐（可到首页对应地区直接下单）：\n${lines.join('\n')}`,
     category: 'plan',
   };
 }

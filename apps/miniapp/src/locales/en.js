@@ -102,19 +102,15 @@ export default {
     copyEmail: 'Copy Email',
     copied: 'Email copied',
     chatTitle: 'Online Support',
-    chatSub: 'AI answers instantly, human agent on request'
+    chatSub: 'Xiao Y is here to help'
   },
   chat: {
     placeholder: 'Type your question…',
     send: 'Send',
-    transferBtn: 'Human agent',
-    transferred: 'Human agent',
-    transferConfirm: 'Transfer to a human agent?',
-    transferring: 'Connecting you to a human agent…',
-    transferredTip: 'A human agent is here to help',
+    transferredTip: 'Support is here to help. Please describe your question',
     closed: 'Conversation closed',
-    aiNotice: 'AI assistant is here. For complex issues, tap "Human agent".',
-    humanNotice: 'A human agent is helping you',
+    aiNotice: 'Hi, I am Xiao Y. Please feel free to ask me anything',
+    humanNotice: 'Support is helping you',
     sendFailed: 'Failed to send, please retry',
     offlineTip: 'Network error, please retry',
     emptyHint: 'Hi, I am Xiao Y. How can I help you?',
@@ -531,6 +527,34 @@ export default {
       {
         q: 'What should I do if I cannot delete an eSIM on a Samsung Galaxy device?',
         a: 'Galaxy devices enable "Auto Lock" by default, which may block eSIM deletion. In Settings → Connections → SIM card manager, turn off "Auto Lock" for that eSIM before deleting it; also confirm the phone network is unlocked, and contact your carrier or support if needed.'
+      },
+      {
+        q: 'Why do I see an "Unable to Activate eSIM" error on iOS?',
+        a: 'This error is usually related to network or carrier-side authentication. Connect to Wi-Fi, then delete and reinstall the eSIM profile, and make sure the system is updated and not in Airplane Mode. If it still cannot activate, turn on "Data Roaming" and retry, or contact support to confirm the plan is active.'
+      },
+      {
+        q: 'My device is network- or carrier-locked and cannot use the eSIM / physical SIM. What should I do?',
+        a: 'A carrier/network lock usually blocks using SIM/eSIM from other carriers. Apply for an unlock from the original carrier first — the plan cannot be used until it is unlocked. If it still fails after unlocking, confirm the eSIM is installed correctly and select the right carrier network, and contact support if needed.'
+      },
+      {
+        q: 'Why can\'t I activate my top-up plan?',
+        a: 'A top-up plan is added on top of an existing plan, so make sure your original eSIM activation code is still valid, the device has the eSIM added, and data is not disabled. If it still cannot activate after top-up, restart the device and check in "My eSIM" that data/validity has updated, and contact support to confirm the top-up if needed.'
+      },
+      {
+        q: 'Why haven\'t I received my eSIM or top-up yet?',
+        a: 'First check whether the "My eSIM / Orders" page shows the activation code or a received record, and check the email you entered when ordering (including spam). Delivery can take a few minutes, so please wait a while; if it has not arrived, contact support with your order number so it can be investigated and resent.'
+      },
+      {
+        q: 'How do I access the internet with my eSIM / physical SIM on a Google Pixel?',
+        a: 'On Pixel, open Settings → Network & Internet → SIM, select the plan, and make sure "Data Roaming" and "Automatic network selection" are on. If you still have no internet, manually select the local carrier network or re-enable the SIM/eSIM.'
+      },
+      {
+        q: 'How do I access the internet with my eSIM / physical SIM on a Samsung Galaxy?',
+        a: 'On Galaxy, go to Settings → Connections → SIM card manager, enable the SIM/eSIM and set it as mobile data; then open "Mobile networks" and turn on "Data roaming". If you still have no internet, manually search for and select the local carrier network.'
+      },
+      {
+        q: 'How do I connect to the internet with my eSIM on iOS?',
+        a: 'On iOS, go to Settings → Cellular → Cellular Data, make sure this eSIM is selected as the data line, and turn on "Data Roaming". If you cannot get online, try restarting your phone or reselecting the carrier network in Settings.'
       }
     ]
   },

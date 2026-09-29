@@ -104,19 +104,15 @@ export default {
     copyEmail: 'Copier',
     copied: 'E-mail copié',
     chatTitle: 'Assistance en ligne',
-    chatSub: 'Réponse instantanée par l\'IA, agent humain à la demande'
+    chatSub: 'Xiao Y est là pour vous aider'
   },
   chat: {
     placeholder: 'Saisissez votre question…',
     send: 'Envoyer',
-    transferBtn: 'Agent humain',
-    transferred: 'Agent humain',
-    transferConfirm: 'Passer à un agent humain ?',
-    transferring: 'Connexion à un agent humain…',
-    transferredTip: 'Un agent humain va vous aider',
+    transferredTip: 'Le support est là. Veuillez décrire votre question',
     closed: 'Conversation terminée',
-    aiNotice: 'L\'assistant IA est là. Pour les cas complexes, touchez « Agent humain ».',
-    humanNotice: 'Un agent humain vous aide',
+    aiNotice: 'Bonjour, je suis Xiao Y. Posez-moi vos questions',
+    humanNotice: 'Le support vous aide',
     sendFailed: 'Échec de l\'envoi, veuillez réessayer',
     offlineTip: 'Erreur réseau, veuillez réessayer',
     emptyHint: 'Bonjour, je suis Xiao Y. Comment puis-je vous aider ?',
@@ -533,6 +529,34 @@ export default {
       {
         q: 'Que faire si je ne peux pas supprimer un eSIM sur un appareil Samsung Galaxy ?',
         a: 'Les appareils Galaxy activent « Verrouillage automatique » par défaut, ce qui peut bloquer la suppression de l\'eSIM. Dans Réglages → Connexions → Gestionnaire de cartes SIM, désactivez « Verrouillage automatique » pour cet eSIM avant de le supprimer ; vérifiez aussi que le téléphone est débloqué côté réseau et contactez l\'opérateur ou le support si besoin.'
+      },
+      {
+        q: 'Pourquoi est-ce que je vois une erreur « Impossible d\'activer l\'eSIM » sur iOS ?',
+        a: 'Cette erreur est généralement liée à une authentification réseau/opérateur. Connectez-vous au Wi-Fi, puis supprimez et réinstallez le profil eSIM, et vérifiez que le système est à jour et que le mode Avion est désactivé. Si l\'eSIM ne s\'active toujours pas, activez « Itinérance des données » et réessayez, ou contactez le support pour confirmer l\'activation du forfait.'
+      },
+      {
+        q: 'Mon appareil est verrouillé au réseau/à un opérateur et ne peut pas utiliser l\'eSIM / la carte SIM. Que faire ?',
+        a: 'Un verrouillage réseau bloque généralement l\'utilisation de SIM/eSIM d\'autres opérateurs. Demandez d\'abord un déverrouillage auprès de l\'opérateur d\'origine — le forfait ne peut pas être utilisé avant le déverrouillage. Si cela échoue encore après déverrouillage, vérifiez que l\'eSIM est bien installé et sélectionnez le bon réseau d\'opérateur, et contactez le support si nécessaire.'
+      },
+      {
+        q: 'Pourquoi ne puis-je pas activer mon forfait de recharge ?',
+        a: 'Un forfait de recharge s\'ajoute à un forfait existant, donc vérifiez que votre code d\'activation eSIM d\'origine est toujours valide, que l\'appareil a l\'eSIM ajouté et que les données ne sont pas désactivées. Si l\'activation échoue encore après la recharge, redémarrez l\'appareil et vérifiez dans « Mes eSIM » que les données/validité ont bien été mises à jour, et contactez le support pour confirmer la recharge si besoin.'
+      },
+      {
+        q: 'Pourquoi n\'ai-je pas encore reçu mon eSIM ou ma recharge ?',
+        a: 'Vérifiez d\'abord si la page « Mes eSIM / Commandes » affiche le code d\'activation ou une entrée reçue, et consultez l\'e-mail renseigné à la commande (y compris les courriers indésirables). La livraison peut prendre quelques minutes, veuillez donc attendre un peu ; si elle n\'arrive pas, contactez le support avec votre numéro de commande.'
+      },
+      {
+        q: 'Comment accéder à Internet avec mon eSIM / ma carte SIM sur un Google Pixel ?',
+        a: 'Sur Pixel, ouvrez Réglages → Réseau et Internet → SIM, sélectionnez le forfait et assurez-vous que « Itinérance des données » et « Sélection automatique du réseau » sont activés. Si vous n\'avez toujours pas Internet, sélectionnez manuellement le réseau de l\'opérateur local ou réactivez la SIM/l\'eSIM.'
+      },
+      {
+        q: 'Comment accéder à Internet avec mon eSIM / ma carte SIM sur un Samsung Galaxy ?',
+        a: 'Sur Galaxy, allez dans Réglages → Connexions → Gestionnaire de cartes SIM, activez la SIM/l\'eSIM et définissez-la comme données mobiles ; ouvrez ensuite « Réseaux mobiles » et activez « Itinérance des données ». Si vous n\'avez toujours pas Internet, recherchez manuellement et sélectionnez le réseau de l\'opérateur local.'
+      },
+      {
+        q: 'Comment me connecter à Internet avec mon eSIM sur iOS ?',
+        a: 'Sur iOS, allez dans Réglages → Cellulaire → Données cellulaires, assurez-vous que cet eSIM est sélectionné comme ligne de données et activez « Itinérance des données ». Si vous ne pouvez pas vous connecter, essayez de redémarrer le téléphone ou de resélectionner le réseau de l\'opérateur.'
       }
     ]
   },

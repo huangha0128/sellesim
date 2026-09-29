@@ -104,19 +104,15 @@ export default {
     copyEmail: 'Copiar correo',
     copied: 'Correo copiado',
     chatTitle: 'Soporte en línea',
-    chatSub: 'La IA responde al instante, agente humano a petición'
+    chatSub: 'Xiao Y está aquí para ayudarte'
   },
   chat: {
     placeholder: 'Escribe tu pregunta…',
     send: 'Enviar',
-    transferBtn: 'Agente humano',
-    transferred: 'Agente humano',
-    transferConfirm: '¿Pasar a un agente humano?',
-    transferring: 'Conectando con un agente humano…',
-    transferredTip: 'Un agente humano está listo para ayudarte',
+    transferredTip: 'El soporte está aquí. Describe tu pregunta',
     closed: 'Conversación finalizada',
-    aiNotice: 'El asistente IA está aquí. Para casos complejos, toca "Agente humano".',
-    humanNotice: 'Un agente humano te está ayudando',
+    aiNotice: 'Hola, soy Xiao Y. Pregúntame lo que quieras',
+    humanNotice: 'El soporte te está ayudando',
     sendFailed: 'Error al enviar, inténtalo de nuevo',
     offlineTip: 'Error de red, inténtalo de nuevo',
     emptyHint: 'Hola, soy Xiao Y. ¿En qué puedo ayudarte?',
@@ -533,6 +529,34 @@ export default {
       {
         q: '¿Qué hago si no puedo eliminar un eSIM en un dispositivo Samsung Galaxy?',
         a: 'Los dispositivos Galaxy activan "Bloqueo automático" por defecto, lo que puede impedir eliminar el eSIM. En Ajustes → Conexiones → Administrador de tarjetas SIM, desactiva el "Bloqueo automático" de ese eSIM antes de eliminarlo; también confirma que el teléfono esté desbloqueado de red y contacta con el operador o el soporte si es necesario.'
+      },
+      {
+        q: '¿Por qué veo un error "No se pudo activar el eSIM" en iOS?',
+        a: 'Este error suele estar relacionado con la autenticación de red/operador. Conéctate al Wi-Fi y luego elimina y vuelve a instalar el perfil eSIM, y asegúrate de que el sistema esté actualizado y no en modo avión. Si aún no se activa, activa "Datos en roaming" y reintenta, o contacta con soporte para confirmar que el plan esté activado.'
+      },
+      {
+        q: 'Mi dispositivo está bloqueado por red/operador y no puede usar el eSIM / la tarjeta SIM física. ¿Qué hago?',
+        a: 'Un bloqueo de red normalmente impide usar SIM/eSIM de otros operadores. Solicita primero el desbloqueo al operador original: el plan no puede usarse hasta desbloquearlo. Si aún falla tras desbloquear, confirma que el eSIM esté bien instalado y selecciona la red correcta del operador, y contacta con soporte si es necesario.'
+      },
+      {
+        q: '¿Por qué no puedo activar mi plan de recarga?',
+        a: 'Un plan de recarga se añade a uno existente, así que verifica que tu código de activación eSIM original siga siendo válido, que el dispositivo tenga el eSIM añadido y que los datos no estén desactivados. Si aún no se activa tras recargar, reinicia el dispositivo y comprueba en "Mis eSIM" que se hayan actualizado los datos/validez; contacta con soporte para confirmar la recarga si es necesario.'
+      },
+      {
+        q: '¿Por qué aún no he recibido mi eSIM o recarga?',
+        a: 'Revisa primero si la página "Mis eSIM / Pedidos" muestra el código de activación o una entrada recibida, y mira el correo que informaste al pedir (incluido el spam). El envío puede tardar unos minutos, así que espera un poco; si no llega, contacta con soporte con tu número de pedido.'
+      },
+      {
+        q: '¿Cómo accedo a Internet con mi eSIM / tarjeta SIM en un Google Pixel?',
+        a: 'En Pixel, abre Ajustes → Red e Internet → SIM, selecciona el plan y asegúrate de que "Datos en roaming" y "Selección automática" estén activados. Si aún no hay Internet, selecciona manualmente la red del operador local o reactiva la SIM/eSIM.'
+      },
+      {
+        q: '¿Cómo accedo a Internet con mi eSIM / tarjeta SIM en un Samsung Galaxy?',
+        a: 'En Galaxy, ve a Ajustes → Conexiones → Administrador de tarjetas SIM, activa la SIM/eSIM y establécela como datos móviles; luego abre "Redes móviles" y activa "Datos en roaming". Si aún no hay Internet, busca y selecciona manualmente la red del operador local.'
+      },
+      {
+        q: '¿Cómo me conecto a Internet con mi eSIM en iOS?',
+        a: 'En iOS, ve a Ajustes → Celular → Datos celulares, asegúrate de que este eSIM esté seleccionado como línea de datos y activa "Datos en roaming". Si no puedes conectarte, intenta reiniciar el teléfono o volver a seleccionar la red del operador.'
       }
     ]
   },
