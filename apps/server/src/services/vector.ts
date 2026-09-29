@@ -40,20 +40,26 @@ async function readEmbedConfig(prisma: PrismaClient): Promise<EmbedConfig> {
 
   let baseUrl = '';
   let apiKey = '';
+  let chatModel = '';
   if (provider === 'bailian') {
     baseUrl = BAILIAN_BASE_URL;
     apiKey = map.get('aiBailianApiKey') || '';
+    chatModel = map.get('aiBailianModel') || '';
   } else {
     baseUrl = (map.get('aiOpenaiBaseUrl') || 'https://api.openai.com/v1').replace(/\/+$/, '');
     apiKey = map.get('aiOpenaiApiKey') || '';
+    chatModel = map.get('aiOpenaiModel') || '';
   }
 
+  // qwen 系模型（含 OpenAI 兼容代理指向 qwen）默认嵌入模型与 OpenAI 不同，需特别对待。
+  const isQwen = /qwen|qw/i.test(chatModel);
   const embedModel =
     map.get('aiEmbeddingModel') ||
-    (provider === 'bailian' ? 'text-embedding-v4' : 'text-embedding-3-small');
+    (provider === 'bailian' || isQwen ? 'text-embedding-v3' : 'text-embedding-3-small');
 
   const mappedDim = () => {
     if (embedModel.includes('text-embedding-v4')) return 1024;
+    if (embedModel.includes('text-embedding-v3')) return 1024;
     if (embedModel.includes('text-embedding-3')) {
       return embedModel.includes('large') ? 3072 : 1536;
     }

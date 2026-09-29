@@ -63,12 +63,9 @@ services:
       - "${QDRANT_BIND:-127.0.0.1}:${QDRANT_PORT:-6333}:6333"
     volumes:
       - sellsim-qdrant-data:/qdrant/storage
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:6333/health >/dev/null 2>&1 || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 15s
+    # 注意：Qdrant 官方镜像不含 curl/wget，故不设 healthcheck（否则误报 unhealthy）；
+    # server 对 qdrant 用 service_started 即可，RAG 连接失败会自动回退到关键词知识库。
+    # 如需探活可改用 `bash -c 'exec 3<>/dev/tcp/127.0.0.1/6333'`。
 
   # ---------- 后端 API（Express + Prisma + MySQL）----------
   server:
@@ -85,7 +82,7 @@ services:
       redis:
         condition: service_started
       qdrant:
-        condition: service_healthy
+        condition: service_started
         required: false
     environment:
       TZ: Asia/Shanghai

@@ -376,11 +376,20 @@ export async function generateAiReply(
   }
 
   const parsed = parseAiJson(finalContent);
-  const reply = (parsed.reply || '').trim();
-  const needHuman = parsed.need_human === true || !reply;
+  let reply = (parsed.reply || '').trim();
+  const needHuman = parsed.need_human === true;
   const category = ['order', 'refund', 'install', 'connection', 'plan', 'other'].includes(parsed.category || '')
     ? (parsed.category as string)
     : 'other';
+
+  // 模型偶发不按 JSON 输出、直接给散文时：不能因此判定转人工。把这段自然语言透传给用户，
+  // 而不是丢弃成 FALLBACK。转人工仅当模型明确标记 need_human=true（见系统提示词收紧规则）。
+  if (!reply && finalContent.trim() && !/^\s*\{/.test(finalContent)) {
+    reply = finalContent
+      .replace(/^\s*```(?:json)?\s*/i, '')
+      .replace(/\s*```\s*$/i, '')
+      .trim();
+  }
 
   console.log(`[ai] provider=${cfg.provider} model=${cfg.model} latency=${Date.now() - t0}ms needHuman=${needHuman} category=${category} token=${token}\n[ai] prompt=${JSON.stringify(messages.map((m) => ({ role: m.role, content: (m as any).content, tool_calls: (m as any).tool_calls })))}\n[ai] raw=${finalContent}`);
 
