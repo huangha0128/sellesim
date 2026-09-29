@@ -85,11 +85,13 @@ export function initChatHub(server: http.Server, auth: SubscribeAuth) {
     });
   });
 
-  wss.on('connection', (rawSocket: WebSocket) => {
+  wss.on('connection', (rawSocket: WebSocket, req: http.IncomingMessage) => {
     const socket = rawSocket as ChatSocket & { _lastPong: number };
     socket.subscribedSessions = new Set();
     socket._lastPong = Date.now();
-    const token = new URL(socket.url, 'http://localhost').searchParams.get('token') || '';
+    // 注意：服务端 socket 上并没有 socket.url（handleUpgrade 后为 undefined），
+    // 必须从 upgrade 请求 req.url 里取 token，否则永远取不到 → 一律认证失败。
+    const token = new URL(req.url || '/', 'http://localhost').searchParams.get('token') || '';
     const identity = parseIdentity(token);
     if (!identity) {
       wsSend(socket, { type: 'error', message: '认证失败' });
