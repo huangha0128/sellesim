@@ -1,5 +1,6 @@
 // const BASE_URL = 'https://www.bjyyxx.com/api';
 const BASE_URL = 'http://8.138.193.6/api';
+// const BASE_URL = 'http://localhost:6660/api';
 
 import { pickCountryName } from './countryLocales';
 
@@ -175,8 +176,8 @@ export const api = {
   async closeChat(id) {
     return request('POST', `/chat/sessions/${id}/close`, {});
   },
-  async pollChatMessages(id, afterId) {
-    return request('GET', `/chat/sessions/${id}/messages?afterId=${encodeURIComponent(afterId || '')}`);
+  async pollChatMessages(id, since) {
+    return request('GET', `/chat/sessions/${id}/messages?since=${encodeURIComponent(since || '')}`);
   },
 
   // ===== 客服 WebSocket 连接 =====

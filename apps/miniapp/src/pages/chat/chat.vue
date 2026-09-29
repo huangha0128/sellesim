@@ -5,6 +5,16 @@
     <view v-else-if="status === 'human'" class="status-banner human">{{ $t('chat.humanNotice') }}</view>
     <view v-else-if="!messageCount" class="status-banner ai">{{ $t('chat.emptyHint') }}</view>
 
+    <!-- 新会话快捷入口 -->
+    <view v-if="status === 'ai' && !messageCount" class="quick-area">
+      <view class="quick-title">{{ $t('chat.quickTitle') }}</view>
+      <view class="quick-grid">
+        <view class="quick-card" v-for="q in quickActions" :key="q.key" @tap="onQuick(q.prompt)">
+          <text class="quick-label">{{ q.label }}</text>
+        </view>
+      </view>
+    </view>
+
     <!-- 消息列表 -->
     <scroll-view class="msg-list" scroll-y :scroll-into-view="scrollAnchor" scroll-with-animation>
       <view class="msg-wrap">
@@ -102,6 +112,14 @@ export default {
     },
     scrollAnchor() {
       return 'bottom-anchor'
+    },
+    quickActions() {
+      return [
+        { key: 'orders', label: this.$t('chat.quick.orders'), prompt: this.$t('chat.quickPrompts.orders') },
+        { key: 'data', label: this.$t('chat.quick.data'), prompt: this.$t('chat.quickPrompts.data') },
+        { key: 'install', label: this.$t('chat.quick.install'), prompt: this.$t('chat.quickPrompts.install') },
+        { key: 'faq', label: this.$t('chat.quick.faq'), prompt: this.$t('chat.quickPrompts.faq') }
+      ]
     }
   },
   onShow() {
@@ -179,16 +197,20 @@ export default {
         this.scrollBottom()
       }
     },
-    // WS 重连/订阅后，用「当前已有消息的最大真实 id」走 HTTP 增量兜底，确保不漏任何人工回复
+    // WS 重连/订阅后，用「当前已有消息的最新 createdAt」走 HTTP 时间游标增量兜底，确保不漏任何人工回复
+    // （不再用 id 增量：chatMessage.id 是随机 UUID，字符串比较与创建顺序无关）
     async fetchIncremental() {
       if (!this.sessionId) return
-      let lastId = ''
+      let latestTs = ''
       for (const m of this.messages) {
         if (!m.id || String(m.id).startsWith('local_')) continue
-        if (String(m.id) > String(lastId)) lastId = String(m.id)
+        const ts = m.createdAt ? Date.parse(m.createdAt) : NaN
+        if (ts && String(ts) > String(latestTs)) latestTs = String(ts)
       }
+      // 首帧尚未取到时间游标：全量合并兜底
+      if (!latestTs) return this.loadHistory()
       try {
-        const res = await api.pollChatMessages(this.sessionId, lastId)
+        const res = await api.pollChatMessages(this.sessionId, latestTs)
         if (res.code !== 0) return
         if (res.data && res.data.session && res.data.session.status) {
           this.status = res.data.session.status
@@ -267,7 +289,7 @@ export default {
       if (this.pollTimer) return
       this.pollTimer = setInterval(() => {
         this.fetchIncremental()
-      }, 8000)
+      }, 3000)
     },
     stopPolling() {
       if (this.pollTimer) {
@@ -298,6 +320,11 @@ export default {
         this.wsReconnectTimer = null
         this.connectWs()
       }, 3000)
+    },
+    onQuick(prompt) {
+      // 快捷入口：填入预置问题并直接发送
+      this.input = prompt
+      this.send()
     },
     onInput() {
       this.$forceUpdate()
@@ -405,6 +432,47 @@ export default {
     background: $teal-light;
     color: $teal-deep;
   }
+}
+
+/* ============ 快捷入口 ============ */
+.quick-area {
+  margin: 20rpx 24rpx 0;
+  padding: 24rpx;
+  background: $bg-card;
+  border-radius: $radius;
+  box-shadow: $shadow-sm;
+}
+
+.quick-title {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: $ink;
+  margin-bottom: 20rpx;
+}
+
+.quick-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+}
+
+.quick-card {
+  width: calc(50% - 8rpx);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22rpx 16rpx;
+  border-radius: $radius-sm;
+  background: $brand-light;
+  box-shadow: $shadow-sm;
+  box-sizing: border-box;
+}
+
+.quick-label {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: $brand;
+  text-align: center;
 }
 
 /* ============ 消息列表 ============ */

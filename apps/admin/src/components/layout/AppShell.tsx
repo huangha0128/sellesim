@@ -16,6 +16,7 @@ import {
   Settings,
   UsersRound,
   MessagesSquare,
+  BookOpenText,
   LogOut,
   type LucideIcon,
 } from 'lucide-react';
@@ -38,6 +39,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/tiger-sync', label: 'Tiger 同步', icon: RefreshCw },
   { href: '/subjects', label: '开放平台主体', icon: UsersRound },
   { href: '/support', label: '在线客服', icon: MessagesSquare },
+  { href: '/knowledge', label: '知识库管理', icon: BookOpenText },
   { href: '/settings', label: '系统设置', icon: Settings },
 ];
 
@@ -51,6 +53,7 @@ const TITLE_MAP: Record<string, string> = {
   '/tiger-sync': 'Tiger 同步',
   '/subjects': '开放平台主体',
   '/support': '在线客服',
+  '/knowledge': '知识库管理',
   '/settings': '系统设置',
 };
 

@@ -30,13 +30,15 @@ export default {
     guide: 'Guía de instalación eSIM',
     email: 'Mi correo electrónico',
     faq: 'Preguntas frecuentes',
+    troubleshooting: 'Solución de problemas',
     esimDetail: 'Detalles eSIM',
     esimCard: 'Detalles de la tarjeta eSIM',
     about: 'Sobre nosotros',
     supportedModels: 'Dispositivos compatibles eSIM',
     usageNotice: 'Aviso de uso eSIM',
     contact: 'Contáctanos',
-    chat: 'Soporte en línea'
+    chat: 'Soporte en línea',
+    pkgTypeIntro: 'Introducción al tipo de plan'
   },
   index: {
     slogan: 'Datos en más de 200 destinos del mundo',
@@ -81,6 +83,7 @@ export default {
     allOrders: 'Todos los pedidos',
     menuEmail: 'Mi correo electrónico',
     menuFaq: 'Preguntas frecuentes',
+    menuTroubleshooting: 'Solución de problemas',
     menuEsims: 'Mis eSIM',
     menuOrders: 'Mis pedidos',
     menuGuide: 'Instalación y activación',
@@ -116,7 +119,20 @@ export default {
     humanNotice: 'Un agente humano te está ayudando',
     sendFailed: 'Error al enviar, inténtalo de nuevo',
     offlineTip: 'Error de red, inténtalo de nuevo',
-    emptyHint: 'Hola, soy Xiao Y. ¿En qué puedo ayudarte?'
+    emptyHint: 'Hola, soy Xiao Y. ¿En qué puedo ayudarte?',
+    quickTitle: '¿Cómo puedo ayudar?',
+    quick: {
+      orders: 'Estado del pedido',
+      data: 'Datos restantes',
+      install: 'Instalación eSIM',
+      faq: 'Preguntas frecuentes'
+    },
+    quickPrompts: {
+      orders: 'Revisar mi estado de pedido',
+      data: '¿Cuántos datos me quedan?',
+      install: '¿Cómo instalo eSIM?',
+      faq: '¿Hay preguntas frecuentes?'
+    }
   },
   about: {
     slogan: 'Datos globales, cómpralos y úsalos al instante',
@@ -471,6 +487,52 @@ export default {
             a: 'La validez se cuenta desde la fecha de compra; los días exactos se muestran en la página de detalle del plan. Al recargar, se añaden datos y se extiende la caducidad.'
           }
         ]
+      }
+    ]
+  },
+  troubleshooting: {
+    title: 'Solución de problemas',
+    eyebrow: 'CENTRO DE AYUDA',
+    sub: 'Soluciones rápidas a problemas comunes de instalación, activación y red',
+    searchPlaceholder: 'Buscar: activación / escaneo / roaming',
+    searchEmptyTitle: 'No se encontraron preguntas',
+    searchEmptySub: 'Prueba con palabras como «activación», «escaneo» o «roaming»',
+    items: [
+      {
+        q: '¿Qué hago si aparece el error "No se pudo agregar un plan celular"?',
+        a: 'Este mensaje suele indicar que ya has añadido un eSIM para el mismo operador. Elimina el perfil eSIM existente, conéctate al Wi-Fi y vuelve a escanear el código QR o introduce el código de activación manualmente. Si sigue fallando, confirma que tu teléfono no esté bloqueado por el operador/red y contacta con soporte para verificar la compatibilidad del dispositivo.'
+      },
+      {
+        q: '¿Por qué no puedo instalar un eSIM internacional en un dispositivo compatible antes de salir del país?',
+        a: 'Algunos dispositivos continentales (como los iPhone de China) pueden restringir añadir eSIM de operadores extranjeros mientras estás en territorio continental, por políticas del sistema/operador y no por el eSIM en sí. Te recomendamos instalar y activar al llegar a tu destino, conectado al Wi-Fi local.'
+      },
+      {
+        q: '¿Por qué mi eSIM / tarjeta SIM física sigue en estado "Activando"?',
+        a: 'Un estado "Activando" atascado suele deberse a que la red o el operador no ha enviado los datos a tiempo. Mantente conectado al menos 10 minutos, prueba a activar/desactivar los datos celulares o a reseleccionar el eSIM en Ajustes. Si no cambia nada, reinicia el teléfono y contacta con soporte.'
+      },
+      {
+        q: '¿Qué hago si aparece el error "No se pudo completar el cambio de número"?',
+        a: 'Este mensaje generalmente no está relacionado con el eSIM, sino con un fallo al cambiar el número/plan en el dispositivo. Prueba a reiniciar el teléfono, actualizar a la última versión o reactivar el eSIM en Ajustes. Si el problema continúa, contacta con soporte para más ayuda.'
+      },
+      {
+        q: '¿Qué hago con el error "Error de autenticación PDP"?',
+        a: '"Error de autenticación PDP" significa que el dispositivo no puede conectarse a la red de datos móviles. Verifica que "Datos en roaming" esté activado y selecciona manualmente la red del operador local en Ajustes; también asegúrate de que el plan esté vigente y la data no esté agotada. Si persiste, reinicia el dispositivo o reinstala el eSIM.'
+      },
+      {
+        q: '¿Qué hago si la activación del eSIM se queda bloqueada en iOS?',
+        a: 'Conéctate al Wi-Fi y mantén una señal estable; en Ajustes → Celular → Datos celulares, confirma que el eSIM esté activado; prueba a apagar y encender los datos celulares o a reiniciar el teléfono. Si sigue bloqueado, sigue los pasos del estado "Activando" de arriba.'
+      },
+      {
+        q: '¿Qué hago si no puedo escanear el código QR del eSIM?',
+        a: 'Mantén la pantalla limpia, con buena iluminación, y coloca todo el código QR dentro del marco. Si aún no escanea, usa la opción "Introducción manual": selecciona la entrada manual en la interfaz de la cámara e introduce la dirección SM-DP+ y el código de activación.'
+      },
+      {
+        q: 'La aplicación dice que el eSIM está instalado, pero no puedo encontrarlo. ¿Qué hago?',
+        a: 'Ve a Ajustes → Celular / administrador de SIM y busca el eSIM entre tus números/planes añadidos. Un eSIM instalado no aparece como una tarjeta física; revísalo en los ajustes celulares del sistema. Si no aparece, reinicia el teléfono o elimínalo y vuelve a instalarlo.'
+      },
+      {
+        q: '¿Qué hago si no puedo eliminar un eSIM en un dispositivo Samsung Galaxy?',
+        a: 'Los dispositivos Galaxy activan "Bloqueo automático" por defecto, lo que puede impedir eliminar el eSIM. En Ajustes → Conexiones → Administrador de tarjetas SIM, desactiva el "Bloqueo automático" de ese eSIM antes de eliminarlo; también confirma que el teléfono esté desbloqueado de red y contacta con el operador o el soporte si es necesario.'
       }
     ]
   },
@@ -972,6 +1034,18 @@ export default {
           'Si tienes cualquier problema, contáctanos por «Yo → Contactar con soporte» o por correo, y te ayudaremos lo antes posible.'
         ]
       }
+    ]
+  },
+  pkgTypeIntro: {
+    eyebrow: 'TIPO DE PLAN',
+    title: 'Introducción al tipo de plan',
+    sub: 'Lee las notas importantes a continuación antes de comprar',
+    items: [
+      'La eSIM requiere un dispositivo compatible. Actívala dentro de los 90 días posteriores a la compra.',
+      'El plan eSIM comprado solo es válido dentro del área de cobertura del destino.',
+      'Debes activar manualmente el «roaming de datos» en los ajustes del teléfono para conectarte a la red local.',
+      'Consulta tu correo electrónico para obtener más información e instrucciones de instalación.',
+      'Si la eSIM comprada no funciona, ponte en contacto con el soporte en línea o envía un correo a support@bjyyxx.com.'
     ]
   }
 }

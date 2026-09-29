@@ -45,6 +45,14 @@ async function main() {
   const result = await syncAllFromTiger(prisma);
   console.log('[bootstrap] sync result:', JSON.stringify(result));
   await initSubjectAccounts();
+  // Seed the AI knowledge base (compiled from TypeScript). Failure is non-fatal.
+  try {
+    const { seedKb } = await import('./dist/services/knowledge.js');
+    await seedKb(prisma);
+    console.log('[bootstrap] AI knowledge base ensured.');
+  } catch (e) {
+    console.warn('[bootstrap] seedKb skipped:', e?.message || e);
+  }
 }
 
 main()

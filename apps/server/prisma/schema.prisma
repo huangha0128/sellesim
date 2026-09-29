@@ -429,3 +429,15 @@ model SubjectRecharge {
 
   @@index([subjectId, createdAt])
 }
+
+// AI knowledge base: grounded FAQ entries used by the AI customer service.
+model KbEntry {
+  id        String   @id @default(uuid())
+  category  String   // install | refund | connection | plan | order | other
+  question  String   @db.VarChar(255)
+  answer    String   @db.Text
+  enabled   Boolean  @default(true)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

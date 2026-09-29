@@ -170,12 +170,14 @@ const FALLBACK_REPLY = '抱歉，我暂时无法完成回复。已为您转接�
 
 /**
  * Generate an AI reply for a conversation history.
+ * opts.kbContext: optional grounded knowledge (KB) text appended to the system prompt.
  * Returns the reply text plus the structured escalation judgment and full
  * request/response dumps for observability.
  */
 export async function generateAiReply(
   prisma: PrismaClient,
   history: ChatMsg[],
+  opts?: { kbContext?: string },
 ): Promise<AiReply> {
   const cfg = await loadAiConfig(prisma);
 
@@ -190,7 +192,12 @@ export async function generateAiReply(
     };
   }
 
-  const messages: ChatMsg[] = [{ role: 'system', content: cfg.systemPrompt }, ...history];
+  let systemPrompt = cfg.systemPrompt;
+  if (opts?.kbContext) {
+    systemPrompt = `${systemPrompt}\n\n## 知识库（优先采用）\n${opts.kbContext}`;
+  }
+
+  const messages: ChatMsg[] = [{ role: 'system', content: systemPrompt }, ...history];
 
   const requestDump = JSON.stringify({ url: `${cfg.baseUrl}/chat/completions`, model: cfg.model, messages });
   const t0 = Date.now();

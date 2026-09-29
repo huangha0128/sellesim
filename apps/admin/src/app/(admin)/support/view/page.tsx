@@ -145,8 +145,13 @@ export default function SupportViewPage() {
     };
 
     ensureWs();
+
+    // HTTP 轮询兜底：WS 不可达/不稳定时仍能实时刷新。load(true) 全量替换+天然按 id 去重。
+    const pollTimer = setInterval(() => load(true), 5000);
+
     return () => {
       closed = true;
+      clearInterval(pollTimer);
       if (reconnectTimer) clearTimeout(reconnectTimer);
       try { ws?.close(); } catch { /* ignore */ }
       ws = null;

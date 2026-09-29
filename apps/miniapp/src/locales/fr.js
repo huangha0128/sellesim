@@ -30,13 +30,15 @@ export default {
     guide: 'Guide d\'installation eSIM',
     email: 'Mon adresse e-mail',
     faq: 'FAQ',
+    troubleshooting: 'Dépannage',
     esimDetail: 'Détails eSIM',
     esimCard: 'Détails de la carte eSIM',
     about: 'À propos',
     supportedModels: 'Modèles compatibles eSIM',
     usageNotice: 'Avis d\'utilisation eSIM',
     contact: 'Nous contacter',
-    chat: 'Assistance en ligne'
+    chat: 'Assistance en ligne',
+    pkgTypeIntro: 'Présentation du type de forfait'
   },
   index: {
     slogan: 'Données dans 200+ destinations dans le monde',
@@ -81,6 +83,7 @@ export default {
     allOrders: 'Toutes les commandes',
     menuEmail: 'Mon adresse e-mail',
     menuFaq: 'FAQ',
+    menuTroubleshooting: 'Dépannage',
     menuEsims: 'Mes eSIM',
     menuOrders: 'Mes commandes',
     menuGuide: 'Installation et activation',
@@ -116,7 +119,20 @@ export default {
     humanNotice: 'Un agent humain vous aide',
     sendFailed: 'Échec de l\'envoi, veuillez réessayer',
     offlineTip: 'Erreur réseau, veuillez réessayer',
-    emptyHint: 'Bonjour, je suis Xiao Y. Comment puis-je vous aider ?'
+    emptyHint: 'Bonjour, je suis Xiao Y. Comment puis-je vous aider ?',
+    quickTitle: 'Comment puis-je aider',
+    quick: {
+      orders: 'Statut commande',
+      data: 'Données restantes',
+      install: 'Installation eSIM',
+      faq: 'FAQ'
+    },
+    quickPrompts: {
+      orders: 'Vérifier le statut de ma commande',
+      data: 'Combien de données me reste-t-il',
+      install: 'Comment installer eSIM ?',
+      faq: 'Quelles sont les questions fréquentes ?'
+    }
   },
   about: {
     slogan: 'Données mondiales, achetez et utilisez immédiatement',
@@ -471,6 +487,52 @@ export default {
             a: 'La validité est comptée à partir de la date d\'achat ; les jours exacts sont affichés sur la page de détail du forfait. Lors du réapprovisionnement, les données sont ajoutées et l\'expiration est prolongée.'
           }
         ]
+      }
+    ]
+  },
+  troubleshooting: {
+    title: 'Dépannage',
+    eyebrow: 'CENTRE D\'AIDE',
+    sub: 'Solutions rapides pour l\'eSIM : installation, activation et réseau',
+    searchPlaceholder: 'Recherche : activation / scan / itinérance',
+    searchEmptyTitle: 'Aucune question trouvée',
+    searchEmptySub: 'Essayez des mots-clés comme « activation », « scan » ou « itinérance »',
+    items: [
+      {
+        q: 'Que faire en cas d\'erreur « Impossible d\'ajouter un forfait cellulaire » ?',
+        a: 'Ce message indique généralement que vous avez déjà ajouté un eSIM pour ce même opérateur. Supprimez le profil eSIM existant, connectez-vous au Wi-Fi, puis scannez à nouveau le QR code ou saisissez le code d\'activation manuellement. Si l\'ajout échoue toujours, vérifiez que votre téléphone n\'est pas verrouillé par l\'opérateur/le réseau et contactez le support pour valider la compatibilité.'
+      },
+      {
+        q: 'Pourquoi ne puis-je pas installer un eSIM international sur un appareil compatible Chine continentale avant mon départ ?',
+        a: 'Certains appareils grand public (tels que les iPhone continentaux) peuvent limiter l\'ajout d\'eSIM d\'opérateurs étrangers tant qu\'ils sont en Chine continentale, en raison de politiques système/opérateur et non de l\'eSIM lui-même. Installez et activez plutôt à destination, connecté au Wi-Fi local.'
+      },
+      {
+        q: 'Pourquoi mon eSIM / ma carte SIM physique reste-t-elle en « Activation en cours » ?',
+        a: 'Un statut « Activation en cours » bloqué vient généralement d\'un envoi de données tardif par le réseau ou l\'opérateur. Restez connecté au moins 10 minutes, essayez d\'activer/désactiver les données cellulaires, ou resélectionnez l\'eSIM dans les paramètres. Si rien ne change, redémarrez votre téléphone et contactez le support.'
+      },
+      {
+        q: 'Que faire en cas d\'erreur « Impossible de terminer le changement de numéro » ?',
+        a: 'Ce message n\'est généralement pas lié à l\'eSIM, mais à un échec de changement de numéro/forfait côté appareil. Essayez de redémarrer le téléphone, de mettre à jour le système, ou de réactiver l\'eSIM dans les paramètres. Si le problème persiste, contactez le support.'
+      },
+      {
+        q: 'Que faire en cas d\'erreur « Échec d\'authentification PDP » ?',
+        a: '« Échec d\'authentification PDP » signifie que l\'appareil ne peut pas se connecter au réseau de données mobiles. Vérifiez que « Itinérance des données » est activé et sélectionnez manuellement le réseau de l\'opérateur local dans les paramètres ; assurez-vous aussi que le forfait est valide et que la data n\'est pas épuisée. Sinon, redémarrez l\'appareil ou réinstallez l\'eSIM.'
+      },
+      {
+        q: 'Que faire si l\'activation de l\'eSIM bloque sur iOS ?',
+        a: 'Connectez-vous au Wi-Fi et gardez un signal stable ; dans Réglages → Cellulaire → Données cellulaires, confirmez que l\'eSIM est activé ; essayez de couper/relancer les données cellulaires ou de redémarrer le téléphone. Si cela bloque toujours, suivez les étapes du statut « Activation en cours » ci-dessus.'
+      },
+      {
+        q: 'Que faire si je ne peux pas scanner le QR code eSIM ?',
+        a: 'Gardez l\'écran net, avec un bon éclairage, et placez tout le QR code dans le cadre. Si le scan échoue encore, utilisez l\'option « Saisie manuelle » : dans l\'interface caméra, choisissez la saisie manuelle et entrez l\'adresse SM-DP+ et le code d\'activation.'
+      },
+      {
+        q: 'L\'application indique que l\'eSIM est installé, mais je ne le trouve pas. Que faire ?',
+        a: 'Allez dans Réglages → Cellulaire / gestionnaire de SIM et cherchez l\'eSIM parmi vos numéros/forfaits ajoutés. Un eSIM installé n\'apparaît pas comme une carte physique ; vérifiez dans les réglages cellulaires système. S\'il est introuvable, redémarrez le téléphone ou supprimez puis réinstallez.'
+      },
+      {
+        q: 'Que faire si je ne peux pas supprimer un eSIM sur un appareil Samsung Galaxy ?',
+        a: 'Les appareils Galaxy activent « Verrouillage automatique » par défaut, ce qui peut bloquer la suppression de l\'eSIM. Dans Réglages → Connexions → Gestionnaire de cartes SIM, désactivez « Verrouillage automatique » pour cet eSIM avant de le supprimer ; vérifiez aussi que le téléphone est débloqué côté réseau et contactez l\'opérateur ou le support si besoin.'
       }
     ]
   },
@@ -972,6 +1034,18 @@ export default {
           'En cas de problème, veuillez nous contacter via « Moi → Contacter le support » ou par e-mail, et nous vous aiderons dès que possible.'
         ]
       }
+    ]
+  },
+  pkgTypeIntro: {
+    eyebrow: 'TYPE DE FORFAIT',
+    title: 'Présentation du type de forfait',
+    sub: 'Veuillez lire les notes importantes ci-dessous avant l\'achat',
+    items: [
+      'L\'eSIM nécessite un appareil compatible. Veuillez l\'activer dans les 90 jours suivant l\'achat.',
+      'Le forfait eSIM acheté n\'est valable que dans la zone de couverture de la destination.',
+      'Vous devez activer manuellement « l\'itinérance des données » dans les réglages de votre téléphone pour vous connecter au réseau local.',
+      'Veuillez consulter votre e-mail pour plus d\'informations et d\'instructions d\'installation.',
+      'Si l\'eSIM achetée ne fonctionne pas, veuillez contacter le support en ligne ou envoyer un e-mail à support@bjyyxx.com.'
     ]
   }
 }

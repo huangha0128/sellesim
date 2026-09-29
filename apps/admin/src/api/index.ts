@@ -172,13 +172,17 @@ export interface Card {
   iccid: string;
   remark?: string;
   used?: boolean;
+  /** 被标记为不可用（黑名单），取卡时跳过；退款拉黑与手动标记均置为 true */
+  blocked?: boolean;
+  /** refund=退款永久拉黑；admin=后台手动标记不可用（可解除） */
+  blockReason?: string | null;
   createdAt?: string;
 }
 
 export interface CardListResult {
   mode: 'tiger' | 'mock';
   cards: Card[];
-  stats: { total: number; available: number; used: number; envOnly: number };
+  stats: { total: number; available: number; used: number; blocked: number; envOnly: number };
 }
 
 export interface DashboardStats {
@@ -326,6 +330,8 @@ export const adminApi = {
   getCards: () => http.get('/admin/cards'),
   addCards: (iccids: string[], remark?: string) => http.post('/admin/cards', { iccids, remark }),
   deleteCard: (iccid: string) => http.delete(`/admin/cards/${iccid}`),
+  blockCard: (iccid: string) => http.post(`/admin/cards/${iccid}/block`, {}),
+  unblockCard: (iccid: string) => http.delete(`/admin/cards/${iccid}/block`),
 
   getCountries: (params?: any) => http.get('/admin/countries', { params }),
   createCountry: (data: any) => http.post('/admin/countries', data),
@@ -374,6 +380,22 @@ export const adminApi = {
   replySupportSession: (id: string, content: string) =>
     http.post(`/admin/chat/sessions/${id}/messages`, { content }),
   closeSupportSession: (id: string) => http.post(`/admin/chat/sessions/${id}/close`),
+
+  // ---- AI 知识库管理 ----
+  getKbEntries: (params?: { keyword?: string; category?: string; enabled?: string; page?: number; pageSize?: number }) =>
+    http.get('/admin/kb', { params }),
+  createKbEntry: (data: {
+    category: string;
+    question: string;
+    answer: string;
+    enabled?: boolean;
+    sortOrder?: number;
+  }) => http.post('/admin/kb', data),
+  updateKbEntry: (
+    id: string,
+    data: Partial<{ category: string; question: string; answer: string; enabled: boolean; sortOrder: number }>,
+  ) => http.put(`/admin/kb/${id}`, data),
+  deleteKbEntry: (id: string) => http.delete(`/admin/kb/${id}`),
 
   // ---- Open API v2：主体 / 密钥 / 定价 ----
   getSubjects: () => http.get('/admin/subjects'),

@@ -17,6 +17,7 @@ import openRoutes from './routes/open';
 import openAuthRoutes from './routes/open-auth';
 import chatRoutes from './routes/chat';
 import adminChatRoutes from './routes/admin-chat';
+import adminKbRoutes from './routes/admin-kb';
 import { initChatHub, type ChatSocket } from './services/chatHub';
 import { refreshPackageCache, PACKAGE_REFRESH_INTERVAL_MS } from './tiger/view';
 import { retryPendingWebhooks, retryPendingSubjectWebhooks } from './services/webhook';
@@ -52,6 +53,7 @@ app.use('/api/open/v1', openAuthRoutes(prisma)); // public: POST /auth/login (po
 app.use('/api/open/v1', openRoutes(prisma)); // protected: openAuth (key or portal JWT)
 app.use('/api/chat', chatRoutes(prisma)); // user-facing AI + human support chat
 app.use('/api/admin/chat', adminChatRoutes(prisma)); // admin support session management
+app.use('/api/admin/kb', adminKbRoutes(prisma)); // admin AI knowledge base management
 
 // 开放平台公开文档（免鉴权）：/open-api 浏览器直接访问
 app.use('/open-api', express.static(path.join(__dirname, '..', 'public', 'open-api')));

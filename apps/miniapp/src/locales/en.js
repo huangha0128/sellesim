@@ -30,13 +30,15 @@ export default {
     guide: 'eSIM Setup Guide',
     email: 'My Email',
     faq: 'FAQ',
+    troubleshooting: 'Troubleshooting',
     esimDetail: 'eSIM Details',
     esimCard: 'eSIM Card Details',
     about: 'About Us',
     supportedModels: 'Supported eSIM Devices',
     usageNotice: 'eSIM Usage Notice',
     contact: 'Contact Us',
-    chat: 'Online Support'
+    chat: 'Online Support',
+    pkgTypeIntro: 'Plan Type Introduction'
   },
   index: {
     slogan: 'Data in 200+ destinations worldwide',
@@ -82,6 +84,7 @@ export default {
     menuGuide: 'eSIM Setup Guide',
     menuEmail: 'My Email',
     menuFaq: 'FAQ',
+    menuTroubleshooting: 'Troubleshooting',
     menuAbout: 'About YYeSim',
     menuContact: 'Contact Us',
     menuLanguage: 'Language / 语言',
@@ -114,7 +117,20 @@ export default {
     humanNotice: 'A human agent is helping you',
     sendFailed: 'Failed to send, please retry',
     offlineTip: 'Network error, please retry',
-    emptyHint: 'Hi, I am Xiao Y. How can I help you?'
+    emptyHint: 'Hi, I am Xiao Y. How can I help you?',
+    quickTitle: 'How can I help',
+    quick: {
+      orders: 'Order status',
+      data: 'Data left',
+      install: 'eSIM install',
+      faq: 'FAQ'
+    },
+    quickPrompts: {
+      orders: 'Check my order status',
+      data: 'How much data do I have left',
+      install: 'How to install eSIM?',
+      faq: 'What are some common questions?'
+    }
   },
   about: {
     slogan: 'Global data, buy and use instantly',
@@ -469,6 +485,52 @@ export default {
             a: 'Validity is counted from the purchase date; exact days are shown on the plan detail page. When you top up, data is added and the expiry is extended.'
           }
         ]
+      }
+    ]
+  },
+  troubleshooting: {
+    title: 'Troubleshooting',
+    eyebrow: 'HELP CENTER',
+    sub: 'Quick fixes for eSIM install, activation & networking',
+    searchPlaceholder: 'Search: activation / scan / roaming',
+    searchEmptyTitle: 'No related questions found',
+    searchEmptySub: 'Try keywords like "activation", "scan" or "roaming"',
+    items: [
+      {
+        q: 'What should I do if I get "Unable to Add Cellular Plan"?',
+        a: 'This usually means you have already added an eSIM for the same carrier. Delete the existing eSIM profile, connect to Wi-Fi, then scan the QR code again or enter the activation code manually. If it still fails, confirm your phone is not carrier/network locked and contact support to verify device compatibility.'
+      },
+      {
+        q: 'Why can\'t I install an overseas eSIM on a mainland eSIM-compatible device before departure?',
+        a: 'Some mainland devices (such as mainland iPhones) may restrict adding overseas carrier eSIMs while still in the mainland, which is caused by the phone system or carrier policy and unrelated to the eSIM itself. We recommend installing and activating after arriving at your destination while connected to local Wi-Fi.'
+      },
+      {
+        q: 'Why does my eSIM / physical SIM card stay in an "Activating" status?',
+        a: 'A stuck "Activating" status is usually because the network or carrier has not pushed the data in time. Keep connected for at least 10 minutes, try toggling cellular data off and on, or reselect the eSIM in Settings. If nothing changes, restart your phone and contact support.'
+      },
+      {
+        q: 'What should I do if I get "Unable to Complete Phone Number Change"?',
+        a: 'This prompt is generally unrelated to the eSIM and is usually a failure to change the number/plan on the device side. Try restarting your phone, updating to the latest system, or re-enabling the eSIM in Settings. If the problem persists, contact support for further help.'
+      },
+      {
+        q: 'What should I do about a "PDP Authentication Failure" error?',
+        a: 'A "PDP Authentication Failure" means the device cannot connect to the mobile data network. Make sure "Data Roaming" is on and manually select the local carrier network in Settings; also ensure the plan is within validity and data has not run out. If it still fails, restart the device or reinstall the eSIM.'
+      },
+      {
+        q: 'What should I do if eSIM activation is stuck on iOS?',
+        a: 'Connect to Wi-Fi and keep the signal stable; in Settings → Cellular → Cellular Data, confirm the eSIM is enabled; try toggling cellular data off and on, or restarting the phone. If it is still stuck, follow the steps for the "Activating" status above.'
+      },
+      {
+        q: 'What should I do if I cannot scan the eSIM QR code?',
+        a: 'Keep the screen clear, ensure good lighting, and place the whole QR code inside the frame. If it still cannot scan, use the "Enter Details Manually" option: select manual entry in the camera interface and input the SM-DP+ address and activation code to complete installation.'
+      },
+      {
+        q: 'The app says the eSIM is installed, but I cannot find it. What should I do?',
+        a: 'Go to Settings → Cellular / SIM manager and look for the eSIM among your added numbers/plans. Once installed, an eSIM does not appear as a physical card, so check in the system cellular settings; if it is missing, restart the phone or delete and reinstall it.'
+      },
+      {
+        q: 'What should I do if I cannot delete an eSIM on a Samsung Galaxy device?',
+        a: 'Galaxy devices enable "Auto Lock" by default, which may block eSIM deletion. In Settings → Connections → SIM card manager, turn off "Auto Lock" for that eSIM before deleting it; also confirm the phone network is unlocked, and contact your carrier or support if needed.'
       }
     ]
   },
@@ -965,6 +1027,18 @@ export default {
           'If you run into any issues, please contact us via "Me → Contact Support" or email, and we will help you as soon as possible.'
         ]
       }
+    ]
+  },
+  pkgTypeIntro: {
+    eyebrow: 'PLAN TYPE',
+    title: 'Plan Type Introduction',
+    sub: 'Please read the important notes below before purchasing',
+    items: [
+      'eSIM requires a compatible device. Please activate within 90 days of purchase.',
+      'The purchased eSIM plan is only valid within the destination coverage area.',
+      'You need to manually enable "Data Roaming" in your phone settings to connect to the local network.',
+      'Please check your email for more installation information and instructions.',
+      'If your purchased eSIM does not work, please contact online support or email support@bjyyxx.com.'
     ]
   }
 }
