@@ -247,7 +247,7 @@ export default function DocsPage() {
             </h1>
             <p className="max-w-xl text-[13px] leading-relaxed text-muted-foreground">
               面向分销伙伴 / 个人主体的 REST API。以 <CodeInline>keyId + keySecret</CodeInline>{' '}
-              调用，可查价、下单、退款、接收回调，数据按主体隔离。每个接口均提供入参出参说明、示例与在线调试入口。
+              调用，可查价、下单、退款，数据按主体隔离。每个接口均提供入参出参说明、示例与在线调试入口。
             </p>
           </header>
 
@@ -327,23 +327,6 @@ export default function DocsPage() {
               <li>充值（支付宝）入账时<b className="text-ink">先抵扣欠款</b>，剩余进入余额；充值后如欠款归零，可继续下单。</li>
               <li>退款<b className="text-ink">优先冲抵欠款</b>，剩余回补余额；仅未激活的交付订单可退。</li>
             </ul>
-          </Section>
-
-          <Section id="webhook" title="七、Webhook 事件回调">
-            <FieldTable
-              title="推送事件"
-              list={[
-                { name: 'order.delivered', type: 'event', required: false, desc: '授信下单交付成功时推送' },
-                { name: 'order.refunded', type: 'event', required: false, desc: '退款完成时推送' },
-              ]}
-              showRequired={false}
-            />
-            <p className="text-muted-foreground">
-              配置 callbackUrl 后推送签名事件，失败自动退避重试，也可通过「重发回调」接口手动补发。
-            </p>
-            <div className="rounded-xl border border-border/70 bg-muted/40 px-4 py-3 text-[12px] text-muted-foreground">
-              提示：旧版 <CodeInline>/api/external</CodeInline> 已标记废弃，新接入统一使用 <CodeInline>{API_BASE}</CodeInline>。接口以实际服务端行为为准。
-            </div>
           </Section>
         </div>
 

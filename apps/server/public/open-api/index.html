@@ -104,16 +104,14 @@
     <div class="sec">写接口</div>
     <a href="#ep-order-create"><span class="m">POST</span>创建订单</a>
     <a href="#ep-refund-create"><span class="m">POST</span>发起退款</a>
-    <a href="#ep-webhook-retry"><span class="m">POST</span>重发回调</a>
-    <div class="sec">事件回调</div>
-    <a href="#webhook"><span class="m">·</span>Webhook 事件</a>
+    <div class="sec">接入</div>
     <a href="#limits"><span class="m">·</span>限流与接入</a>
   </nav>
 </aside>
 
 <main>
   <h1 id="intro">YYeSim 开放平台 API</h1>
-  <p class="lead">面向分销伙伴 / 个人主体的 REST API。接入方以 <code>keyId + keySecret</code> 调用，可自助查价、下单、支付、退款、接收回调，数据按主体隔离。</p>
+  <p class="lead">面向分销伙伴 / 个人主体的 REST API。接入方以 <code>keyId + keySecret</code> 调用，可自助查价、下单、支付、退款，数据按主体隔离。</p>
 
   <div class="note">
     基地址 <span class="baseurl">https://&lt;你的域名&gt;/api/open/v1</span>。
@@ -288,30 +286,7 @@ content = <span class="nv">keyId</span> + <span class="s">"\n"</span> + <span cl
     </div>
   </div>
 
-  <div class="ep" id="ep-webhook-retry">
-    <div class="ep-head"><span class="mtd post">POST</span><span class="ep-path">/orders/:orderNo/webhook/retry</span><span class="ep-auth">鉴权 <b class="ks">Key + 签名</b></span></div>
-    <div class="ep-body">
-      <p class="ep-desc">手动重发一次该订单的 <code>order.paid</code> 回调（仅已支付订单可触发）。</p>
-<pre><span class="s">"data"</span>: { <span class="s">"orderNo"</span>:<span class="s">"DPH..."</span>, <span class="s">"sent"</span>: <span class="k">true</span> }</pre>
-    </div>
-  </div>
-
-  <h2 id="webhook">六、Webhook 事件回调</h2>
-  <p>主体在后台配置 <code>callbackUrl</code> 后，订单支付成功 / 退款成功时，平台会向其推送签名事件。推送可追溯、失败自动退避重试，也可随时通过重发接口手动补发。</p>
-  <table>
-    <tr><th>事件</th><th>触发时机</th></tr>
-    <tr><td><code>order.paid</code></td><td>订单支付成功</td></tr>
-    <tr><td><code>order.refunded</code></td><td>退款完成</td></tr>
-  </table>
-  <p>回调请求体示例（JSON）：</p>
-<pre>{ <span class="s">"event"</span>: <span class="s">"order.paid"</span>,
-  <span class="s">"orderNo"</span>: <span class="s">"DPH..."</span>,
-  <span class="s">"extOrderNo"</span>: <span class="s">null</span>,
-  <span class="s">"status"</span>: <span class="s">"paid"</span>,
-  <span class="s">"paidAt"</span>: <span class="s">"2026-09-16T08:00:00Z"</span>,
-  <span class="s">"totalAmount"</span>: <span class="n">39.9</span> }</pre>
-
-  <h2 id="limits">七、限流与接入</h2>
+  <h2 id="limits">六、限流与接入</h2>
   <table>
     <tr><th>项</th><th>限制</th></tr>
     <tr><td>读接口限流</td><td>每个主体密钥 <b>120 次 / 分钟</b>（滑动窗口）</td></tr>
@@ -320,7 +295,7 @@ content = <span class="nv">keyId</span> + <span class="s">"\n"</span> + <span cl
     <tr><td>nonce 防重放</td><td>同一 nonce 5 分钟内不可重复</td></tr>
     <tr><td>密钥生命周期</td><td>可吊销/轮换/设过期/IP 白名单，由平台后台管理</td></tr>
   </table>
-  <p>接入流程：<b>联系平台管理员开通主体</b>，获取 <code>keyId + keySecret</code> → 配置回调地址 → 按本签名算法调用即可。平台不提供自助注册。</p>
+  <p>接入流程：<b>联系平台管理员开通主体</b>，获取 <code>keyId + keySecret</code> → 按本签名算法调用即可。平台不提供自助注册。</p>
 
   <div class="note">提示：旧版 <code>/api/external</code> 已标记废弃（Deprecation），新接入统一使用本文档的 <code>/api/open/v1</code>。</div>
 

@@ -741,46 +741,51 @@ export default (prisma: PrismaClient) => {
   /** Tiger 卡片池拉取函数（未配置 Tiger 时为 undefined，走本地兜底） */
   const tigerCardFetcher = tigerClient.configured ? () => fetchTigerIccids() : undefined;
 
-  /** GET /api/admin/cards 卡片列表与统计（已使用状态按 esim 表判断） */
+  /** GET /api/admin/cards 卡片列表与统计（已使用状态按 esim 表判断；不可用状态按黑名单判断） */
   router.get('/cards', async (_req: Request, res: Response) => {
     try {
-      const [esims, envCards] = await Promise.all([
+      const [esims, envCards, blacklist] = await Promise.all([
         prisma.esim.findMany({ select: { iccid: true } }),
         getIccidPool(prisma, tigerCardFetcher),
+        prisma.cardBlacklist.findMany({ select: { iccid: true, reason: true } }),
       ]);
       const usedSet = new Set(esims.map((e) => e.iccid));
+      const blockedMap = new Map(blacklist.map((b) => [b.iccid, b.reason]));
+
+      /** 统计：已使用优先，其余按是否被标记不可用区分 */
+      const buildStats = (list: { iccid: string; used: boolean }[], envOnly: number) => {
+        const used = list.filter((c) => c.used).length;
+        const blocked = list.filter((c) => !c.used && blockedMap.has(c.iccid)).length;
+        return { total: list.length, available: list.length - used - blocked, used, blocked, envOnly };
+      };
 
       if (tigerClient.configured) {
         // Tiger 模式：卡片实时来自 Tiger /api/card
         const tigerIccids = await fetchTigerIccids();
-        const list = tigerIccids.map((iccid) => ({ iccid, used: usedSet.has(iccid) }));
-        const used = list.filter((c) => c.used).length;
-        res.json({
-          code: 0,
-          data: {
-            mode: 'tiger',
-            cards: list,
-            stats: { total: list.length, available: list.length - used, used, envOnly: 0 },
-          },
-        });
+        const list = tigerIccids.map((iccid) => ({
+          iccid,
+          used: usedSet.has(iccid),
+          blocked: blockedMap.has(iccid),
+          blockReason: blockedMap.get(iccid) || null,
+        }));
+        res.json({ code: 0, data: { mode: 'tiger', cards: list, stats: buildStats(list, 0) } });
         return;
       }
 
       // mock/本地模式：列表与统计来自本地 card 表 + 环境变量
       const cards = await prisma.card.findMany({ orderBy: { createdAt: 'desc' } });
-      const list = cards.map((c) => ({ ...c, used: usedSet.has(c.iccid) }));
-      const used = list.filter((c) => c.used).length;
+      const list = cards.map((c) => ({
+        ...c,
+        used: usedSet.has(c.iccid),
+        blocked: blockedMap.has(c.iccid),
+        blockReason: blockedMap.get(c.iccid) || null,
+      }));
       res.json({
         code: 0,
         data: {
           mode: 'mock',
           cards: list,
-          stats: {
-            total: list.length,
-            available: list.length - used,
-            used,
-            envOnly: Math.max(0, envCards.length - list.length),
-          },
+          stats: buildStats(list, Math.max(0, envCards.length - list.length)),
         },
       });
     } catch (e: any) {
@@ -824,6 +829,34 @@ export default (prisma: PrismaClient) => {
     const used = await prisma.esim.findFirst({ where: { iccid }, select: { id: true } });
     await prisma.card.delete({ where: { iccid } });
     res.json({ code: 0, data: { deleted: iccid, wasUsed: Boolean(used) } });
+  });
+
+  /** POST /api/admin/cards/:iccid/block 标记未使用的卡片为不可用（等价于已使用，取卡时跳过） */
+  router.post('/cards/:iccid/block', async (req: Request, res: Response) => {
+    const iccid = String(req.params.iccid || '').trim();
+    if (!iccid) return res.json({ code: 1, message: '缺少 ICCID' });
+    const used = await prisma.esim.findFirst({ where: { iccid }, select: { id: true } });
+    if (used) return res.json({ code: 1, message: '该卡片已使用，无需标记不可用' });
+    // 幂等写入：已存在（如退款拉黑）则保留原 reason
+    await prisma.cardBlacklist.upsert({
+      where: { iccid },
+      update: {},
+      create: { iccid, reason: 'admin' },
+    });
+    res.json({ code: 0, data: { iccid, blocked: true } });
+  });
+
+  /** DELETE /api/admin/cards/:iccid/block 解除「不可用」标记（退款拉黑的卡片不可解除） */
+  router.delete('/cards/:iccid/block', async (req: Request, res: Response) => {
+    const iccid = String(req.params.iccid || '').trim();
+    if (!iccid) return res.json({ code: 1, message: '缺少 ICCID' });
+    const row = await prisma.cardBlacklist.findUnique({ where: { iccid } });
+    if (!row) return res.json({ code: 1, message: '该卡片未被标记为不可用' });
+    if (row.reason !== 'admin') {
+      return res.json({ code: 1, message: '该卡片因退款被永久拉黑，不可解除' });
+    }
+    await prisma.cardBlacklist.delete({ where: { iccid } });
+    res.json({ code: 0, data: { iccid, blocked: false } });
   });
 
   /** POST /api/admin/tiger/sync-all 全量同步所有数据 */

@@ -91,6 +91,13 @@
         <text class="menu-txt">{{ $t('profile.menuFaq') }}</text>
         <text class="menu-arrow">›</text>
       </view>
+      <view class="menu-item" hover-class="menu-item--hover" @click="goTroubleshooting">
+        <view class="menu-icon-wrap ic-purple">
+          <image class="menu-icon" :src="toolIcon()" mode="aspectFit" />
+        </view>
+        <text class="menu-txt">{{ $t('profile.menuTroubleshooting') }}</text>
+        <text class="menu-arrow">›</text>
+      </view>
       <view class="menu-item" hover-class="menu-item--hover" @click="switchLanguage">
         <view class="menu-icon-wrap ic-purple">
           <image class="menu-icon" src="/static/icons/prof-settings.png" mode="aspectFit" />
@@ -131,6 +138,11 @@
         <image class="tab-icon" :src="currentTab === 'profile' ? '/static/icons/tab-profile-active.png' : '/static/icons/tab-profile.png'" mode="aspectFit" />
         <text class="tab-label">我的</text>
       </view>
+    </view>
+
+    <!-- 客服悬浮球 -->
+    <view class="cs-float" hover-class="cs-float--hover" @click="goChat">
+      <image class="cs-float-icon" :src="supportIcon()" mode="aspectFit" />
     </view>
   </view>
 </template>
@@ -203,6 +215,14 @@ export default {
     goFaq() {
       uni.navigateTo({ url: '/pages/profile/faq' })
     },
+    goTroubleshooting() {
+      uni.navigateTo({ url: '/pages/profile/troubleshooting' })
+    },
+    toolIcon() {
+      const s =
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#4050C0" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>'
+      return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(s)}`
+    },
     switchLanguage() {
       const items = LOCALES.map((l) => ({ name: l.label, value: l.value }))
       uni.showActionSheet({
@@ -222,6 +242,14 @@ export default {
     },
     goContact() {
       uni.navigateTo({ url: '/pages/profile/contact' })
+    },
+    goChat() {
+      uni.navigateTo({ url: '/pages/chat/chat' })
+    },
+    supportIcon() {
+      const s =
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v-1a8 8 0 0 1 16 0v1"/><rect x="2.6" y="13" width="4.6" height="6.2" rx="2.3"/><rect x="16.8" y="13" width="4.6" height="6.2" rx="2.3"/><path d="M19.1 19.2v.4a3 3 0 0 1-3 3h-2.2"/></svg>'
+      return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(s)}`
     },
     switchTab(tab) {
       if (tab === this.currentTab) return
@@ -510,6 +538,32 @@ export default {
 .tab-item.active .tab-label {
   color: $brand;
   font-weight: 700;
+}
+
+/* ============ 客服悬浮球 ============ */
+.cs-float {
+  position: fixed;
+  right: 32rpx;
+  bottom: calc(150rpx + env(safe-area-inset-bottom));
+  width: 108rpx;
+  height: 108rpx;
+  border-radius: 50%;
+  background: $brand;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10rpx 28rpx rgba(64, 80, 192, 0.32);
+  z-index: 90;
+  transition: transform 0.15s ease;
+
+  &--hover {
+    transform: scale(0.9);
+  }
+}
+
+.cs-float-icon {
+  width: 54rpx;
+  height: 54rpx;
 }
 
 /* ========== 骨架屏（订单统计加载中） ========== */

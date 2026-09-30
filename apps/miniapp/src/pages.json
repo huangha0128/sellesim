@@ -119,6 +119,14 @@
       }
     },
     {
+      "path": "pages/profile/troubleshooting",
+      "style": {
+        "navigationBarTitleText": "故障排除",
+        "navigationBarBackgroundColor": "#F5F7F8",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
       "path": "pages/profile/about",
       "style": {
         "navigationBarTitleText": "关于我们",

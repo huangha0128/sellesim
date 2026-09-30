@@ -4,7 +4,9 @@
 
 - **后端 API 服务**（Express + Prisma + MySQL）
 - **商城小程序**（uni-app + Vue 3，支持 H5 / 微信小程序 / 支付宝小程序）
-- **管理后台**（Vue 3 + Element Plus）
+- **官网**（Vue 3 + Vite）
+- **管理后台**（Next.js 14 + App Router + Tailwind + shadcn/ui，路由前缀 `/backend`）
+- **开放平台伙伴门户**（Vue 3 + Vite，路由前缀 `/partner`）
 - **资源生成工具脚本**（Python 3.10+）
 - **一键部署**（Docker Compose + Caddy 反向代理）
 
@@ -16,7 +18,9 @@
 | --- | --- |
 | 后端 `apps/server` | Node.js + TypeScript + Express + Prisma ORM + MySQL |
 | 商城小程序 `apps/miniapp` | uni-app + Vue 3 + Vite + SCSS |
-| 管理后台 `apps/admin` | Vue 3 + TypeScript + Vite + Element Plus |
+| 官网 `apps/web` | Vue 3 + Vite + Tailwind CSS |
+| 管理后台 `apps/admin` | Next.js 14 + React + Tailwind + shadcn/ui |
+| 伙伴门户 `apps/partner` | Vue 3 + Vite |
 | 工具脚本 `scripts` | Python 3.10+（标准库为主，Pillow 用于图标生成） |
 | 部署 | Docker Compose + Caddy（自动 HTTPS） |
 
@@ -38,11 +42,13 @@ sellsim/
 │   │       ├── static/icons/ # 全部 PNG 图标（无 emoji）
 │   │       ├── utils/api.js  # 后端 API 封装
 │   │       └── pages.json    # 页面与 tabBar 配置
-│   └── admin/                # 管理后台（Vue 3 + Element Plus）
-│       └── src/views/        # Dashboard / Orders / Esims / Countries / Packages / TigerSync
+│   ├── web/                  # 官网（Vue 3 + Vite）
+│   ├── admin/                # 管理后台（Next.js 14 App Router + shadcn/ui）
+│   │   └── src/app/(admin)/  # Dashboard / Orders / Esims / Countries / Packages / Subjects / Settings / Support / TigerSync / Cards
+│   └── partner/              # 开放平台伙伴门户（Vue 3 + Vite）
 ├── scripts/                  # 图标、国旗、AI 生图、兑换码等工具脚本
 ├── .github/workflows/        # GitHub Actions：master 分支自动部署
-├── docker-compose.yml        # server + admin + caddy 编排
+├── docker-compose.yml        # server + admin + web + partner + caddy 编排
 ├── Caddyfile                 # /api/* → server，/backend/* → admin
 └── pnpm-workspace.yaml
 ```
@@ -69,7 +75,7 @@ pnpm db:seed
 
 ### 启动开发环境
 
-同时启动后端、小程序（H5）和管理后台：
+同时启动后端、官网、小程序（H5）和管理后台：
 
 ```bash
 pnpm dev
@@ -80,7 +86,8 @@ pnpm dev
 ```bash
 pnpm dev:server     # 后端 API，http://localhost:6660
 pnpm dev:miniapp    # 小程序 H5，默认 http://localhost:5173
-pnpm dev:admin      # 管理后台，http://localhost:6661（/api 已代理到 6660）
+pnpm dev:admin      # 管理后台，http://localhost:6661/backend/（/api 已代理到 6660）
+pnpm dev:web        # 官网，默认 http://localhost:5174
 ```
 
 > 提示：小程序前端请求地址在 `apps/miniapp/src/utils/api.js` 的 `BASE_URL` 中配置。本地开发时改为 `http://localhost:6660/api`，联调/上线时改为服务器地址。
@@ -88,10 +95,11 @@ pnpm dev:admin      # 管理后台，http://localhost:6661（/api 已代理到 6
 ### 构建生产版本
 
 ```bash
-pnpm build                  # 依次构建 server / miniapp / admin
+pnpm build                  # 依次构建 server / web / miniapp / admin
 pnpm build:server
 pnpm build:miniapp          # H5 产物
-pnpm build:admin
+pnpm build:admin            # 生成 out/（静态导出，部署路径 /backend）
+pnpm build:web
 ```
 
 小程序还可单独构建微信 / 支付宝端：
@@ -174,7 +182,9 @@ docker compose up -d --build
 
 | 服务 | 地址 |
 | --- | --- |
+| 官网（经 Caddy） | `http://<IP>/` |
 | 管理后台（经 Caddy） | `http://<IP>/backend/` |
+| 伙伴门户（经 Caddy） | `http://<IP>/partner/` |
 | 管理后台（直连） | `http://<IP>:6500/backend/` |
 | 后端 API | `http://<IP>:6501/api/`（或经 Caddy `/api/`） |
 

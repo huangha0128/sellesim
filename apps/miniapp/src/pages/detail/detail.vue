@@ -142,7 +142,7 @@
           <text class="info-label">{{ fmt('detail.network') }}</text>
           <text class="info-value desc-inline">{{ pkgDescText }}</text>
         </view>
-        <view class="pkg-type-link" @tap="goGuide">
+        <view class="pkg-type-link" @tap="goPkgTypeIntro">
           <text class="pkg-type-link-text">{{ fmt('detail.pkgTypeIntro') }}</text>
           <text class="pkg-type-link-arrow">›</text>
         </view>
@@ -265,12 +265,27 @@
         </scroll-view>
       </view>
     </view>
+
+    <!-- 套餐类型介绍弹窗 -->
+    <view v-if="showPkgTypeIntro" class="pti-mask" @tap="showPkgTypeIntro = false"></view>
+    <view v-if="showPkgTypeIntro" class="pti-pop">
+      <view class="pti-head">
+        <text class="pti-title">{{ fmt('detail.pkgTypeIntro') }}</text>
+        <view class="pti-close" @tap="showPkgTypeIntro = false">✕</view>
+      </view>
+      <view class="pti-body">
+        <view v-for="(item, i) in pkgTypeIntroItems" :key="i" class="pti-item">
+          <view class="pti-index">{{ i + 1 }}</view>
+          <text class="pti-txt">{{ item }}</text>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
 <script>
 import { api } from '@/utils/api'
-import { setNavTitle, t as translate } from '@/locales'
+import { setNavTitle, t as translate, tRaw } from '@/locales'
 import { currencySymbol } from '@/utils/format'
 import { COVER_GRADIENTS } from '@/theme'
 
@@ -325,10 +340,15 @@ export default {
       drawerSearch: '',
       drawerActiveCat: '历史/热门',
       drawerCategories: ['历史/热门', '跨境组合', '亚洲', '欧洲', '美洲', '非洲', '大洋洲'],
-      drawerAllPackages: []
+      drawerAllPackages: [],
+      showPkgTypeIntro: false
     }
   },
   computed: {
+    // 套餐类型介绍弹窗内容
+    pkgTypeIntroItems() {
+      return tRaw('pkgTypeIntro.items') || []
+    },
     // 天数区固定展示所有可选天数的并集，不再随选中的流量变化
     dayCells() {
       if (!this.allPackages.length) return []
@@ -568,6 +588,9 @@ export default {
     },
     goGuide() {
       uni.navigateTo({ url: '/pages/guide/guide' })
+    },
+    goPkgTypeIntro() {
+      this.showPkgTypeIntro = true
     },
     goSupportedModels() {
       uni.navigateTo({ url: '/pages/supported-models/supported-models' })
@@ -1676,5 +1699,94 @@ export default {
   color: #ffffff;
   font-weight: 700;
   margin-left: 8rpx;
+}
+
+/* ========== 套餐类型介绍抽屉 ========== */
+.pti-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.45);
+  z-index: 300;
+}
+
+.pti-pop {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 80vh;
+  background: #ffffff;
+  border-radius: 32rpx 32rpx 0 0;
+  padding: 36rpx 36rpx calc(28rpx + env(safe-area-inset-bottom));
+  z-index: 301;
+  animation: slideUp 0.3s ease;
+}
+
+.pti-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 24rpx;
+  border-bottom: 1rpx solid $line;
+}
+
+.pti-title {
+  font-size: 32rpx;
+  font-weight: 800;
+  color: $ink;
+}
+
+.pti-close {
+  width: 52rpx;
+  height: 52rpx;
+  border-radius: 50%;
+  background: $bg-card;
+  color: $ink-3;
+  font-size: 26rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pti-body {
+  max-height: 60vh;
+  overflow-y: auto;
+  margin-top: 16rpx;
+}
+
+.pti-item {
+  display: flex;
+  align-items: flex-start;
+  padding: 18rpx 0;
+  border-bottom: 1rpx solid $line;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.pti-index {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: $gradient-brand;
+  color: #ffffff;
+  font-size: 22rpx;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 18rpx;
+  flex-shrink: 0;
+}
+
+.pti-txt {
+  flex: 1;
+  font-size: 25rpx;
+  color: $ink-2;
+  line-height: 1.7;
 }
 </style>

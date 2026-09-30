@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus, Layers, CircleCheckBig, Clock3, ServerCog } from 'lucide-react';
+import { Plus, Layers, CircleCheckBig, Clock3, ServerCog, Ban } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,7 @@ interface CardStats {
   total: number;
   available: number;
   used: number;
+  blocked: number;
   envOnly: number;
 }
 
@@ -53,7 +54,7 @@ function fmt(dt?: string) {
 export default function CardsPage() {
   const [cards, setCards] = useState<CardType[]>([]);
   const [mode, setMode] = useState<'tiger' | 'mock'>('mock');
-  const [stats, setStats] = useState<CardStats>({ total: 0, available: 0, used: 0, envOnly: 0 });
+  const [stats, setStats] = useState<CardStats>({ total: 0, available: 0, used: 0, blocked: 0, envOnly: 0 });
   const [loading, setLoading] = useState(true);
 
   const [addOpen, setAddOpen] = useState(false);
@@ -61,6 +62,7 @@ export default function CardsPage() {
   const [addRemark, setAddRemark] = useState('');
   const [adding, setAdding] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<CardType | null>(null);
+  const [blocking, setBlocking] = useState<string | null>(null);
 
   const hasOperation = mode !== 'tiger';
 
@@ -118,16 +120,35 @@ export default function CardsPage() {
     }
   };
 
+  const handleToggleBlock = async (c: CardType) => {
+    setBlocking(c.iccid);
+    try {
+      if (c.blocked) {
+        await adminApi.unblockCard(c.iccid);
+        toast.success('已恢复可用');
+      } else {
+        await adminApi.blockCard(c.iccid);
+        toast.success('已标记为不可用');
+      }
+      load();
+    } catch (e) {
+      toast.error(getErrorMessage(e, '操作失败'));
+    } finally {
+      setBlocking(null);
+    }
+  };
+
   const statDefs = [
     { label: '卡片总数', value: stats.total, icon: <Layers size={22} />, color: '#5a53e0' },
     { label: '可用', value: stats.available, icon: <CircleCheckBig size={22} />, color: '#2f9e7f' },
     { label: '已使用', value: stats.used, icon: <Clock3 size={22} />, color: '#d98944' },
+    { label: '不可用', value: stats.blocked, icon: <Ban size={22} />, color: '#c0504d' },
     { label: '仅环境变量', value: stats.envOnly, icon: <ServerCog size={22} />, color: '#4f8fd9' },
   ];
 
   return (
     <div className="animate-fade-up space-y-5">
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
         {statDefs.map((s, i) => (
           <Card key={s.label} className="panel-card animate-fade-up" style={{ animationDelay: `${i * 50}ms` }}>
             <CardContent className="flex items-center gap-4 p-5">
@@ -148,7 +169,7 @@ export default function CardsPage() {
           <div>
             <CardTitle className="text-[15px] text-ink">卡片池管理</CardTitle>
             <p className="text-[12px] text-muted-foreground">
-              {mode === 'tiger' ? '卡片实时来自 TigerESIM 平台，只读' : 'ICCID 卡片池，新增即时生效'}
+              {mode === 'tiger' ? '卡片实时来自 TigerESIM 平台，可标记不可用' : 'ICCID 卡片池，新增即时生效'}
             </p>
           </div>
           {hasOperation && (
@@ -168,7 +189,7 @@ export default function CardsPage() {
                   <TableHead>备注</TableHead>
                   <TableHead>状态</TableHead>
                   <TableHead>添加时间</TableHead>
-                  {hasOperation && <TableHead className="text-right">操作</TableHead>}
+                  <TableHead className="text-right">操作</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -176,15 +197,36 @@ export default function CardsPage() {
                   <TableRow key={c.iccid}>
                     <TableCell className="font-mono text-[12.5px]">{c.iccid}</TableCell>
                     <TableCell className="text-muted-foreground">{c.remark || '—'}</TableCell>
-                    <TableCell>{c.used ? <Badge variant="warning">已使用</Badge> : <Badge variant="success">可用</Badge>}</TableCell>
+                    <TableCell>
+                      {c.used ? (
+                        <Badge variant="warning">已使用</Badge>
+                      ) : c.blocked ? (
+                        <Badge variant="destructive">不可用</Badge>
+                      ) : (
+                        <Badge variant="success">可用</Badge>
+                      )}
+                    </TableCell>
                     <TableCell>{fmt(c.createdAt)}</TableCell>
-                    {hasOperation && (
-                      <TableCell align="right">
-                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(c)}>
-                          删除
-                        </Button>
-                      </TableCell>
-                    )}
+                    <TableCell align="right">
+                      <div className="flex justify-end gap-1">
+                        {/* 已使用的卡片无需标记；退款永久拉黑的卡片不可解除 */}
+                        {!c.used && c.blockReason !== 'refund' && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            disabled={blocking === c.iccid}
+                            onClick={() => handleToggleBlock(c)}
+                          >
+                            {c.blocked ? '恢复可用' : '标记不可用'}
+                          </Button>
+                        )}
+                        {hasOperation && (
+                          <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteTarget(c)}>
+                            删除
+                          </Button>
+                        )}
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

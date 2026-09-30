@@ -462,28 +462,11 @@ export const WRITE_ENDPOINTS: EndpointSpec[] = [
     }, null, 2),
     defaultBody: { name: '生产环境', mode: 'live' },
   },
-  {
-    id: 'post-webhook-retry',
-    method: 'POST',
-    path: '/orders/:orderNo/webhook/retry',
-    title: '重发回调',
-    desc: '手动重发该订单的交付回调（order.delivered / order.refunded）。适用于回调丢失或对账补发场景。',
-    auth: 'write',
-    query: [],
-    body: [],
-    response: [
-      { name: 'data', type: 'object', required: true, desc: '重发结果（以实际返回字段为准）' },
-    ],
-    requestExample: codeBlock({}),
-    responseExample: JSON.stringify({ data: { retried: true } }, null, 2),
-    defaultPath: { orderNo: 'YX20260920120001' },
-    defaultBody: {},
-  },
 ];
 
 export const ALL_ENDPOINTS: EndpointSpec[] = [...READ_ENDPOINTS, ...WRITE_ENDPOINTS];
 
-/** 右侧大纲：元信息章节（鉴权/响应结构/错误码/读/写/结算/Webhook） */
+/** 右侧大纲：元信息章节（鉴权/响应结构/错误码/读/写/结算） */
 export interface OutlineSection {
   id: string;
   label: string;
@@ -496,7 +479,6 @@ export const META_SECTIONS: OutlineSection[] = [
   { id: 'read', label: '四、读接口' },
   { id: 'write', label: '五、写接口' },
   { id: 'wallet', label: '六、余额与结算' },
-  { id: 'webhook', label: '七、Webhook 回调' },
 ];
 
 export const API_BASE = 'https://<你的域名>/api/open/v1';
