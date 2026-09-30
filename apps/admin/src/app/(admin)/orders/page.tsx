@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { RefreshCw, Undo2, XCircle, History } from 'lucide-react';
+import { RefreshCw, Undo2, XCircle, History, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -84,6 +84,11 @@ export default function OrdersPage() {
   const [rejectReason, setRejectReason] = useState('');
   const [rejecting, setRejecting] = useState(false);
 
+  // 后台主动退款（无需用户申请）
+  const [manualTarget, setManualTarget] = useState<Order | null>(null);
+  const [manualReason, setManualReason] = useState('');
+  const [manualRefunding, setManualRefunding] = useState(false);
+
   // 查看退款记录
   const [historyTarget, setHistoryTarget] = useState<Order | null>(null);
 
@@ -113,6 +118,9 @@ export default function OrdersPage() {
     if (o.status === 'paid') return { text: '已支付', variant: 'success' };
     return { text: '待支付', variant: 'warning' };
   };
+
+  // 后台主动退款条件：订单已支付（未退款）且套餐尚未激活
+  const canManualRefund = (o: Order) => o.status === 'paid' && (!o.esim || o.esim.status === 'pending');
 
   const confirmApprove = async () => {
     if (!approveTarget) return;
@@ -157,6 +165,27 @@ export default function OrdersPage() {
       toast.error(getErrorMessage(e, '拒绝失败，请重试'));
     } finally {
       setRejecting(false);
+    }
+  };
+
+  const confirmManualRefund = async () => {
+    if (!manualTarget) return;
+    setManualRefunding(true);
+    try {
+      const res = await adminApi.manualRefund(manualTarget.orderNo, manualReason.trim() || undefined);
+      const body = unwrap<any>(res);
+      if (body.code !== 0) {
+        toast.error(body.message || '退款失败，请重试');
+        return;
+      }
+      toast.success('退款已完成');
+      setManualTarget(null);
+      setManualReason('');
+      load();
+    } catch (e) {
+      toast.error(getErrorMessage(e, '退款失败，请重试'));
+    } finally {
+      setManualRefunding(false);
     }
   };
 
@@ -241,6 +270,10 @@ export default function OrdersPage() {
                               <XCircle className="h-4 w-4" /> 拒绝
                             </Button>
                           </span>
+                        ) : canManualRefund(o) ? (
+                          <Button size="sm" variant="outline" className="text-destructive hover:text-destructive" onClick={() => setManualTarget(o)}>
+                            <RotateCcw className="h-4 w-4" /> 退款
+                          </Button>
                         ) : (
                           <span className="text-[12px] text-muted-foreground/50">—</span>
                         )}
@@ -309,6 +342,31 @@ export default function OrdersPage() {
             </Button>
             <Button variant="destructive" onClick={confirmReject} disabled={rejecting}>
               {rejecting ? '处理中…' : '确认拒绝'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 后台主动退款 */}
+      <Dialog open={!!manualTarget} onOpenChange={(o) => !o && setManualTarget(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>主动退款</DialogTitle>
+          </DialogHeader>
+          <div className="rounded-lg bg-muted/60 p-4 text-[13px] leading-relaxed text-muted-foreground">
+            确认对订单 <span className="font-mono font-medium text-ink">{manualTarget?.orderNo}</span>（¥
+            {manualTarget?.price}）主动退款？退款将按原支付渠道原路退回；成功后该订单的 eSIM 将失效，ICCID 会被列入黑名单。
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-[12.5px] text-muted-foreground">备注原因（可选）</Label>
+            <Textarea value={manualReason} rows={2} onChange={(e) => setManualReason(e.target.value)} placeholder="请输入备注原因" />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setManualTarget(null)}>
+              取消
+            </Button>
+            <Button variant="destructive" onClick={confirmManualRefund} disabled={manualRefunding}>
+              {manualRefunding ? '处理中…' : '确认退款'}
             </Button>
           </DialogFooter>
         </DialogContent>

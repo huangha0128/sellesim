@@ -137,10 +137,20 @@ export async function applyRefundRequest(
 }
 
 /**
- * 后台同意退款并执行：校验 → 调用支付宝退款 → 更新订单状态 → 释放 eSIM（ICCID 归还卡片池）。
+ * 后台执行退款：校验 → 调用支付宝退款 → 更新订单状态 → 释放 eSIM（ICCID 归还卡片池）。
  * out_request_no 传订单号保证支付宝侧幂等，重复调用同一订单可安全返回。
+ *
+ * 两种入口：
+ * - 默认（审批用户申请）：要求存在待处理的退款申请（refundStatus=requested）
+ * - opts.adminInitiated=true（后台主动退款）：无需用户申请，但要求套餐尚未激活
  */
-export async function refundOrder(deps: RefundDeps, orderNo: string, reason?: string, operator?: string) {
+export async function refundOrder(
+  deps: RefundDeps,
+  orderNo: string,
+  reason?: string,
+  operator?: string,
+  opts: { adminInitiated?: boolean } = {},
+) {
   const order = await deps.findOrder(orderNo);
   if (!order) {
     throw new Error('订单不存在');
@@ -151,14 +161,25 @@ export async function refundOrder(deps: RefundDeps, orderNo: string, reason?: st
   if (order.status !== 'paid') {
     throw new Error('仅已支付订单可退款');
   }
-  if (order.refundStatus === 'approved') {
-    throw new Error('该退款申请已处理，请勿重复操作');
-  }
-  if (order.refundStatus === 'rejected') {
-    throw new Error('该退款申请已被拒绝，无法退款');
-  }
-  if (order.refundStatus !== 'requested') {
-    throw new Error('该订单暂无退款申请，请先由用户发起申请');
+  if (opts.adminInitiated) {
+    // 后台主动退款：不依赖用户申请，但仅未激活（本地 + Tiger 实时双重校验）的订单可退
+    const esim = await deps.findEsimByOrderId(order.id);
+    if (esim && esim.status !== 'pending') {
+      throw new Error('套餐已激活，无法退款');
+    }
+    if (esim && deps.checkEsimActivated && (await deps.checkEsimActivated(esim))) {
+      throw new Error('套餐已激活，无法退款');
+    }
+  } else {
+    if (order.refundStatus === 'approved') {
+      throw new Error('该退款申请已处理，请勿重复操作');
+    }
+    if (order.refundStatus === 'rejected') {
+      throw new Error('该退款申请已被拒绝，无法退款');
+    }
+    if (order.refundStatus !== 'requested') {
+      throw new Error('该订单暂无退款申请，请先由用户发起申请');
+    }
   }
 
   // 必须按实际支付金额退款（支付宝要求退款金额不能超过已付金额），优先级：paidAmount > price

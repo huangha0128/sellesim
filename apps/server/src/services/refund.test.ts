@@ -197,6 +197,44 @@ describe('refundOrder 后台同意退款并执行', () => {
     expect(result.refunded).toBe(true);
     expect(deps.deleteEsimByOrderId).not.toHaveBeenCalled();
   });
+
+  it('后台主动退款：无需退款申请，未激活订单直接退款成功', async () => {
+    const deps = makeDeps({ findOrder: vi.fn().mockResolvedValue(makeOrder({ refundStatus: null })) });
+    const result = await refundOrder(deps, 'DPH1234567890', '后台主动退款', 'admin', { adminInitiated: true });
+
+    const refundArgs = (deps.alipayRefund as any).mock.calls[0][0];
+    expect(refundArgs).toMatchObject({ outTradeNo: 'DPH1234567890', refundAmount: '29.90' });
+
+    const updateData = (deps.updateOrder as any).mock.calls[0][1];
+    expect(updateData).toMatchObject({ status: 'refunded', refundStatus: 'approved' });
+    expect(deps.deleteEsimByOrderId).toHaveBeenCalledWith('order-1');
+    expect(result.refunded).toBe(true);
+  });
+
+  it('后台主动退款：本地 eSIM 已激活时拒绝退款', async () => {
+    const deps = makeDeps({
+      findOrder: vi.fn().mockResolvedValue(makeOrder({ refundStatus: null })),
+      findEsimByOrderId: vi
+        .fn()
+        .mockResolvedValue({ id: 'esim-1', orderId: 'order-1', status: 'activated' }),
+    });
+    await expect(
+      refundOrder(deps, 'DPH1234567890', undefined, 'admin', { adminInitiated: true }),
+    ).rejects.toThrow('套餐已激活，无法退款');
+    expect(deps.alipayRefund).not.toHaveBeenCalled();
+    expect(deps.updateOrder).not.toHaveBeenCalled();
+  });
+
+  it('后台主动退款：Tiger 实时已激活时拒绝退款', async () => {
+    const deps = makeDeps({
+      findOrder: vi.fn().mockResolvedValue(makeOrder({ refundStatus: null })),
+      checkEsimActivated: vi.fn().mockResolvedValue(true),
+    });
+    await expect(
+      refundOrder(deps, 'DPH1234567890', undefined, 'admin', { adminInitiated: true }),
+    ).rejects.toThrow('套餐已激活，无法退款');
+    expect(deps.alipayRefund).not.toHaveBeenCalled();
+  });
 });
 
 describe('rejectRefundRequest 后台拒绝退款', () => {

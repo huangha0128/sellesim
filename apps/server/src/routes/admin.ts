@@ -148,7 +148,12 @@ export default (prisma: PrismaClient) => {
   router.get('/orders', async (req: Request, res: Response) => {
     const orders = await prisma.order.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { user: true, refundRequests: { orderBy: { createdAt: 'asc' } } },
+      include: {
+        user: true,
+        // 供后台判断能否主动退款（已激活的订单不可退）
+        esim: { select: { status: true, activatedAt: true } },
+        refundRequests: { orderBy: { createdAt: 'asc' } },
+      },
     });
     res.json({ code: 0, data: { orders } });
   });
@@ -206,6 +211,41 @@ export default (prisma: PrismaClient) => {
       res.json({ code: 0, data: result });
     } catch (e: any) {
       console.error(`[refund] 订单 ${req.params.orderNo} 拒绝退款失败：`, e.message);
+      res.json({ code: 1, message: e.message });
+    }
+  });
+
+  /**
+   * POST /api/admin/orders/:orderNo/refund/manual 后台主动退款
+   * - 无需用户先提交退款申请，仅要求订单已支付且套餐尚未激活
+   * - 调用支付宝退款（out_request_no 传订单号保证幂等）
+   * - 退款成功后订单置为 refunded，删除 eSIM 记录并拉黑 ICCID（归还卡片池之外不可复用）
+   * - 向用户邮箱发送退款成功通知
+   */
+  router.post('/orders/:orderNo/refund/manual', async (req: AdminAuthRequest, res: Response) => {
+    const { reason } = req.body || {};
+    const operator = req.admin?.username || req.admin?.name || 'admin';
+    try {
+      const result = await refundOrder(
+        buildRefundDeps(prisma, req.params.orderNo),
+        req.params.orderNo,
+        typeof reason === 'string' && reason.trim() ? reason.trim() : '后台主动退款',
+        operator,
+        { adminInitiated: true },
+      );
+
+      const order = result?.order || (await prisma.order.findUnique({ where: { orderNo: req.params.orderNo } }));
+      if (order?.email) {
+        sendRefundEmail({
+          to: order.email,
+          orderNo: order.orderNo,
+          amount: Number(order.price).toFixed(2),
+        }).catch((e) => console.error(`[email] 订单 ${order.orderNo} 退款通知发送失败：`, e.message));
+      }
+
+      res.json({ code: 0, data: result });
+    } catch (e: any) {
+      console.error(`[refund] 订单 ${req.params.orderNo} 后台主动退款失败：`, e.message);
       res.json({ code: 1, message: e.message });
     }
   });
