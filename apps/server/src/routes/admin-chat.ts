@@ -33,6 +33,40 @@ export default (prisma: PrismaClient) => {
     res.json({ code: 0, data: { sessions, total, page, pageSize } });
   });
 
+  // GET /api/admin/chat/notifications
+  // 后台通知中心：待人工处理的会话（转人工事件 + 转人工后用户发来的新消息）。
+  // 只统计 status=human 且 unreadAdmin>0 的会话：
+  //   - 刚转人工（最后一条为系统「转人工」）→ kind=transfer
+  //   - 转人工后用户又发言 → kind=message
+  router.get('/notifications', async (_req: Request, res: Response) => {
+    const sessions = await prisma.chatSession.findMany({
+      where: { status: 'human', unreadAdmin: { gt: 0 } },
+      include: { user: { select: { nickname: true, avatar: true, email: true } } },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+    });
+
+    const items = sessions.map((s) => ({
+      sessionId: s.id,
+      nickname: s.user?.nickname || '用户',
+      email: s.user?.email || '',
+      lastMessage: s.lastMessage || '',
+      lastSender: s.lastSender || '',
+      unreadAdmin: s.unreadAdmin || 0,
+      updatedAt: s.updatedAt,
+      kind: s.lastSender === 'user' ? 'message' : 'transfer',
+    }));
+
+    res.json({
+      code: 0,
+      data: {
+        items,
+        unreadTotal: items.reduce((n, i) => n + i.unreadAdmin, 0),
+        pendingHuman: items.length,
+      },
+    });
+  });
+
   // GET /api/admin/chat/sessions/:id  session + all messages + user info
   router.get('/sessions/:id', async (req: Request, res: Response) => {
     const session = await prisma.chatSession.findUnique({

@@ -3,15 +3,13 @@ import { PrismaClient } from '@prisma/client';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { generateAiReply } from '../services/ai';
 import { broadcastToSession } from '../services/chatHub';
+import { SESSION_IDLE_MS } from '../services/sessionSweeper';
 
 // User-facing AI + human customer support chat.
 // Mounted at /api/chat. All endpoints require miniapp user auth and are scoped by userId.
 
 export default (prisma: PrismaClient) => {
   const router = Router();
-
-  // 会话空闲上限：超过该时长无新对话则归档旧会话并开启新会话（后台保留存档）。
-  const SESSION_IDLE_MS = 30 * 60 * 1000;
 
   function isIdle(session: { updatedAt: Date }): boolean {
     return Date.now() - new Date(session.updatedAt).getTime() > SESSION_IDLE_MS;

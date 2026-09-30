@@ -19,6 +19,7 @@ import chatRoutes from './routes/chat';
 import adminChatRoutes from './routes/admin-chat';
 import adminKbRoutes from './routes/admin-kb';
 import { initChatHub, type ChatSocket } from './services/chatHub';
+import { startSessionSweeper } from './services/sessionSweeper';
 import { refreshPackageCache, PACKAGE_REFRESH_INTERVAL_MS } from './tiger/view';
 import { retryPendingWebhooks, retryPendingSubjectWebhooks } from './services/webhook';
 import { genSalt, hashPassword } from './middleware/adminAuth';
@@ -107,6 +108,9 @@ initChatHub(server, async (socket: ChatSocket, sessionId: string) => {
 server.listen(PORT, () => {
   console.log(` YYeSim 服务器运行在 http://localhost:${PORT}`);
 });
+
+// 会话空闲清理：每 10 分钟归档空闲超过 30 分钟的会话（Redis 分布式锁保证多实例下不重复执行）
+startSessionSweeper(prisma);
 
 // 引导管理员账号（失败不影响服务启动，仅无法登录后台）
 bootstrapAdminUser().catch((e) => {

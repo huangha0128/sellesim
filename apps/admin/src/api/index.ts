@@ -131,6 +131,8 @@ export interface Order {
   isUnlimited?: boolean;
   package?: PackageItem;
   user?: { id: string; nickname?: string; alipayUserId?: string } | null;
+  // 关联 eSIM（仅用于判断订单能否主动退款）
+  esim?: { status?: string; activatedAt?: string | null } | null;
   refundRequests?: RefundRecord[];
 }
 
@@ -246,6 +248,17 @@ export interface SupportMessage {
   createdAt?: string;
 }
 
+export interface SupportNotification {
+  sessionId: string;
+  nickname: string;
+  email: string;
+  lastMessage: string;
+  lastSender: string;
+  unreadAdmin: number;
+  updatedAt?: string;
+  kind: 'transfer' | 'message';
+}
+
 // ---- Open API v2：主体 / 密钥 / 定价 ----
 export interface SubjectKey {
   id: string;
@@ -323,6 +336,9 @@ export const adminApi = {
   getOrders: () => http.get('/admin/orders'),
   approveRefund: (orderNo: string, reason?: string) =>
     http.post(`/admin/orders/${orderNo}/refund`, { reason }),
+  /** 后台主动退款（无需用户申请，仅未激活订单可退） */
+  manualRefund: (orderNo: string, reason?: string) =>
+    http.post(`/admin/orders/${orderNo}/refund/manual`, { reason }),
   rejectRefund: (orderNo: string, reason: string) =>
     http.post(`/admin/orders/${orderNo}/refund/reject`, { reason }),
 
@@ -376,6 +392,7 @@ export const adminApi = {
   // ---- 在线客服（AI + 人工）----
   getSupportSessions: (params?: { status?: string; unread?: 0 | 1; page?: number; pageSize?: number }) =>
     http.get('/admin/chat/sessions', { params }),
+  getSupportNotifications: () => http.get('/admin/chat/notifications'),
   getSupportSession: (id: string) => http.get(`/admin/chat/sessions/${id}`),
   replySupportSession: (id: string, content: string) =>
     http.post(`/admin/chat/sessions/${id}/messages`, { content }),
