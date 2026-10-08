@@ -113,6 +113,11 @@
         <text class="tab-label">{{ fmt('tab.profile') }}</text>
       </view>
     </view>
+
+    <!-- 客服悬浮球 -->
+    <view class="cs-float" hover-class="cs-float--hover" @tap="goChat">
+      <image class="cs-float-icon" :src="supportIcon()" mode="aspectFit" />
+    </view>
   </view>
 </template>
 
@@ -181,6 +186,14 @@ export default {
         profile: '/pages/profile/profile'
       }
       uni.reLaunch({ url: tabMap[tab] })
+    },
+    goChat() {
+      uni.navigateTo({ url: '/pages/chat/chat' })
+    },
+    supportIcon() {
+      const s =
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M4 14v-1a8 8 0 0 1 16 0v1"/><rect x="2.6" y="13" width="4.6" height="6.2" rx="2.3"/><rect x="16.8" y="13" width="4.6" height="6.2" rx="2.3"/><path d="M19.1 19.2v.4a3 3 0 0 1-3 3h-2.2"/></svg>'
+      return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(s)}`
     }
   }
 }
@@ -592,6 +605,32 @@ export default {
 .tab-item.active .tab-label {
   color: $brand;
   font-weight: 700;
+}
+
+/* ============ 客服悬浮球 ============ */
+.cs-float {
+  position: fixed;
+  right: 32rpx;
+  bottom: calc(150rpx + env(safe-area-inset-bottom));
+  width: 108rpx;
+  height: 108rpx;
+  border-radius: 50%;
+  background: $brand;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 10rpx 28rpx rgba(64, 80, 192, 0.32);
+  z-index: 90;
+  transition: transform 0.15s ease;
+
+  &--hover {
+    transform: scale(0.9);
+  }
+}
+
+.cs-float-icon {
+  width: 54rpx;
+  height: 54rpx;
 }
 
 /* ========== 骨架屏（热销套餐加载中） ========== */

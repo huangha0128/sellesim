@@ -113,6 +113,8 @@ export default {
     closed: '会話は終了しました',
     aiNotice: 'こんにちは、サポートの小Yです。いつでもご質問ください',
     humanNotice: 'サポートが対応中です',
+    emailNoticePrefix: '長時間返信がない場合は、メールをお送りください：',
+    emailCopied: 'メールアドレスをコピーしました',
     sendFailed: '送信に失敗しました。もう一度お試しください',
     offlineTip: '通信エラーです。もう一度お試しください',
     emptyHint: 'こんにちは、サポートの小Yです。何かお困りですか？',

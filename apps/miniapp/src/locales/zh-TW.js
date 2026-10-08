@@ -113,6 +113,8 @@ export default {
     closed: '對話已結束',
     aiNotice: '您好，我是客服小 Y，請隨時向我提問',
     humanNotice: '客服正在為您服務',
+    emailNoticePrefix: '如果長時間未回覆，請來信至',
+    emailCopied: '已複製電子郵件',
     sendFailed: '傳送失敗，請重試',
     offlineTip: '網路異常，請稍後重試',
     emptyHint: '您好，我是客服小 Y，有什麼可以幫您？',

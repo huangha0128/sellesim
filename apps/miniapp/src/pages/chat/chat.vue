@@ -4,6 +4,10 @@
     <view class="status-banner" :class="{ human: status === 'human' }">
       <text v-if="status === 'closed'">{{ $t('chat.closed') }}</text>
       <text v-else>{{ $t('chat.humanNotice') }}</text>
+      <view v-if="status !== 'closed'" class="email-notice">
+        <text class="email-prefix">{{ $t('chat.emailNoticePrefix') }}</text>
+        <text class="email-addr" @tap="copyEmail">{{ email }}</text>
+      </view>
     </view>
 
     <!-- 新会话快捷入口 -->
@@ -98,7 +102,8 @@ export default {
       // 自动滚动：仅在「用户已滚到底部」时，新消息到达才自动滚到最新，避免打断回看历史
       stickyBottom: true,
       scrollTarget: '', // scroll-into-view 取值变化才会触发滚动，滚动后复位为 ''
-      scrollViewH: 0 // msg-list 视口高度，用于判断是否接近底部
+      scrollViewH: 0, // msg-list 视口高度，用于判断是否接近底部
+      email: 'support@bjyyxx.com'
     }
   },
   onLoad(options) {
@@ -462,6 +467,12 @@ export default {
       if (c.includes('转接') || c.includes('转人工') || c.includes('transfer')) return this.$t('chat.transferredTip')
       if (c.includes('结束')) return this.$t('chat.closed')
       return c
+    },
+    copyEmail() {
+      uni.setClipboardData({
+        data: this.email,
+        success: () => uni.showToast({ title: this.$t('chat.emailCopied'), icon: 'none' })
+      })
     }
   }
 }
@@ -494,6 +505,23 @@ export default {
     background: $danger-light;
     color: $danger;
   }
+}
+
+.email-notice {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 8rpx;
+  font-size: 22rpx;
+  font-weight: 500;
+  line-height: 1.5;
+  color: $ink-3;
+}
+
+.email-addr {
+  color: $brand;
+  font-weight: 600;
+  text-decoration: underline;
 }
 
 /* ============ 快捷入口 ============ */

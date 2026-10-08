@@ -111,6 +111,8 @@ export default {
     closed: 'Conversation closed',
     aiNotice: 'Hi, I am Xiao Y. Please feel free to ask me anything',
     humanNotice: 'Support is helping you',
+    emailNoticePrefix: 'If not replied within a while, please email',
+    emailCopied: 'Email address copied',
     sendFailed: 'Failed to send, please retry',
     offlineTip: 'Network error, please retry',
     emptyHint: 'Hi, I am Xiao Y. How can I help you?',

@@ -113,6 +113,8 @@ export default {
     closed: 'Conversación finalizada',
     aiNotice: 'Hola, soy Xiao Y. Pregúntame lo que quieras',
     humanNotice: 'El soporte te está ayudando',
+    emailNoticePrefix: 'Si no recibe respuesta en un rato, envíe un correo a',
+    emailCopied: 'Correo copiado',
     sendFailed: 'Error al enviar, inténtalo de nuevo',
     offlineTip: 'Error de red, inténtalo de nuevo',
     emptyHint: 'Hola, soy Xiao Y. ¿En qué puedo ayudarte?',

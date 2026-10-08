@@ -113,6 +113,8 @@ export default {
     closed: '대화가 종료되었습니다',
     aiNotice: '안녕하세요, 상담 소Y입니다. 언제든 질문해 주세요',
     humanNotice: '상담 서비스가 도움을 드리고 있습니다',
+    emailNoticePrefix: '오랜 시간 답변이 없을 경우 메일을 보내주세요:',
+    emailCopied: '이메일 주소가 복사되었습니다',
     sendFailed: '전송에 실패했습니다. 다시 시도하세요',
     offlineTip: '네트워크 오류입니다. 다시 시도하세요',
     emptyHint: '안녕하세요, 상담 소Y입니다. 무엇을 도와드릴까요?',

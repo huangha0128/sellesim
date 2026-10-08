@@ -5,6 +5,33 @@ import { broadcastToSession } from '../services/chatHub';
 
 // Admin-side customer support endpoints. Mounted at /api/admin/chat, admin auth required.
 
+// Override the profile email shown under a user in the session list with the
+// email recorded on that user's most recent order (fallback: profile email),
+// so the displayed email reflects what the user actually used at checkout.
+async function attachLatestOrderEmail(
+  prisma: PrismaClient,
+  sessions: Array<{ userId: string | null; user: { email: string } | null | undefined }>
+): Promise<void> {
+  const userIds = [...new Set(sessions.map((s) => s.userId).filter(Boolean) as string[])];
+  if (!userIds.length) return;
+
+  // Newest-first; the first order seen per user is the latest one.
+  const orders = await prisma.order.findMany({
+    where: { userId: { in: userIds } },
+    orderBy: { createdAt: 'desc' },
+    select: { userId: true, email: true },
+  });
+  const latestByUser = new Map<string, string>();
+  for (const o of orders) {
+    if (o.userId && !latestByUser.has(o.userId)) latestByUser.set(o.userId, o.email);
+  }
+
+  for (const s of sessions) {
+    const email = s.userId ? latestByUser.get(s.userId) : undefined;
+    if (email && s.user) s.user.email = email;
+  }
+}
+
 export default (prisma: PrismaClient) => {
   const router = Router();
   router.use(adminAuth(prisma));
@@ -30,6 +57,7 @@ export default (prisma: PrismaClient) => {
       prisma.chatSession.count({ where }),
     ]);
 
+    await attachLatestOrderEmail(prisma, sessions);
     res.json({ code: 0, data: { sessions, total, page, pageSize } });
   });
 
@@ -46,6 +74,7 @@ export default (prisma: PrismaClient) => {
       take: 50,
     });
 
+    await attachLatestOrderEmail(prisma, sessions);
     const items = sessions.map((s) => ({
       sessionId: s.id,
       nickname: s.user?.nickname || '用户',
