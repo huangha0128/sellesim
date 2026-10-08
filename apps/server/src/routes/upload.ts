@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
 import { PrismaClient } from '@prisma/client';
-import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { authMiddleware } from '../middleware/auth';
 
 /**
  * 退款凭证图片上传：图片直接以二进制存入共享 MySQL（Upload 表），
@@ -29,6 +29,18 @@ const upload = multer({
   },
 });
 
+/** Shared: persist an uploaded image into the Upload table and return its public relative URL. */
+export async function storeUpload(prisma: PrismaClient, file: Express.Multer.File): Promise<{ url: string }> {
+  const row = await prisma.upload.create({
+    data: {
+      mime: ALLOWED_MIME[file.mimetype] || 'image/jpeg',
+      size: file.size,
+      data: file.buffer,
+    },
+  });
+  return { url: `${UPLOAD_URL_PREFIX}/${row.id}` };
+}
+
 export default (prisma: PrismaClient) => {
   const router = Router();
 
@@ -36,12 +48,12 @@ export default (prisma: PrismaClient) => {
    * POST /api/uploads/image 上传退款凭证图片（需登录）
    * form-data 字段名固定为 file，返回可直接访问的相对 URL
    */
-  router.post('/image', authMiddleware, (req: AuthRequest, res: Response) => {
+  router.post('/image', authMiddleware, (req: Request, res: Response) => {
     upload.single('file')(req, res, async (err: any) => {
       if (err) {
         const msg =
           err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
-            ? '图片不能超过 5MB'
+            ? `图片不能超过 ${MAX_IMAGE_BYTES / 1024 / 1024}MB`
             : err.message || '图片上传失败';
         return res.json({ code: 1, message: msg });
       }
@@ -50,14 +62,8 @@ export default (prisma: PrismaClient) => {
         return res.json({ code: 1, message: '请选择要上传的图片' });
       }
       try {
-        const row = await prisma.upload.create({
-          data: {
-            mime: ALLOWED_MIME[file.mimetype] || 'image/jpeg',
-            size: file.size,
-            data: file.buffer,
-          },
-        });
-        res.json({ code: 0, data: { url: `${UPLOAD_URL_PREFIX}/${row.id}` } });
+        const { url } = await storeUpload(prisma, file);
+        res.json({ code: 0, data: { url } });
       } catch (e: any) {
         console.error('[upload] 凭证图片保存失败：', e.message);
         res.json({ code: 1, message: '图片上传失败，请稍后重试' });

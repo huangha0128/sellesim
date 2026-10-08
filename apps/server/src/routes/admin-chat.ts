@@ -1,7 +1,9 @@
 import { Router, Request, Response } from 'express';
+import multer from 'multer';
 import { PrismaClient } from '@prisma/client';
 import { adminAuth, AdminAuthRequest } from '../middleware/adminAuth';
 import { broadcastToSession } from '../services/chatHub';
+import { storeUpload } from './upload';
 
 // Admin-side customer support endpoints. Mounted at /api/admin/chat, admin auth required.
 
@@ -50,7 +52,7 @@ export default (prisma: PrismaClient) => {
       prisma.chatSession.findMany({
         where,
         include: { user: { select: { nickname: true, avatar: true, email: true } } },
-        orderBy: { updatedAt: 'desc' },
+        orderBy: { lastMessageAt: 'desc' },
         skip: (page - 1) * pageSize,
         take: pageSize,
       }),
@@ -70,7 +72,7 @@ export default (prisma: PrismaClient) => {
     const sessions = await prisma.chatSession.findMany({
       where: { status: 'human', unreadAdmin: { gt: 0 } },
       include: { user: { select: { nickname: true, avatar: true, email: true } } },
-      orderBy: { updatedAt: 'desc' },
+      orderBy: { lastMessageAt: 'desc' },
       take: 50,
     });
 
@@ -83,6 +85,7 @@ export default (prisma: PrismaClient) => {
       lastSender: s.lastSender || '',
       unreadAdmin: s.unreadAdmin || 0,
       updatedAt: s.updatedAt,
+      lastMessageAt: s.lastMessageAt,
       kind: s.lastSender === 'user' ? 'message' : 'transfer',
     }));
 
@@ -126,13 +129,16 @@ export default (prisma: PrismaClient) => {
     if (session.status === 'closed') return res.json({ code: 1, message: '会话已结束' });
 
     const content = String((req.body || {}).content || '').trim();
-    if (!content) return res.json({ code: 1, message: '请输入回复内容' });
+    const imagesBody = (req.body || {}).images;
+    const images = Array.isArray(imagesBody) ? imagesBody.filter((x) => typeof x === 'string') : [];
+    if (!content && !images.length) return res.json({ code: 1, message: '请输入回复内容或选择图片' });
 
     const msg = await prisma.chatMessage.create({
       data: {
         sessionId: session.id,
         role: 'admin',
         content,
+        images: images.length ? JSON.stringify(images) : null,
         adminId: req.admin!.id,
         adminName: req.admin!.username,
         readByUser: false,
@@ -148,7 +154,8 @@ export default (prisma: PrismaClient) => {
         needHuman: status === 'human' ? true : session.needHuman,
         unreadUser: { increment: 1 },
         lastSender: 'admin',
-        lastMessage: content.slice(0, 200),
+        lastMessage: (content || '[图片]').slice(0, 200),
+        lastMessageAt: msg.createdAt,
       },
     });
 
@@ -158,7 +165,7 @@ export default (prisma: PrismaClient) => {
     res.json({ code: 0, data: { session: updated, messages: [msg] } });
   });
 
-  // POST /api/admin/chat/sessions/:id/close
+  // POST /api/admin/chat/close
   router.post('/sessions/:id/close', async (req: Request, res: Response) => {
     const session = await prisma.chatSession.findUnique({ where: { id: req.params.id } });
     if (!session) return res.json({ code: 1, message: '会话不存在' });
@@ -170,6 +177,37 @@ export default (prisma: PrismaClient) => {
 
     broadcastToSession(session.id, { type: 'status', session: updated });
     res.json({ code: 0, data: { session: updated } });
+  });
+
+  // 客服端图片上传：POST /api/admin/chat/upload/image（form-data 字段名 file），
+  // 复用 /api/uploads/image 的存储与校验，仅鉴权换成 admin 登录态。
+  const adminImageUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+    fileFilter: (_req, file, cb) => {
+      if (['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.mimetype)) return cb(null, true);
+      cb(new Error('仅支持 JPG / PNG / WEBP 图片'));
+    },
+  });
+  router.post('/upload/image', (req: Request, res: Response) => {
+    adminImageUpload.single('file')(req, res, async (err: any) => {
+      if (err) {
+        const msg =
+          err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
+            ? '图片不能超过 5MB'
+            : err.message || '图片上传失败';
+        return res.json({ code: 1, message: msg });
+      }
+      const file = (req as any).file;
+      if (!file) return res.json({ code: 1, message: '请选择要上传的图片' });
+      try {
+        const { url } = await storeUpload(prisma, file);
+        res.json({ code: 0, data: { url } });
+      } catch (e: any) {
+        console.error('[admin-chat] 图片上传失败：', e.message);
+        res.json({ code: 1, message: '图片上传失败，请稍后重试' });
+      }
+    });
   });
 
   return router;

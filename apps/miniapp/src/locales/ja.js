@@ -115,6 +115,8 @@ export default {
     humanNotice: 'サポートが対応中です',
     emailNoticePrefix: '長時間返信がない場合は、メールをお送りください：',
     emailCopied: 'メールアドレスをコピーしました',
+    imgLimit: '1 メッセージあたり最大 9 枚の画像',
+    imgUploadFailed: '画像のアップロードに失敗しました。再度お試しください',
     sendFailed: '送信に失敗しました。もう一度お試しください',
     offlineTip: '通信エラーです。もう一度お試しください',
     emptyHint: 'こんにちは、サポートの小Yです。何かお困りですか？',

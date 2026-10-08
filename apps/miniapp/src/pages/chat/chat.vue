@@ -42,7 +42,19 @@
             <view v-if="m.role === 'ai' || m.role === 'admin'" class="avatar ai-avatar">
               <image class="avatar-img" src="/static/icons/prof-help.png" mode="aspectFit" />
             </view>
-            <view class="bubble" :class="{ 'mine-bubble': m.role === 'user' }">{{ m.content }}</view>
+            <view class="bubble" :class="{ 'mine-bubble': m.role === 'user' }">
+              <text v-if="m.content">{{ m.content }}</text>
+              <view v-if="msgImages(m).length" class="msg-imgs">
+                <image
+                  v-for="(img, imgIdx) in msgImages(m)"
+                  :key="img"
+                  class="msg-img"
+                  :src="imgUrl(img)"
+                  mode="aspectFill"
+                  @tap="previewMsgImages(m, imgIdx)"
+                />
+              </view>
+            </view>
           </template>
         </view>
 
@@ -60,16 +72,30 @@
       </view>
     </scroll-view>
 
+    <!-- 待发送图片缩略图 -->
+    <view v-if="pendingImages.length" class="pending-imgs">
+      <view v-for="(p, idx) in pendingImages" :key="p.local" class="pending-img-wrap">
+        <image class="pending-img" :src="p.local" mode="aspectFill" @tap="previewPending(idx)" />
+        <view class="pending-del" @tap="removePendingImage(idx)">
+          <text class="pending-del-x">×</text>
+        </view>
+      </view>
+    </view>
+
     <!-- 底部输入区 -->
     <view class="input-bar" v-if="status !== 'closed'">
+      <view class="attach-btn" :class="{ disabled: picking }" hover-class="attach-btn--hover" @tap="pickImages">
+        <image class="attach-icon" :src="plusIcon()" mode="aspectFit" />
+      </view>
       <input
         class="chat-input"
         v-model="input"
         :placeholder="status === 'human' ? $t('chat.transferredTip') : $t('chat.placeholder')"
-        :disabled="aiThinking"
+        :disabled="aiThinking || picking"
         confirm-type="send"
         @confirm="send"
         @input="onInput"
+        cursor-spacing="24"
       />
       <view class="send-btn" :class="{ disabled: !canSend }" @tap="send">{{ $t('chat.send') }}</view>
     </view>
@@ -80,8 +106,21 @@
 
 <script>
 import { store } from '@/store'
-import { api } from '@/utils/api'
+import { api, resolveAssetUrl } from '@/utils/api'
 import { setNavTitle } from '@/locales'
+
+// 归一化消息里的图片字段（可能是 JSON 字符串或数组），返回 URL 数组
+function normalizeImgs(m) {
+  let imgs = m && m.images
+  if (typeof imgs === 'string') {
+    try {
+      imgs = JSON.parse(imgs)
+    } catch (e) {
+      imgs = []
+    }
+  }
+  return Array.isArray(imgs) ? imgs.filter((x) => typeof x === 'string') : []
+}
 
 export default {
   data() {
@@ -103,7 +142,10 @@ export default {
       stickyBottom: true,
       scrollTarget: '', // scroll-into-view 取值变化才会触发滚动，滚动后复位为 ''
       scrollViewH: 0, // msg-list 视口高度，用于判断是否接近底部
-      email: 'support@bjyyxx.com'
+      email: 'support@bjyyxx.com',
+      pendingImages: [], // 待发送图片 { url, local }
+      picking: false, // 正在上传缩略图中
+      chatImgMax: 9 // 单条消息最多图片数
     }
   },
   onLoad(options) {
@@ -111,7 +153,12 @@ export default {
   },
   computed: {
     canSend() {
-      return !this.aiThinking && this.input && String(this.input).trim() && this.status !== 'closed'
+      return (
+        !this.aiThinking &&
+        !this.picking &&
+        (String(this.input || '').trim() || this.pendingImages.length) &&
+        this.status !== 'closed'
+      )
     },
     messageCount() {
       return this.messages.length
@@ -198,12 +245,19 @@ export default {
       // 否则在 HTTP 响应（需等 AI 生成完，较慢）返回前，界面会短暂出现「同一条消息两遍」。
       let base = this.messages
       for (const m of incoming) {
-        if (!m || m.role !== 'user' || !m.content) continue
-        // 只摘最后一条同文占位，避免误删历史里内容相同的消息
+        if (!m || m.role !== 'user') continue
+        const mImgs = normalizeImgs(m)
+        if (!(m.content || '').trim() && !mImgs.length) continue
+        // 文字 + 图片都一致才视为同一条（占位消息可能不带图；图片消息以图片集为主键）
+        const mKey = (m.content || '') + '\u0000' + mImgs.join('|')
         for (let i = base.length - 1; i >= 0; i--) {
-          if (String(base[i].id).startsWith('local_') && base[i].role === 'user' && base[i].content === m.content) {
-            base = base.slice(0, i).concat(base.slice(i + 1))
-            break
+          const b = base[i]
+          if (String(b.id).startsWith('local_') && b.role === 'user') {
+            const bKey = (b.content || '') + '\u0000' + normalizeImgs(b).join('|')
+            if (bKey === mKey) {
+              base = base.slice(0, i).concat(base.slice(i + 1))
+              break
+            }
           }
         }
       }
@@ -426,14 +480,16 @@ export default {
       if (!this.canSend) return
       const content = String(this.input).trim()
       this.input = ''
-      if (!content) return
+      const images = this.pendingImages.map((p) => p.url)
+      this.pendingImages = []
+      if (!content && !images.length) return
 
-      // 乐观追加用户消息
-      this.messages.push({ id: 'local_' + Date.now(), role: 'user', content })
+      // 乐观追加用户消息（文字 + 图片）
+      this.messages.push({ id: 'local_' + Date.now(), role: 'user', content, images })
       this.aiThinking = this.status === 'ai'
 
       try {
-        const res = await api.sendChatMessage(this.sessionId, content)
+        const res = await api.sendChatMessage(this.sessionId, content, images)
         if (res.code !== 0) {
           uni.showToast({ title: res.message || this.$t('chat.sendFailed'), icon: 'none' })
           this.messages = this.messages.filter((m) => !m.id.startsWith('local_'))
@@ -467,6 +523,71 @@ export default {
       if (c.includes('转接') || c.includes('转人工') || c.includes('transfer')) return this.$t('chat.transferredTip')
       if (c.includes('结束')) return this.$t('chat.closed')
       return c
+    },
+    // ===== 图片 =====
+    msgImages(m) {
+      return normalizeImgs(m)
+    },
+    imgUrl(url) {
+      // 本地上传中的临时路径直接展示，服务端返回的 /api/uploads/.. 补全为绝对地址
+      if (!url) return ''
+      if (/^https?:\/\//.test(url)) return url
+      if (url.startsWith('wxfile://') || url.startsWith('http')) return url
+      return resolveAssetUrl(url)
+    },
+    previewMsgImages(m, index) {
+      const urls = normalizeImgs(m).map((u) => this.imgUrl(u))
+      if (!urls.length) return
+      uni.previewImage({ urls, current: urls[index] || urls[0] })
+    },
+    pickImages() {
+      if (this.picking) return
+      const remain = this.chatImgMax - this.pendingImages.length
+      if (remain <= 0) {
+        uni.showToast({ title: this.$t('chat.imgLimit'), icon: 'none' })
+        return
+      }
+      uni.chooseImage({
+        count: remain,
+        sizeType: ['compressed'],
+        sourceType: ['album', 'camera'],
+        success: (res) => {
+          const list = res && (res.tempFilePaths || res.tempFiles || [])
+          const paths = (Array.isArray(list) ? list : [])
+            .map((p) => (typeof p === 'string' ? p : (p && p.path) || ''))
+            .filter(Boolean)
+          this.uploadPending(paths)
+        }
+      })
+    },
+    async uploadPending(paths) {
+      this.picking = true
+      try {
+        for (const p of paths) {
+          if (this.pendingImages.length >= this.chatImgMax) break
+          const up = await api.uploadChatImage(p)
+          if (!up || up.code !== 0 || !up.data || !up.data.url) {
+            uni.showToast({ title: (up && up.message) || this.$t('chat.imgUploadFailed'), icon: 'none' })
+            continue
+          }
+          this.pendingImages.push({ url: up.data.url, local: p })
+        }
+        this.scrollBottom()
+      } finally {
+        this.picking = false
+      }
+    },
+    removePendingImage(index) {
+      this.pendingImages.splice(index, 1)
+    },
+    previewPending(index) {
+      const urls = this.pendingImages.map((p) => p.local)
+      uni.previewImage({ urls, current: urls[index] || urls[0] })
+    },
+    plusIcon() {
+      const s =
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#63708C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>'
+      return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(s)}`
     },
     copyEmail() {
       uni.setClipboardData({
@@ -649,6 +770,65 @@ export default {
   border-top-right-radius: $radius-sm;
 }
 
+/* ============ 消息图片 ============ */
+.msg-imgs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 12rpx;
+}
+
+.msg-img {
+  width: 200rpx;
+  height: 200rpx;
+  border-radius: 16rpx;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+.bubble.mine-bubble .msg-img {
+  border-radius: 16rpx;
+}
+
+/* ============ 待发送图片缩略图 ============ */
+.pending-imgs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16rpx;
+  padding: 16rpx 24rpx 0;
+  background: #ffffff;
+}
+
+.pending-img-wrap {
+  position: relative;
+  width: 120rpx;
+  height: 120rpx;
+}
+
+.pending-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 16rpx;
+}
+
+.pending-del {
+  position: absolute;
+  top: -8rpx;
+  right: -8rpx;
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pending-del-x {
+  font-size: 28rpx;
+  line-height: 1;
+}
+
 .bubble.typing {
   display: flex;
   gap: 6rpx;
@@ -687,6 +867,31 @@ export default {
   padding: 0 28rpx;
   font-size: 27rpx;
   color: $ink;
+}
+
+.attach-btn {
+  width: 68rpx;
+  height: 68rpx;
+  border-radius: 50%;
+  background: $bg-soft;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+
+  &.disabled {
+    opacity: 0.5;
+  }
+
+  &--hover {
+    transform: scale(0.92);
+  }
+}
+
+.attach-icon {
+  width: 40rpx;
+  height: 40rpx;
 }
 
 .send-btn {

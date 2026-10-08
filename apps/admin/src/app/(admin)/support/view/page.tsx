@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, MessagesSquare, Send, CheckCircle2, User } from 'lucide-react';
+import { ArrowLeft, MessagesSquare, Send, CheckCircle2, User, Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,14 @@ function timeStr(iso?: string) {
   return new Date(iso).toLocaleString('zh-CN', { hour12: false });
 }
 
+// 归一化消息图片字段（可能是 JSON 字符串或数组），返回 URL 数组
+function msgImgs(m: SupportMessage): string[] {
+  const raw = m.images as any;
+  if (!raw) return [];
+  const arr = typeof raw === 'string' ? (() => { try { return JSON.parse(raw); } catch { return []; } })() : raw;
+  return Array.isArray(arr) ? arr.filter((x) => typeof x === 'string') : [];
+}
+
 export default function SupportViewPage() {
   const router = useRouter();
   const [id, setId] = useState('');
@@ -45,6 +53,7 @@ export default function SupportViewPage() {
   const [confirmClose, setConfirmClose] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const msgBoxRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const lastId = useRef('');
   // 是否停在底部：仅在靠近底部时，新消息到达才自动滚动，避免打断回看历史
   const atBottomRef = useRef(true);
@@ -171,12 +180,13 @@ export default function SupportViewPage() {
     };
   }, [load, router]);
 
-  const sendReply = async () => {
+  const sendReply = async (sendImages: string[] = []) => {
     const content = reply.trim();
-    if (!content || sending) return;
+    const images = sendImages.length ? sendImages : [];
+    if ((!content && !images.length) || sending) return;
     setSending(true);
     try {
-      const res = await adminApi.replySupportSession(id, content);
+      const res = await adminApi.replySupportSession(id, content, images);
       const body = unwrap<{ messages: SupportMessage[] }>(res);
       const sent = body.data.messages || [];
       setMessages((prev) => [...prev, ...sent]);
@@ -187,6 +197,25 @@ export default function SupportViewPage() {
     } catch (e) {
       toast.error(getErrorMessage(e, '回复失败'));
     } finally {
+      setSending(false);
+    }
+  };
+
+  const handleAttachImage = () => {
+    fileInputRef.current?.click();
+  };
+
+  const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // 允许重复选择同一文件
+    if (!file) return;
+    setSending(true);
+    try {
+      const res = await adminApi.adminChatUploadImage(file);
+      if (res.code !== 0 || !res.data?.url) throw new Error(res.message || '图片上传失败');
+      await sendReply([res.data.url]);
+    } catch (err) {
+      toast.error(getErrorMessage(err, '图片上传失败'));
       setSending(false);
     }
   };
@@ -275,6 +304,18 @@ export default function SupportViewPage() {
                       )}
                       <div className={isSystem ? 'text-[13px]' : 'whitespace-pre-wrap break-words'}>
                         {m.content}
+                        {msgImgs(m).length > 0 && (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {msgImgs(m).map((u) => (
+                              <img
+                                key={u}
+                                src={u}
+                                alt="消息图片"
+                                className="h-28 w-28 rounded-lg object-cover ring-1 ring-black/5"
+                              />
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -288,6 +329,23 @@ export default function SupportViewPage() {
           {session && session.status !== 'closed' ? (
             <div className="border-t p-3">
               <div className="flex items-end gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={onFileChange}
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 text-muted-foreground"
+                  onClick={handleAttachImage}
+                  disabled={sending}
+                  title="发送图片"
+                >
+                  <Paperclip size={16} />
+                </Button>
                 <Textarea
                   value={reply}
                   onChange={(e) => setReply(e.target.value)}
@@ -300,7 +358,7 @@ export default function SupportViewPage() {
                     }
                   }}
                 />
-                <Button onClick={sendReply} disabled={sending || !reply.trim()}>
+                <Button onClick={() => sendReply()} disabled={sending || !reply.trim()}>
                   <Send size={14} className="mr-1" />
                   发送
                 </Button>

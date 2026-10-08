@@ -167,8 +167,12 @@ export const api = {
   async getChatSession(id) {
     return request('GET', `/chat/sessions/${id}`);
   },
-  async sendChatMessage(id, content) {
-    return request('POST', `/chat/sessions/${id}/messages`, { content });
+  async sendChatMessage(id, content, images = []) {
+    return request('POST', `/chat/sessions/${id}/messages`, { content, images });
+  },
+  // 上传聊天图片，成功返回 { code:0, data:{ url } }
+  async uploadChatImage(filePath) {
+    return uploadFile('/uploads/image', filePath);
   },
   async transferChat(id) {
     return request('POST', `/chat/sessions/${id}/transfer`, {});

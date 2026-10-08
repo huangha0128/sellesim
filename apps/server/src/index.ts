@@ -86,6 +86,15 @@ async function bootstrapAdminUser() {
   }
 }
 
+// 旧数据兜底：为 lastMessageAt 为空（新增列前已存在的会话）补上最后消息时间，
+// 以 updatedAt 作为初始近似值，避免会话列表排序/展示出现空时间。
+async function bootstrapLastMessageAt() {
+  const r = await prisma.$executeRawUnsafe(
+    `UPDATE ChatSession SET last_message_at = updated_at WHERE last_message_at IS NULL`
+  );
+  if (r && r > 0) console.log(`[chat] 已为 ${r} 个历史会话补上最后消息时间`);
+}
+
 const PORT = process.env.PORT || 6660;
 
 const server = http.createServer(app);
@@ -111,6 +120,12 @@ server.listen(PORT, () => {
 
 // 会话空闲清理：每 10 分钟归档空闲超过 30 分钟的会话（Redis 分布式锁保证多实例下不重复执行）
 startSessionSweeper(prisma);
+
+// 兜底：为旧数据（lastMessageAt 为空）的会话补上最后消息时间，
+// 以 updatedAt 作为初始值。仅执行一次（WHERE ... IS NULL），不影响新写入。
+bootstrapLastMessageAt().catch((e) => {
+  console.error('[chat] 会话最后消息时间兜底失败：', e.message);
+});
 
 // 引导管理员账号（失败不影响服务启动，仅无法登录后台）
 bootstrapAdminUser().catch((e) => {

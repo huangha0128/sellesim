@@ -115,6 +115,8 @@ export default {
     humanNotice: 'Le support vous aide',
     emailNoticePrefix: 'Si aucune réponse n\'arrive d\'ici peu, veuillez envoyer un e-mail à',
     emailCopied: 'Adresse e-mail copiée',
+    imgLimit: 'Jusqu\'à 9 images par message',
+    imgUploadFailed: 'Échec du téléchargement de l\'image, réessayez',
     sendFailed: 'Échec de l\'envoi, veuillez réessayer',
     offlineTip: 'Erreur réseau, veuillez réessayer',
     emptyHint: 'Bonjour, je suis Xiao Y. Comment puis-je vous aider ?',

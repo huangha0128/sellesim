@@ -49,7 +49,7 @@ export async function queryOrders(
   }
 
   const lines = orders.map((o, i) =>
-    `${i + 1}. ${o.pkgName || (o.gb + 'GB' + (o.days ? '/' + o.days + '天' : ''))}｜${ORDER_STATUS_TEXT[o.status] || o.status}｜${fmtDate(o.createdAt)}`,
+    `${i + 1}. ${o.pkgName || (o.gb + 'GB' + (o.days ? '/' + o.days + '天' : ''))}｜订单号 ${o.orderNo}｜${ORDER_STATUS_TEXT[o.status] || o.status}｜${fmtDate(o.createdAt)}`,
   );
   return {
     reply: `您共有 ${orders.length} 笔最近订单：\n${lines.join('\n')}\n\n如需退改请在「我的 → 我的订单」中操作。`,
@@ -159,6 +159,27 @@ export async function recommendPackages(
 
 // ---- refund tool -----------------------------------------------------------
 
+/** 该用户名下可退款（待激活）的订单列表，供 AI 向用户确认订单号。 */
+async function listRefundableOrders(
+  prisma: PrismaClient,
+  userId: string,
+): Promise<{ lines: string[]; count: number }> {
+  const candidates = await prisma.order.findMany({
+    where: { userId, status: 'paid' },
+    orderBy: { createdAt: 'desc' },
+    take: 6,
+  });
+  return {
+    count: candidates.length,
+    lines: candidates.map(
+      (o, i) => `${i + 1}. ${o.pkgName || o.gb + 'GB'}｜订单号 ${o.orderNo}｜${fmtDate(o.createdAt)}`,
+    ),
+  };
+}
+
+const NO_REFUNDABLE_ORDER_REPLY =
+  '该用户名下没有可申请退款的订单（仅「待激活」订单支持退款，已激活套餐无法退款）。请如实告知用户。';
+
 /**
  * Submit a user refund request on behalf of the AI customer service.
  * IMPORTANT: only call this AFTER the user has explicitly given a reason.
@@ -173,24 +194,27 @@ export async function requestRefund(
     return { reply: '用户未登录，无法提交退款申请，请引导用户先登录后再试。', category: 'refund' };
   }
   // 顺序：先确认「退哪一笔订单」，再确认「退款原因」，两者齐全才提交。
-  let orderNo = String(arg?.orderNo || '').trim();
+  const orderNo = String(arg?.orderNo || '').trim();
   if (!orderNo) {
-    const candidates = await prisma.order.findMany({
-      where: { userId, status: 'paid' },
-      orderBy: { createdAt: 'desc' },
-      take: 6,
-    });
-    if (!candidates.length) {
-      return {
-        reply: '该用户名下没有可申请退款的订单（仅「待激活」订单支持退款，已激活套餐无法退款）。请如实告知用户。',
-        category: 'refund',
-      };
-    }
-    const lines = candidates.map(
-      (o, i) => `${i + 1}. ${o.pkgName || o.gb + 'GB'}｜订单号 ${o.orderNo}｜${fmtDate(o.createdAt)}`,
-    );
+    const { lines, count } = await listRefundableOrders(prisma, userId);
+    if (!count) return { reply: NO_REFUNDABLE_ORDER_REPLY, category: 'refund' };
     return {
       reply: `尚未确认要退哪一笔订单。请先把下列可退款（待激活）订单发给用户，询问「请问您要退哪一笔？」，用户选定后再询问退款原因，然后重新调用本工具并填上 orderNo 与 reason：\n${lines.join('\n')}`,
+      category: 'refund',
+    };
+  }
+
+  // 订单号必须真实属于该用户：查不到时直接回退到候选清单，让模型自纠错，
+  // 避免把「订单不存在」抛给用户后仍反复用同一个错误订单号重试。
+  const owned = await prisma.order.findFirst({ where: { orderNo, userId } });
+  if (!owned) {
+    const { lines, count } = await listRefundableOrders(prisma, userId);
+    return {
+      reply: `未找到订单号「${orderNo}」（不存在或不属于当前用户）。请勿再使用该订单号，也不要编造订单号；${
+        count
+          ? `请从下列可退款（待激活）订单中，与用户确认后重新调用本工具：\n${lines.join('\n')}`
+          : NO_REFUNDABLE_ORDER_REPLY
+      }`,
       category: 'refund',
     };
   }

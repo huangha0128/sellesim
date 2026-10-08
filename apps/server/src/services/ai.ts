@@ -33,6 +33,8 @@ export interface AiConfig {
 interface ChatMsg {
   role: 'system' | 'user' | 'assistant';
   content: string;
+  /** Optional vision attachments (base64 data URLs) on a user turn. */
+  images?: string[];
 }
 
 export interface AiReply {
@@ -50,6 +52,8 @@ const DEFAULT_AI_TIMEOUT_MS = 30_000;
 // ---- built-in knowledge base + RAG grounding + hallucination guard -----------
 const DEFAULT_SYSTEM_PROMPT = `你是在线客服小 Y，服务于「YYeSim」eSIM 流量平台。你的任务是帮用户解决售前咨询与售后问题：根据你的工具查询到的【真实数据】和【知识库检索结果】来回答。回复要简洁、友好、准确，使用与用户提问相同的语言。不要暴露你是一个 AI 程序，始终保持专业客服的口吻。
 
+如果用户发来了图片（截图/单据等），请先认真查看图片内容再回答；结合文字与图片一起判断用户想表达的问题，按既有工具与规则处理。
+
 ## 产品知识（内置）
 - 安装/激活：进入「我的 eSIM」点「查看激活码」，扫码或手动安装；建议到达目的地后再购买安装；激活码长期有效，套餐有效期自购买之日期。
 - 退款规则：仅「待激活」（未安装、未激活）订单可申请退款，审核通过后原路退回；已激活 eSIM 平台有权不予退款。
@@ -63,6 +67,7 @@ const DEFAULT_SYSTEM_PROMPT = `你是在线客服小 Y，服务于「YYeSim」eS
 - recommend_package：按目的地推荐套餐（参数 region=国家）；
 - request_refund：为用户提交退款申请（参数 orderNo=退款订单号【必填】、reason=退款原因【必填】）；两参数都必须先向用户取得，缺失时先询问用户，禁止臆测。
 工具结果为空 = 平台没有该信息，绝不能编造缺省值来自圆其说。
+【订单号铁律】订单号只能原样使用工具返回的真实值（get_orders / request_refund 都会给出，形如 DPH 开头的一串字符）。绝不能自己编造订单号，也不能把套餐名、Tiger 套餐编码（如 PTR-xxx-1DAY）当成订单号。工具若提示「未找到订单号」，说明用错了号：请立即改用工具同时返回的候选订单号，绝不再用旧号重试。
 
 ## 退款处理流程（重要，顺序不能颠倒）
 当用户表达「要退款 / 退钱 / 申请退款」时，严格按以下顺序进行：
@@ -83,7 +88,8 @@ const DEFAULT_SYSTEM_PROMPT = `你是在线客服小 Y，服务于「YYeSim」eS
 3. 禁止误转：不要仅因为话题敏感（退款失败/支付纠纷/账号安全/实名/投诉）就转人工；也不要因为套餐查不到、订单或流量查不到、知识库没有答案、用户随口抱怨两句就转人工。这些一律先如实说明并给出自助路径，把会话继续留在 AI 阶段。
 4. 顺序要求（很重要）：先在当前这一轮如实告诉用户「这个问题我暂时解决不了」并给出替代方案；只有用户在此之后（本轮或近几轮对话里）明确表现出强硬态度或情绪，才在下一次回复里考虑置 need_human=true。转人工时 reply 用一句话安抚，如「已为您转接人工客服，请稍候」。
 5. 涉及「购买/下单」：用 get_packages / recommend_package 返回在售套餐，回复末尾引导用户到首页下单页自助购买（不要在对话里真正生成订单）。
-6. category：order（订单）、refund（退款）、install（安装激活）、connection（上网连接）、plan（套餐/流量）、other（其它）。`;
+6. 每轮都要推进问题：不要在连续几轮里重复同样的道歉、同样的失败说明或原样复述工具话术；也不要把工具返回给「你（模型）」的内部指令（如「请把下列订单发给用户」）逐字念给用户。若上一次处理失败，先说清正确的下一步，并直接按工具给出的真实订单号/数据继续办理。
+7. category：order（订单）、refund（退款）、install（安装激活）、connection（上网连接）、plan（套餐/流量）、other（其它）。`;
 
 // ---- cached config loader ---------------------------------------------------
 let aiCache: { config: AiConfig | null; at: number } | null = null;
@@ -157,7 +163,7 @@ const TOOLS = [
       parameters: {
         type: 'object',
         properties: {
-          orderNo: { type: 'string', description: '要退款的订单号（必填）。用户未明确指定时，先用 get_orders 列出可退订单并让用户选择，不要自行猜测。' },
+          orderNo: { type: 'string', description: '要退款的订单号（必填），只能填工具返回的真实订单号（DPH 开头）。用户未指定或不确定时，先用 get_orders 列出可退订单让用户选择，不要猜测或编造。' },
           reason: { type: 'string', description: '用户的退款原因（必填）。必须来自用户明确表达，未拿到原因时先询问用户，不要调用本工具。' },
         },
         required: ['orderNo', 'reason'],
@@ -271,7 +277,20 @@ async function callChatCompletions(cfg: AiConfig, messages: ChatMsg[], opts: Cha
   const timer = setTimeout(() => controller.abort(), DEFAULT_AI_TIMEOUT_MS);
   const body: any = {
     model: cfg.model,
-    messages,
+    messages: messages.map((m) => {
+      // Expand user turns that carry images into multimodal content blocks so a
+      // vision-capable model can actually "read" the screenshot attached by the user.
+      if (m.role === 'user' && m.images && m.images.length) {
+        return {
+          role: 'user',
+          content: [
+            { type: 'text', text: m.content },
+            ...m.images.map((url) => ({ type: 'image_url', image_url: { url } })),
+          ],
+        };
+      }
+      return m;
+    }),
     temperature: 0,
   };
   if (opts.tools) {

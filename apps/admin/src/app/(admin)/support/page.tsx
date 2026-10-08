@@ -210,7 +210,7 @@ export default function SupportPage() {
                         </div>
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-sm text-muted-foreground">
-                        {timeStr(s.updatedAt)}
+                        {timeStr(s.lastMessageAt || s.updatedAt)}
                       </TableCell>
                       <TableCell className="text-right">
                         <Link href={`/support/view?id=${s.id}`}>

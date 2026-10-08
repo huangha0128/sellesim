@@ -113,6 +113,8 @@ export default {
     humanNotice: 'Support is helping you',
     emailNoticePrefix: 'If not replied within a while, please email',
     emailCopied: 'Email address copied',
+    imgLimit: 'Up to 9 images per message',
+    imgUploadFailed: 'Image upload failed, please retry',
     sendFailed: 'Failed to send, please retry',
     offlineTip: 'Network error, please retry',
     emptyHint: 'Hi, I am Xiao Y. How can I help you?',

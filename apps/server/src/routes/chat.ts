@@ -5,6 +5,36 @@ import { generateAiReply } from '../services/ai';
 import { broadcastToSession } from '../services/chatHub';
 import { SESSION_IDLE_MS } from '../services/sessionSweeper';
 
+// ---------------------------------------------------------------------------
+// Image attachments for chat messages.
+// URLs are stored relative (/api/uploads/{id}); the Upload table in MySQL holds
+// the bytes, so any backend instance can read them. For the AI turn the image
+// bytes are embedded as base64 data URLs so a vision-capable model can read it.
+// ---------------------------------------------------------------------------
+
+// Parse the stored JSON array of image URLs (empty array when unset/invalid).
+function parseImages(raw?: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter((x) => typeof x === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+// Convert /api/uploads/{id} URLs into base64 data URLs for AI vision input.
+async function toImageDataUrls(prisma: PrismaClient, urls: string[]): Promise<string[]> {
+  const out: string[] = [];
+  for (const u of urls || []) {
+    const m = /\/api\/uploads\/([^/?#]+)/.exec(u || '');
+    if (!m) continue;
+    const row = await prisma.upload.findUnique({ where: { id: decodeURIComponent(m[1]) } });
+    if (row) out.push(`data:${row.mime};base64,${Buffer.from(row.data).toString('base64')}`);
+  }
+  return out;
+}
+
 // User-facing AI + human customer support chat.
 // Mounted at /api/chat. All endpoints require miniapp user auth and are scoped by userId.
 
@@ -84,12 +114,20 @@ export default (prisma: PrismaClient) => {
     }
 
     const content = String((req.body || {}).content || '').trim();
-    if (!content) return res.json({ code: 1, message: '请输入内容' });
+    const imagesBody = (req.body || {}).images;
+    const images = Array.isArray(imagesBody) ? imagesBody.filter((x) => typeof x === 'string') : [];
+    if (!content && !images.length) return res.json({ code: 1, message: '请输入内容或选择图片' });
     if (session.status === 'closed') return res.json({ code: 1, message: '会话已结束' });
 
     // Persist the user message.
     const userMsg = await prisma.chatMessage.create({
-      data: { sessionId: session.id, role: 'user', content, readByAdmin: false },
+      data: {
+        sessionId: session.id,
+        role: 'user',
+        content,
+        images: images.length ? JSON.stringify(images) : null,
+        readByAdmin: false,
+      },
     });
 
     let aiMsg: any = null;
@@ -103,14 +141,21 @@ export default (prisma: PrismaClient) => {
         orderBy: { createdAt: 'desc' },
         take: 12,
       });
-      const history: { role: 'user' | 'assistant'; content: string }[] = recent
-        .slice()
-        .reverse()
-        .map((m) => ({
-          role: m.role === 'ai' ? ('assistant' as const) : ('user' as const),
+      const history: { role: 'user' | 'assistant'; content: string; images?: string[] }[] = [];
+      for (const m of recent.slice().reverse()) {
+        const role = m.role === 'ai' ? ('assistant' as const) : ('user' as const);
+        const item: { role: 'user' | 'assistant'; content: string; images?: string[] } = {
+          role,
           content: m.content,
-        }));
-      const result = await generateAiReply(prisma, history, { userId: req.userId });
+        };
+        // 用户消息若带图，则取回图片字节作为 base64 数据 URL，供视觉模型识别截图内容
+        if (role === 'user') {
+          const urls = parseImages(m.images);
+          if (urls.length) item.images = await toImageDataUrls(prisma, urls);
+        }
+        history.push(item);
+      }
+      const result = await generateAiReply(prisma, history as any, { userId: req.userId });
       console.log(`[ai] userId=${req.userId} needHuman=${result.needHuman} category=${result.category}`);
 
       aiMsg = await prisma.chatMessage.create({
@@ -139,9 +184,10 @@ export default (prisma: PrismaClient) => {
     }
 
     const sender = session.status === 'ai' && !aiMsg?.needHuman ? 'ai' : 'user';
+    const lastMsgTime = (aiMsg?.createdAt as Date | undefined) ?? (userMsg.createdAt as Date);
     const final = await prisma.chatSession.update({
       where: { id: session.id },
-      data: { unreadAdmin: { increment: 1 }, ...lastInfo(sender, content) },
+      data: { unreadAdmin: { increment: 1 }, ...lastInfo(sender, content || '[图片]'), lastMessageAt: lastMsgTime },
     });
 
     // 实时推送：新消息 + 最新会话状态（客户端按 id 去重，避免重连/并发导致的重复渲染）

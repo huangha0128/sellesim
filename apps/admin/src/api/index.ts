@@ -232,6 +232,7 @@ export interface SupportSession {
   needHuman?: boolean;
   lastMessage?: string | null;
   lastSender?: string | null;
+  lastMessageAt?: string | null;
   unreadAdmin?: number;
   unreadUser?: number;
   updatedAt?: string;
@@ -242,6 +243,7 @@ export interface SupportMessage {
   id: string;
   role: string; // user | ai | admin | system
   content: string;
+  images?: string | string[]; // JSON string or array of /api/uploads/{id} URLs
   needHuman?: boolean;
   category?: string | null;
   adminName?: string | null;
@@ -394,8 +396,15 @@ export const adminApi = {
     http.get('/admin/chat/sessions', { params }),
   getSupportNotifications: () => http.get('/admin/chat/notifications'),
   getSupportSession: (id: string) => http.get(`/admin/chat/sessions/${id}`),
-  replySupportSession: (id: string, content: string) =>
-    http.post(`/admin/chat/sessions/${id}/messages`, { content }),
+  replySupportSession: (id: string, content: string, images: string[] = []) =>
+    http.post(`/admin/chat/sessions/${id}/messages`, { content, images }),
+  // 客服端上传聊天图片（multipart/form-data，字段名 file）
+  adminChatUploadImage: async (file: File) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await http.post('/admin/chat/upload/image', fd);
+    return unwrap<{ url: string }>(res);
+  },
   closeSupportSession: (id: string) => http.post(`/admin/chat/sessions/${id}/close`),
 
   // ---- AI 知识库管理 ----

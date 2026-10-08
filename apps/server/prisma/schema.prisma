@@ -296,6 +296,9 @@ model ChatSession {
   needHuman   Boolean       @default(false) @map("need_human")
   lastMessage String?       @map("last_message") @db.Text
   lastSender  String?       @map("last_sender") // user | ai | admin | system
+  // Send-time of the last message. Updated ONLY when a message is really sent,
+  // so opening a session (mark-read) never refreshes it. Used for list sort/display.
+  lastMessageAt DateTime?   @map("last_message_at")
   unreadAdmin Int           @default(0) @map("unread_admin")
   unreadUser  Int           @default(0) @map("unread_user")
   closedAt    DateTime?     @map("closed_at")
@@ -317,6 +320,7 @@ model ChatMessage {
   session     ChatSession  @relation(fields: [sessionId], references: [id])
   role        String
   content     String       @db.Text
+  images      String?      @map("images") @db.LongText // JSON array of /api/uploads/{id} URLs attached to this message
   needHuman   Boolean      @default(false) @map("need_human")
   category    String?      @map("category") // order | refund | install | connection | other
   userContent String?      @map("user_content") @db.LongText
