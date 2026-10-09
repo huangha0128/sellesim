@@ -196,7 +196,13 @@ export default (prisma: PrismaClient) => {
           err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
             ? '图片不能超过 5MB'
             : err.message || '图片上传失败';
-        return res.json({ code: 1, message: msg });
+        // multer 中途终止后请求体尚未读完，直接响应会让上游代理因连接重置拿到 502；
+        // 先排空剩余请求体再返回业务错误，客户端才能看到具体提示。
+        const finish = () => res.json({ code: 1, message: msg });
+        if (req.readableEnded) return finish();
+        req.resume();
+        req.on('end', finish);
+        return;
       }
       const file = (req as any).file;
       if (!file) return res.json({ code: 1, message: '请选择要上传的图片' });

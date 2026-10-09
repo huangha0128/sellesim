@@ -55,7 +55,12 @@ export default (prisma: PrismaClient) => {
           err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
             ? `图片不能超过 ${MAX_IMAGE_BYTES / 1024 / 1024}MB`
             : err.message || '图片上传失败';
-        return res.json({ code: 1, message: msg });
+        // 先排空未读完的请求体再响应，避免上游代理因连接重置把业务错误变成 502
+        const finish = () => res.json({ code: 1, message: msg });
+        if (req.readableEnded) return finish();
+        req.resume();
+        req.on('end', finish);
+        return;
       }
       const file = (req as any).file;
       if (!file) {

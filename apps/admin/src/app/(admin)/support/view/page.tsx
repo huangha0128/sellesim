@@ -41,6 +41,29 @@ function msgImgs(m: SupportMessage): string[] {
   return Array.isArray(arr) ? arr.filter((x) => typeof x === 'string') : [];
 }
 
+// 上传前压缩：最长边压到 maxDim、转 JPEG，避免原图超 5MB 被 502/拒绝
+async function compressImage(file: File, maxDim = 1920, quality = 0.85): Promise<File> {
+  if (!file.type.startsWith('image/') || file.type === 'image/gif') return file;
+  try {
+    const bitmap = await createImageBitmap(file);
+    const scale = Math.min(1, maxDim / Math.max(bitmap.width, bitmap.height));
+    if (scale >= 1 && file.size <= 4 * 1024 * 1024) return file;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return file;
+    ctx.fillStyle = '#ffffff'; // PNG 透明底转 JPEG 时避免变黑
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
+    if (!blob || blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.\w+$/, '') + '.jpg', { type: 'image/jpeg' });
+  } catch {
+    return file;
+  }
+}
+
 export default function SupportViewPage() {
   const router = useRouter();
   const [id, setId] = useState('');
@@ -51,6 +74,7 @@ export default function SupportViewPage() {
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
   const [confirmClose, setConfirmClose] = useState(false);
+  const [preview, setPreview] = useState<{ url: string; list: string[] } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const msgBoxRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -205,12 +229,30 @@ export default function SupportViewPage() {
     fileInputRef.current?.click();
   };
 
+  // 点击消息图片全屏查看
+  const openPreview = (list: string[], index: number) => {
+    if (!list?.length) return;
+    setPreview({ url: list[index] ?? list[0], list });
+  };
+
+  // Esc 关闭全屏预览
+  useEffect(() => {
+    if (!preview) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPreview(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [preview]);
+
   const onFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const raw = e.target.files?.[0];
     e.target.value = ''; // 允许重复选择同一文件
-    if (!file) return;
+    if (!raw) return;
     setSending(true);
     try {
+      const file = await compressImage(raw);
+      if (file.size > 5 * 1024 * 1024) throw new Error('图片不能超过 5MB，请换一张或手动压缩后上传');
       const res = await adminApi.adminChatUploadImage(file);
       if (res.code !== 0 || !res.data?.url) throw new Error(res.message || '图片上传失败');
       await sendReply([res.data.url]);
@@ -306,12 +348,13 @@ export default function SupportViewPage() {
                         {m.content}
                         {msgImgs(m).length > 0 && (
                           <div className="mt-2 flex flex-wrap gap-2">
-                            {msgImgs(m).map((u) => (
+                            {msgImgs(m).map((u, ui) => (
                               <img
                                 key={u}
                                 src={u}
                                 alt="消息图片"
-                                className="h-28 w-28 rounded-lg object-cover ring-1 ring-black/5"
+                                className="h-28 w-28 cursor-zoom-in rounded-lg object-cover ring-1 ring-black/5"
+                                onClick={() => openPreview(msgImgs(m), ui)}
                               />
                             ))}
                           </div>
@@ -384,6 +427,56 @@ export default function SupportViewPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* 全屏图片预览 */}
+      {preview && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setPreview(null)}
+        >
+          <button
+            className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-2xl leading-none text-white hover:bg-white/20"
+            onClick={() => setPreview(null)}
+            aria-label="关闭预览"
+          >
+            ×
+          </button>
+          {preview.list.length > 1 && (
+            <button
+              className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 px-3 py-2 text-2xl text-white hover:bg-white/20"
+              onClick={(e) => {
+                e.stopPropagation();
+                const i = preview.list.indexOf(preview.url);
+                const ni = (i - 1 + preview.list.length) % preview.list.length;
+                setPreview({ ...preview, url: preview.list[ni] });
+              }}
+              aria-label="上一张"
+            >
+              ‹
+            </button>
+          )}
+          <img
+            src={preview.url}
+            alt="预览"
+            className="max-h-[90vh] max-w-[90vw] rounded object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+          {preview.list.length > 1 && (
+            <button
+              className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/10 px-3 py-2 text-2xl text-white hover:bg-white/20"
+              onClick={(e) => {
+                e.stopPropagation();
+                const i = preview.list.indexOf(preview.url);
+                const ni = (i + 1) % preview.list.length;
+                setPreview({ ...preview, url: preview.list[ni] });
+              }}
+              aria-label="下一张"
+            >
+              ›
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
