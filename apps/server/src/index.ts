@@ -26,7 +26,7 @@ import { genSalt, hashPassword } from './middleware/adminAuth';
 
 const app = express();
 
-app.use(cors());
+app.use(cors({ exposedHeaders: ['X-New-Token'] }));
 // verify 回调把原始 body 存到 req.rawBody，供外部开放 API 的 HMAC 签名校验使用（仅 application/json 触发）
 app.use(
   express.json({
@@ -118,7 +118,7 @@ server.listen(PORT, () => {
   console.log(` YYeSim 服务器运行在 http://localhost:${PORT}`);
 });
 
-// 会话空闲清理：每 10 分钟归档空闲超过 30 分钟的会话（Redis 分布式锁保证多实例下不重复执行）
+// 会话空闲清理：每 1 小时归档空闲超过 24 小时的会话（Redis 分布式锁保证多实例下不重复执行）
 startSessionSweeper(prisma);
 
 // 兜底：为旧数据（lastMessageAt 为空）的会话补上最后消息时间，

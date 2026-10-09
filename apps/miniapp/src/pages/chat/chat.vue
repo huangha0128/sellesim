@@ -184,6 +184,14 @@ export default {
     // 页面隐藏不断开，保持实时接收；仅在卸载时断开
   },
   methods: {
+    // token 失效（过期或服务端密钥变更）：提示并引导重新登录，登录后回跳本页
+    handleTokenExpired() {
+      uni.showToast({ title: this.$t('common.needLogin'), icon: 'none' })
+      this.loading = false
+      uni.navigateTo({
+        url: '/pages/login/login?redirect=' + encodeURIComponent('/pages/chat/chat')
+      })
+    },
     async bootstrap() {
       if (!store.isLoggedIn) {
         uni.showToast({ title: this.$t('common.needLogin'), icon: 'none' })
@@ -198,10 +206,12 @@ export default {
       try {
         if (queryId) {
           const res = await api.getChatSession(queryId)
+          if (res.code === 401) return this.handleTokenExpired()
           if (res.code === 0) session = res.data.session
         }
         if (!session) {
           const created = await api.createChatSession({})
+          if (created.code === 401) return this.handleTokenExpired()
           if (created.code === 0) session = created.data.session
         }
       } catch (e) {

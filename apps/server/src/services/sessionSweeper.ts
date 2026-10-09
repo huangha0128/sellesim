@@ -3,9 +3,9 @@ import Redis from 'ioredis';
 import { broadcastToSession } from './chatHub';
 
 // 会话空闲上限：超过该时长无新内容则归档（closed）。与用户端 chat.ts 共用同一常量，避免两处漂移。
-export const SESSION_IDLE_MS = 30 * 60 * 1000;
-// 检查周期：每 10 分钟扫描一次
-const SWEEP_INTERVAL_MS = 10 * 60 * 1000;
+export const SESSION_IDLE_MS = 24 * 60 * 60 * 1000;
+// 检查周期：每 1 小时扫描一次
+const SWEEP_INTERVAL_MS = 60 * 60 * 1000;
 // 分布式锁键：多实例/负载均衡/微服务部署时，保证同一周期只有一个实例真正执行清理
 const LOCK_KEY = 'sellsim:chat:sweeper:lock';
 
@@ -65,7 +65,7 @@ async function acquireLock(): Promise<boolean> {
   }
 }
 
-/** 启动定时清理：启动 30s 后先跑一次，之后每 10 分钟一次 */
+/** 启动定时清理：启动 30s 后先跑一次，之后每 1 小时一次 */
 export function startSessionSweeper(prisma: PrismaClient): void {
   const run = async () => {
     try {

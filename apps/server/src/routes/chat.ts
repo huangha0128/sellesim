@@ -68,7 +68,7 @@ export default (prisma: PrismaClient) => {
       orderBy: { updatedAt: 'desc' },
     });
 
-    // 空闲超过 30min 的旧会话：归档（closed）并新建会话，避免把隔了很旧的对话捞回来。
+    // 空闲超过 24h 的旧会话：归档（closed）并新建会话，避免把隔了很旧的对话捞回来。
     if (existing && isIdle(existing)) {
       await prisma.chatSession.update({
         where: { id: existing.id },

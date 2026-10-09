@@ -100,6 +100,15 @@ function getToken() {
   }
 }
 
+// 服务端滑动续期：鉴权接口响应头带 X-New-Token 时无感替换本地 token（大小写兼容各平台）
+function saveRenewedToken(header) {
+  try {
+    if (!header) return
+    const key = Object.keys(header).find((k) => String(k).toLowerCase() === 'x-new-token')
+    if (key && header[key]) uni.setStorageSync('yy_token', header[key])
+  } catch (e) {}
+}
+
 function request(method, path, data) {
   return new Promise((resolve, reject) => {
     const token = getToken();
@@ -113,7 +122,10 @@ function request(method, path, data) {
       method,
       data,
       header: headers,
-      success: (res) => resolve(res.data),
+      success: (res) => {
+        saveRenewedToken(res.header || res.headers);
+        resolve(res.data);
+      },
       fail: (err) => reject(err),
     });
   });
@@ -131,6 +143,7 @@ function uploadFile(path, filePath, name = 'file') {
       name,
       header,
       success: (res) => {
+        saveRenewedToken(res.header || res.headers);
         try {
           resolve(typeof res.data === 'string' ? JSON.parse(res.data) : res.data);
         } catch (e) {
@@ -402,9 +415,5 @@ export const api = {
 
   async activateEsim(id) {
     return request('POST', `/esims/${id}/activate`);
-  },
-
-  async deleteEsim(id) {
-    return request('DELETE', `/esims/${id}`);
   },
 };
