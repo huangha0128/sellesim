@@ -713,6 +713,22 @@ export default {
     buyDrawerTitle: '選擇要加購的 eSIM',
     buyPreselectGone: '目標卡不可續費，已轉為新購'
   },
+  coupon: {
+    available: '{n} 張可用',
+    enterCode: '輸入兌換碼',
+    cnyNote: '已使用優惠券，按人民幣（CNY）結算',
+    drawerTitle: '優惠券',
+    codePlaceholder: '輸入兌換碼',
+    useCode: '使用',
+    codeEmpty: '請輸入兌換碼',
+    mine: '我的優惠券',
+    mineEmpty: '暫無可用優惠券',
+    minSpend: '滿 {n} 元可用',
+    noMin: '無門檻',
+    expireAt: '有效期至 {date}',
+    notUse: '不使用優惠券',
+    invalid: '優惠券不可用'
+  },
   payment: {
     eyebrow: 'PAYMENT',
     amountLabel: '支付金額',

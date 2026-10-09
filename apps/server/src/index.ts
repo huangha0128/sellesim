@@ -18,6 +18,8 @@ import openAuthRoutes from './routes/open-auth';
 import chatRoutes from './routes/chat';
 import adminChatRoutes from './routes/admin-chat';
 import adminKbRoutes from './routes/admin-kb';
+import couponRoutes from './routes/coupon';
+import adminCouponRoutes from './routes/admin-coupons';
 import { initChatHub, type ChatSocket } from './services/chatHub';
 import { startSessionSweeper } from './services/sessionSweeper';
 import { refreshPackageCache, PACKAGE_REFRESH_INTERVAL_MS } from './tiger/view';
@@ -55,6 +57,8 @@ app.use('/api/open/v1', openRoutes(prisma)); // protected: openAuth (key or port
 app.use('/api/chat', chatRoutes(prisma)); // user-facing AI + human support chat
 app.use('/api/admin/chat', adminChatRoutes(prisma)); // admin support session management
 app.use('/api/admin/kb', adminKbRoutes(prisma)); // admin AI knowledge base management
+app.use('/api/coupons', couponRoutes(prisma)); // user-facing coupons (miniapp)
+app.use('/api/admin/coupons', adminCouponRoutes(prisma)); // admin coupon management
 
 // 开放平台公开文档（免鉴权）：/open-api 浏览器直接访问
 app.use('/open-api', express.static(path.join(__dirname, '..', 'public', 'open-api')));

@@ -5,6 +5,7 @@ import { resolveEsimActivation } from '../tiger/activation';
 import { applyRefundRequest, readMaxRefundRejectCount } from '../services/refund';
 import { createOrder, OrderCreateError } from '../services/order';
 import { createPaymentIntent, fulfillPaidOrder, buildRefundDeps } from '../services/payment';
+import { releaseForPendingDelete } from '../services/coupon';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 
 export default (prisma: PrismaClient) => {
@@ -19,6 +20,8 @@ export default (prisma: PrismaClient) => {
         payMethod: req.body.payMethod || 'alipay',
         orderType: req.body.orderType || 'new',
         targetEsimId: req.body.targetEsimId,
+        couponCode: req.body.couponCode,
+        userCouponId: req.body.userCouponId,
       });
       res.json({ code: 0, data: { order } });
     } catch (e: any) {
@@ -118,7 +121,11 @@ export default (prisma: PrismaClient) => {
       return res.json({ code: 1, message: '仅待付款订单可删除' });
     }
     try {
-      await prisma.order.delete({ where: { id: order.id } });
+      // 同事务内先释放占用的优惠券（删除核销记录、回退 usedCount、复位券实例），再删单
+      await prisma.$transaction(async (tx) => {
+        await releaseForPendingDelete(tx, order.id);
+        await tx.order.delete({ where: { id: order.id } });
+      });
       res.json({ code: 0, data: { orderNo: order.orderNo } });
     } catch (e: any) {
       console.error(`[order] 删除订单 ${req.params.orderNo} 失败：`, e.message);

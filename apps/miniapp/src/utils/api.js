@@ -292,8 +292,18 @@ export const api = {
     return res;
   },
 
-  async createOrder({ pkgId, dataIndex, days, email, payMethod = 'alipay', orderType = 'new', targetEsimId }) {
-    return request('POST', '/orders', { pkgId, dataIndex, days, email, payMethod, orderType, targetEsimId });
+  async createOrder({ pkgId, dataIndex, days, email, payMethod = 'alipay', orderType = 'new', targetEsimId, couponCode, userCouponId }) {
+    return request('POST', '/orders', { pkgId, dataIndex, days, email, payMethod, orderType, targetEsimId, couponCode, userCouponId });
+  },
+
+  // 我的可用优惠券（未使用且券模板启用）
+  async getMyCoupons() {
+    return request('GET', '/coupons/mine');
+  },
+
+  // 校验优惠券（兑换码或我的券实例）对指定套餐的可用性与抵扣金额
+  async validateCoupon({ pkgId, code, userCouponId }) {
+    return request('POST', '/coupons/validate', { pkgId, code, userCouponId });
   },
 
   async getOrders() {

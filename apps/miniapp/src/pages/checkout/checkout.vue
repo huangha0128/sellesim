@@ -130,17 +130,24 @@
           <text class="amount-label">{{ fmt('checkout.amountLabel') }}</text>
           <text class="amount-value">{{ sym }}{{ priceNum }}</text>
         </view>
-        <view class="amount-row">
+        <view class="amount-row" @tap="openCoupon">
           <text class="amount-label">{{ fmt('checkout.discountLabel') }}</text>
-          <text class="amount-value free">- {{ sym }}0</text>
+          <view class="coupon-entry">
+            <text v-if="quote" class="coupon-applied">{{ quote.name }}</text>
+            <text v-else class="coupon-link">
+              {{ myCouponCount > 0 ? fmt('coupon.available', { n: myCouponCount }) : fmt('coupon.enterCode') }} ›
+            </text>
+            <text class="amount-value free">- ¥{{ discountNum }}</text>
+          </view>
         </view>
         <view class="amount-row total">
           <text class="amount-label">{{ fmt('checkout.totalLabel') }}</text>
           <view class="total-price">
-            <text class="total-symbol">{{ sym }}</text>
-            <text class="total-num">{{ priceNum }}</text>
+            <text class="total-symbol">{{ quote ? '¥' : sym }}</text>
+            <text class="total-num">{{ quote ? payableNum : priceNum }}</text>
           </view>
         </view>
+        <view v-if="quote" class="cny-note">{{ fmt('coupon.cnyNote') }}</view>
       </view>
 
       <view class="agree-row" @tap="agreed = !agreed">
@@ -158,8 +165,8 @@
       <view class="pay-total">
         <text class="pay-total-label">{{ fmt('checkout.payActual') }}</text>
         <view class="pay-total-price">
-          <text class="pts">{{ sym }}</text>
-          <text class="ptn">{{ priceNum }}</text>
+          <text class="pts">{{ quote ? '¥' : sym }}</text>
+          <text class="ptn">{{ quote ? payableNum : priceNum }}</text>
         </view>
       </view>
       <view
@@ -169,6 +176,42 @@
         @tap="submit"
       >
         {{ submitting ? fmt('checkout.submitting') : fmt('checkout.submit') }}
+      </view>
+    </view>
+
+    <!-- 优惠券抽屉：输入兑换码 / 选择我的优惠券 -->
+    <view v-if="showCouponDrawer" class="drawer-mask" @tap="closeCouponDrawer"></view>
+    <view v-if="showCouponDrawer" class="drawer-panel">
+      <view class="drawer-header">
+        <text class="drawer-title">{{ fmt('coupon.drawerTitle') }}</text>
+        <view class="drawer-close" @tap="closeCouponDrawer">✕</view>
+      </view>
+      <view class="drawer-body">
+        <view class="code-box">
+          <input v-model="couponCode" class="code-input" :placeholder="fmt('coupon.codePlaceholder')" />
+          <view class="code-btn" :class="{ disabled: applyingCoupon }" @tap="applyCode">{{ fmt('coupon.useCode') }}</view>
+        </view>
+        <text class="coupon-section-title">{{ fmt('coupon.mine') }}</text>
+        <view v-if="!myCoupons.length" class="drawer-empty-text">{{ fmt('coupon.mineEmpty') }}</view>
+        <view
+          v-for="c in myCoupons"
+          :key="c.id"
+          class="coupon-item"
+          :class="{ active: selectedUserCouponId === c.id }"
+          @tap="chooseCoupon(c)"
+        >
+          <view class="ci-left">
+            <text class="ci-value">{{ couponValueText(c) }}</text>
+            <text class="ci-min">{{ c.coupon.minSpend > 0 ? fmt('coupon.minSpend', { n: c.coupon.minSpend }) : fmt('coupon.noMin') }}</text>
+          </view>
+          <view class="ci-mid">
+            <text class="ci-name">{{ c.coupon.name }}</text>
+            <text class="ci-expire" v-if="c.expiresAt">{{ fmt('coupon.expireAt', { date: formatDate(c.expiresAt) }) }}</text>
+          </view>
+          <view class="ci-radio" :class="{ checked: selectedUserCouponId === c.id }"></view>
+        </view>
+        <view v-if="quote || selectedUserCouponId" class="coupon-clear" @tap="clearCoupon">{{ fmt('coupon.notUse') }}</view>
+        <view class="footer-safe"></view>
       </view>
     </view>
   </view>
@@ -203,6 +246,13 @@ export default {
       renewEsims: [],
       selectedEsimId: '',
       showEsimDrawer: false,
+      // 优惠券：抽屉/输入码/我的券/已选抵扣快照（validate 接口返回的 quote）
+      showCouponDrawer: false,
+      couponCode: '',
+      myCoupons: [],
+      selectedUserCouponId: '',
+      quote: null,
+      applyingCoupon: false,
       store
     }
   },
@@ -244,6 +294,16 @@ export default {
       if (!this.selectedEsimId) return 0
       const idx = this.expiredEsims.findIndex(e => e.id === this.selectedEsimId)
       return idx >= 0 ? idx : 0
+    },
+    myCouponCount() {
+      return this.myCoupons.length
+    },
+    discountNum() {
+      return this.quote ? Number(this.quote.discountCny || 0).toFixed(2) : '0.00'
+    },
+    payableNum() {
+      if (this.quote) return Number(this.quote.payableCny || 0).toFixed(2)
+      return this.priceNum
     }
   },
   onLoad(options) {
@@ -255,6 +315,7 @@ export default {
     setNavTitle('pageTitle.checkout')
     this.load()
     this.loadReneEsims()
+    if (store.isLoggedIn) this.loadMyCoupons()
   },
   methods: {
     fmt(key, params) {
@@ -328,6 +389,78 @@ export default {
     closeEsimDrawer() {
       this.showEsimDrawer = false
     },
+    // ============ 优惠券 ============
+    couponValueText(c) {
+      const cp = c.coupon || {}
+      if (cp.type === 'fixed') return '¥' + Number(cp.amount || 0).toFixed(2)
+      return '-' + Number(cp.percent || 0) + '%'
+    },
+    async loadMyCoupons() {
+      try {
+        const res = await api.getMyCoupons()
+        this.myCoupons = (res.data && res.data.coupons) || []
+      } catch (e) {
+        this.myCoupons = []
+      }
+    },
+    openCoupon() {
+      if (!store.isLoggedIn) {
+        uni.showToast({ title: this.fmt('checkout.needLogin'), icon: 'none' })
+        const redirect = `/pages/checkout/checkout?pkgId=${this.pkgId}`
+        uni.navigateTo({ url: `/pages/login/login?redirect=${encodeURIComponent(redirect)}` })
+        return
+      }
+      this.loadMyCoupons()
+      this.showCouponDrawer = true
+    },
+    closeCouponDrawer() {
+      this.showCouponDrawer = false
+    },
+    // 应用兑换码（服务端校验，quote 快照用于展示与下单）
+    async applyCode() {
+      const code = (this.couponCode || '').trim()
+      if (!code) {
+        uni.showToast({ title: this.fmt('coupon.codeEmpty'), icon: 'none' })
+        return
+      }
+      this.applyingCoupon = true
+      try {
+        const res = await api.validateCoupon({ pkgId: this.pkgId, code })
+        if (res.code === 0) {
+          this.quote = res.data.quote
+          this.selectedUserCouponId = ''
+          this.showCouponDrawer = false
+        } else {
+          uni.showToast({ title: res.message || this.fmt('coupon.invalid'), icon: 'none' })
+        }
+      } catch (e) {
+        uni.showToast({ title: this.fmt('common.networkError'), icon: 'none' })
+      } finally {
+        this.applyingCoupon = false
+      }
+    },
+    // 选择我的优惠券实例
+    async chooseCoupon(c) {
+      if (this.selectedUserCouponId === c.id) return
+      try {
+        const res = await api.validateCoupon({ pkgId: this.pkgId, userCouponId: c.id })
+        if (res.code === 0) {
+          this.quote = res.data.quote
+          this.selectedUserCouponId = c.id
+          this.couponCode = ''
+          this.showCouponDrawer = false
+        } else {
+          uni.showToast({ title: res.message || this.fmt('coupon.invalid'), icon: 'none' })
+        }
+      } catch (e) {
+        uni.showToast({ title: this.fmt('common.networkError'), icon: 'none' })
+      }
+    },
+    clearCoupon() {
+      this.quote = null
+      this.selectedUserCouponId = ''
+      this.couponCode = ''
+    },
     async submit() {
       if (!this.agreed) {
         uni.showToast({ title: this.fmt('checkout.agreeFirst'), icon: 'none' })
@@ -353,12 +486,19 @@ export default {
       }
       this.submitting = true
       try {
+        // 已应用的优惠券：券实例优先，其次兑换码（quote 为服务端校验快照）
+        const couponParams = {}
+        if (this.quote) {
+          if (this.quote.userCouponId) couponParams.userCouponId = this.quote.userCouponId
+          else if (this.quote.code) couponParams.couponCode = this.quote.code
+        }
         const res = await api.createOrder({
           pkgId: this.pkgId,
           email: this.email,
           payMethod: this.payMethod,
           orderType: this.buyMode === 'renew' ? 'renew' : 'new',
-          targetEsimId: this.buyMode === 'renew' ? this.selectedEsimId : undefined
+          targetEsimId: this.buyMode === 'renew' ? this.selectedEsimId : undefined,
+          ...couponParams
         })
         if (res.code === 0) {
           const order = {
@@ -942,6 +1082,157 @@ export default {
 .total-num {
   font-size: 44rpx;
   line-height: 1;
+}
+
+/* ========== 优惠券 ========== */
+.coupon-entry {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  min-width: 0;
+}
+
+.coupon-link {
+  font-size: 22rpx;
+  color: $brand;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.coupon-applied {
+  font-size: 22rpx;
+  color: $ink-2;
+  max-width: 240rpx;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cny-note {
+  margin-top: 8rpx;
+  font-size: 20rpx;
+  color: $ink-3;
+  text-align: right;
+}
+
+.code-box {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+  margin-bottom: 28rpx;
+}
+
+.code-input {
+  flex: 1;
+  height: 76rpx;
+  background: $bg-soft;
+  border-radius: $radius-sm;
+  padding: 0 24rpx;
+  font-size: 26rpx;
+  color: $ink;
+}
+
+.code-btn {
+  flex-shrink: 0;
+  height: 76rpx;
+  display: flex;
+  align-items: center;
+  padding: 0 36rpx;
+  border-radius: 999rpx;
+  background: $brand;
+  color: #ffffff;
+  font-size: 26rpx;
+  font-weight: 700;
+
+  &.disabled {
+    opacity: 0.5;
+  }
+}
+
+.coupon-section-title {
+  display: block;
+  font-size: 24rpx;
+  font-weight: 700;
+  color: $ink-2;
+  margin-bottom: 16rpx;
+}
+
+.coupon-item {
+  display: flex;
+  align-items: center;
+  border: 2rpx solid $line;
+  border-radius: $radius;
+  padding: 22rpx 24rpx;
+  margin-bottom: 16rpx;
+
+  &.active {
+    border-color: $brand;
+    background: $brand-lighter;
+  }
+}
+
+.ci-left {
+  width: 150rpx;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ci-value {
+  font-size: 34rpx;
+  font-weight: 800;
+  color: $coral;
+  line-height: 1.1;
+}
+
+.ci-min {
+  margin-top: 6rpx;
+  font-size: 19rpx;
+  color: $ink-3;
+}
+
+.ci-mid {
+  flex: 1;
+  min-width: 0;
+  margin: 0 16rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.ci-name {
+  font-size: 26rpx;
+  font-weight: 600;
+  color: $ink;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ci-expire {
+  margin-top: 4rpx;
+  font-size: 20rpx;
+  color: $ink-3;
+}
+
+.ci-radio {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  border: 2rpx solid $line;
+  flex-shrink: 0;
+
+  &.checked {
+    background: $brand;
+    border-color: $brand;
+  }
+}
+
+.coupon-clear {
+  margin-top: 8rpx;
+  text-align: center;
+  font-size: 24rpx;
+  color: $ink-3;
+  padding: 18rpx 0;
 }
 
 .agree-row {

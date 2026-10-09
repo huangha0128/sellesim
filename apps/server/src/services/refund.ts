@@ -8,6 +8,7 @@
  */
 
 import { prisma } from '../db';
+import { releaseForRefund } from './coupon';
 
 export interface AlipayRefundResult {
   code?: string;
@@ -223,6 +224,14 @@ export async function refundOrder(
       ...(reason ? { reason } : {}),
       ...(operator ? { operator } : {}),
     });
+  }
+
+  // 退款完成后返还优惠券（若有）：发放券复位 / 兑换码核销生成券实例回到用户账户。
+  // 返还失败仅记日志，不影响退款结果（可人工在后台处理）。
+  try {
+    await releaseForRefund(prisma, order.id);
+  } catch (err: any) {
+    console.error(`[refund] 订单 ${orderNo} 优惠券返还失败：`, err.message);
   }
 
   return { order: updated, refunded: true };

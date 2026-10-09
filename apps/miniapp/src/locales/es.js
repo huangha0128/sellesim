@@ -715,6 +715,22 @@ export default {
     buyDrawerTitle: 'Selecciona la eSIM a recargar',
     buyPreselectGone: 'La tarjeta objetivo no se puede renovar, se cambió a una compra nueva'
   },
+coupon: {
+    available: '{n} disponibles',
+    enterCode: 'Introducir código',
+    cnyNote: 'Cupón aplicado, pago en CNY',
+    drawerTitle: 'Cupones',
+    codePlaceholder: 'Introducir código',
+    useCode: 'Aplicar',
+    codeEmpty: 'Introduce un código',
+    mine: 'Mis cupones',
+    mineEmpty: 'No hay cupones disponibles',
+    minSpend: 'Desde ¥{n}',
+    noMin: 'Sin mínimo',
+    expireAt: 'Válido hasta {date}',
+    notUse: 'No usar cupón',
+    invalid: 'Cupón no disponible'
+  },
   payment: {
     eyebrow: 'PAYMENT',
     amountLabel: 'Importe del pago',

@@ -710,6 +710,22 @@ export default {
     buyDrawerTitle: 'Select eSIM to top up',
     buyPreselectGone: 'Target card not renewable, switched to new purchase'
   },
+  coupon: {
+    available: '{n} available',
+    enterCode: 'Enter promo code',
+    cnyNote: 'Coupon applied, charged in CNY',
+    drawerTitle: 'Coupons',
+    codePlaceholder: 'Enter promo code',
+    useCode: 'Apply',
+    codeEmpty: 'Please enter a promo code',
+    mine: 'My coupons',
+    mineEmpty: 'No available coupons',
+    minSpend: 'Min spend ¥{n}',
+    noMin: 'No minimum',
+    expireAt: 'Valid until {date}',
+    notUse: "Don't use coupon",
+    invalid: 'Coupon unavailable'
+  },
   payment: {
     eyebrow: 'PAYMENT',
     amountLabel: 'Payment Amount',

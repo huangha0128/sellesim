@@ -715,6 +715,22 @@ export default {
     buyDrawerTitle: '추가할 eSIM 선택',
     buyPreselectGone: '대상 카드를 갱신할 수 없어 신규 구매로 전환했습니다'
   },
+coupon: {
+    available: '{n}장 사용 가능',
+    enterCode: '코드 입력',
+    cnyNote: '쿠폰 적용, 위안화(CNY) 결제',
+    drawerTitle: '쿠폰',
+    codePlaceholder: '코드를 입력하세요',
+    useCode: '사용',
+    codeEmpty: '코드를 입력해 주세요',
+    mine: '내 쿠폰',
+    mineEmpty: '사용 가능한 쿠폰이 없습니다',
+    minSpend: '¥{n} 이상 사용 가능',
+    noMin: '최소 금액 없음',
+    expireAt: '{date}까지 유효',
+    notUse: '쿠폰 사용 안 함',
+    invalid: '쿠폰을 사용할 수 없습니다'
+  },
   payment: {
     eyebrow: 'PAYMENT',
     amountLabel: '결제 금액',

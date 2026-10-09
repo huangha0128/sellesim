@@ -6,6 +6,7 @@ import { resolveSettlePrice, debitWallet, restoreWallet, canPlaceOrder, lockSubj
 import { provisionEsim } from './provision';
 import { enqueueSubjectWebhook } from './webhook';
 import { sendEsimEmail } from './email';
+import { orderPriceToCny, quoteCoupon, redeemInTx, CouponError } from './coupon';
 
 /**
  * 订单创建公共逻辑：内部（小程序/管理端）与外部开放 API 共用的下单入口。
@@ -34,10 +35,13 @@ export interface CreateOrderParams {
   targetEsimId?: string;
   /** 外部项目自己的订单号（仅外部开放 API 使用，用于对账与按单反查） */
   extOrderNo?: string;
+  /** 优惠券（二选一）：下单页输入的兑换码，或我的优惠券实例 ID */
+  couponCode?: string;
+  userCouponId?: string;
 }
 
 export async function createOrder(prisma: PrismaClient, params: CreateOrderParams): Promise<any> {
-  const { pkgId, email, userId, payMethod = 'alipay', orderType = 'new', targetEsimId, extOrderNo } = params;
+  const { pkgId, email, userId, payMethod = 'alipay', orderType = 'new', targetEsimId, extOrderNo, couponCode, userCouponId } = params;
 
   if (!pkgId || !email) {
     throw new OrderCreateError('缺少必要参数');
@@ -76,28 +80,56 @@ export async function createOrder(prisma: PrismaClient, params: CreateOrderParam
   }
 
   const orderNo = `DPH${Date.now()}${Math.floor(Math.random() * 90) + 10}`;
-  return prisma.order.create({
-    data: {
-      orderNo,
-      pkgId: String(pkg.tigerPkgId || pkg.id || pkgId),
-      email,
-      payMethod,
-      price: pkg.price,
-      status: 'pending',
-      userId,
-      countryCode: pkg.countryCode,
-      pkgName: pkg.name || `${pkg.countryCode} ${pkg.gb}GB/${pkg.days}天`,
-      pkgNameEn: pkg.nameEn || `${pkg.countryCode} ${pkg.gb}GB/${pkg.days} Days`,
-      gb: pkg.gb,
-      days: pkg.days,
-      isUnlimited: !!pkg.isUnlimited,
-      tigerPkgId: pkg.tigerPkgId,
-      tigerPid: pkg.tigerPid,
-      orderType,
-      targetEsimId: targetEsimId || null,
-      ...(extOrderNo ? { extOrderNo } : {}),
-    },
-  });
+
+  const baseData: any = {
+    orderNo,
+    pkgId: String(pkg.tigerPkgId || pkg.id || pkgId),
+    email,
+    payMethod,
+    price: pkg.price,
+    status: 'pending',
+    userId,
+    countryCode: pkg.countryCode,
+    pkgName: pkg.name || `${pkg.countryCode} ${pkg.gb}GB/${pkg.days}天`,
+    pkgNameEn: pkg.nameEn || `${pkg.countryCode} ${pkg.gb}GB/${pkg.days} Days`,
+    gb: pkg.gb,
+    days: pkg.days,
+    isUnlimited: !!pkg.isUnlimited,
+    tigerPkgId: pkg.tigerPkgId,
+    tigerPid: pkg.tigerPid,
+    orderType,
+    targetEsimId: targetEsimId || null,
+    ...(extOrderNo ? { extOrderNo } : {}),
+  };
+
+  // 带优惠券下单：核销与建单同事务（券校验失败/核销冲突 → 整体回滚）
+  if (couponCode || userCouponId) {
+    return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const cnyPrice = await orderPriceToCny(Number(pkg.price));
+      const quote = await quoteCoupon(tx, {
+        userId,
+        cnyPrice,
+        couponCode: couponCode ? String(couponCode) : undefined,
+        userCouponId: userCouponId ? String(userCouponId) : undefined,
+      });
+      const order = await tx.order.create({
+        data: {
+          ...baseData,
+          couponId: quote.couponId,
+          userCouponId: quote.userCouponId,
+          couponCode: quote.code,
+          discountAmount: quote.discountCny,
+        },
+      });
+      await redeemInTx(tx, quote, userId, order.id, orderNo);
+      return order;
+    }).catch((e: any) => {
+      if (e instanceof CouponError) throw new OrderCreateError(e.message, e.status);
+      throw e;
+    });
+  }
+
+  return prisma.order.create({ data: baseData });
 }
 
 /**

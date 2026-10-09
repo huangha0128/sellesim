@@ -55,6 +55,8 @@ model User {
   externalApp  ExternalApp?
   subject      Subject?
   chatSessions ChatSession[]
+  userCoupons  UserCoupon[]
+  couponRedemptions CouponRedemption[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 }
@@ -210,6 +212,10 @@ model Order {
   refundedAt    DateTime? @map("refunded_at")
   refundRejectCount Int   @default(0) @map("refund_reject_count") // refund requests rejected count (capped by settings maxRefundRejectCount)
   refundRequests RefundRequest[] // per-attempt refund application/review history
+  couponId      String?   @map("coupon_id") // coupon template used (snapshot, no FK on purpose)
+  userCouponId  String?   @map("user_coupon_id") // granted coupon instance consumed by this order
+  couponCode    String?   @map("coupon_code") // redemption code used (code-input flow)
+  discountAmount Float?   @map("discount_amount") // CNY coupon discount snapshot (payable = CNY price - discount)
   extOrderNo    String?   @map("ext_order_no") // external order no for reconciliation
   webhookStatus String?   @default("none") @map("webhook_status") // none/pending/success/failed
   webhookSentAt DateTime? @map("webhook_sent_at")
@@ -444,4 +450,74 @@ model KbEntry {
   sortOrder Int      @default(0)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ============ Coupons (miniapp orders only; open platform excluded) ============
+
+// Coupon template. type: fixed (CNY amount off) | percent (1-100 percent off).
+// Expiry: expireType date (validFrom/validUntil window) | days (validDays after
+// issuance; for code coupons counted from createdAt) | never.
+// totalQuota null = unlimited redemptions. code is the checkout input code;
+// null means grant-only (admin grants UserCoupon instances directly).
+model Coupon {
+  id           String    @id @default(uuid())
+  name         String
+  code         String?   @unique
+  type         String // fixed | percent
+  amount       Float? // CNY off, for type=fixed
+  percent      Float? // 1-100, for type=percent
+  minSpend     Float     @default(0) @map("min_spend") // min order CNY price to qualify
+  totalQuota   Int?      @map("total_quota") // max redemptions, null = unlimited
+  usedCount    Int       @default(0) @map("used_count")
+  perUserLimit Int       @default(1) @map("per_user_limit")
+  status       String    @default("active") // active | disabled
+  expireType   String    @default("never") @map("expire_type") // date | days | never
+  validFrom    DateTime? @map("valid_from")
+  validUntil   DateTime? @map("valid_until")
+  validDays    Int?      @map("valid_days")
+  remark       String?
+  userCoupons  UserCoupon[]
+  redemptions  CouponRedemption[]
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+// One user-held coupon instance (admin grant, or refund-return of a code
+// redemption). Code-input flow redeems inline without creating a row first.
+model UserCoupon {
+  id          String    @id @default(uuid())
+  couponId    String    @map("coupon_id")
+  coupon      Coupon    @relation(fields: [couponId], references: [id])
+  userId      String    @map("user_id")
+  user        User      @relation(fields: [userId], references: [id])
+  status      String    @default("unused") // unused | used | expired
+  source      String    @default("grant") // grant | code (returned after refund)
+  usedOrderId String?   @map("used_order_id")
+  grantedAt   DateTime  @default(now()) @map("granted_at")
+  expiresAt   DateTime? @map("expires_at") // computed from coupon expireType at grant time
+  usedAt      DateTime?
+  redemptions CouponRedemption[] // this instance may be redeemed again after refund
+
+  @@index([userId, status])
+  @@index([couponId])
+}
+
+// Per-order coupon usage record. orderId unique: one coupon per order.
+// refundedAt set when the order refund completes and the coupon is returned.
+model CouponRedemption {
+  id           String      @id @default(uuid())
+  couponId     String      @map("coupon_id")
+  coupon       Coupon      @relation(fields: [couponId], references: [id])
+  userCouponId String?     @map("user_coupon_id")
+  userCoupon   UserCoupon? @relation(fields: [userCouponId], references: [id])
+  userId       String      @map("user_id")
+  user         User        @relation(fields: [userId], references: [id])
+  orderId      String      @unique @map("order_id")
+  orderNo      String      @map("order_no")
+  amount       Float // CNY discount snapshot
+  createdAt    DateTime    @default(now())
+  refundedAt   DateTime?   @map("refunded_at")
+
+  @@index([couponId])
+  @@index([userId])
 }

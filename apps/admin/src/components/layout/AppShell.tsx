@@ -17,6 +17,7 @@ import {
   UsersRound,
   MessagesSquare,
   BookOpenText,
+  Ticket,
   LogOut,
   type LucideIcon,
 } from 'lucide-react';
@@ -39,6 +40,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/cards', label: '卡片管理', icon: CreditCard },
   { href: '/tiger-sync', label: 'Tiger 同步', icon: RefreshCw },
   { href: '/subjects', label: '开放平台主体', icon: UsersRound },
+  { href: '/coupons', label: '优惠券管理', icon: Ticket },
   { href: '/support', label: '在线客服', icon: MessagesSquare },
   { href: '/knowledge', label: '知识库管理', icon: BookOpenText },
   { href: '/settings', label: '系统设置', icon: Settings },

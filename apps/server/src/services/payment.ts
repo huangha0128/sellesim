@@ -83,6 +83,13 @@ async function toCnyAmount(price: number): Promise<string> {
   return (Math.round(cny * 100) / 100).toFixed(2);
 }
 
+/** 券抵扣后的应付金额（CNY）= 订单 CNY 价 - discountAmount 快照，封底 0.01 */
+function payableCny(gross: string, discountAmount?: number | null): string {
+  const g = Number(gross) || 0;
+  const d = Math.max(0, Math.min(Number(discountAmount || 0), g - 0.01));
+  return (Math.round((g - d) * 100) / 100).toFixed(2);
+}
+
 /** 商品名用纯 ASCII，避免中文编码导致支付宝"加签结果验证不通过" */
 function buildSubject(order: any): string {
   return `eSIM ${order.isUnlimited ? 'Unlimited' : `${order.gb || 0}GB`} ${order.days || 0}Days`;
@@ -122,7 +129,7 @@ export async function createPaymentIntent(
   if (order.status === 'paid') {
     return { orderNo: order.orderNo, totalAmount: '0.00', paid: true, payMethod: 'alipay' };
   }
-  const totalAmount = await toCnyAmount(order.price);
+  const totalAmount = payableCny(await toCnyAmount(order.price), order.discountAmount);
   const subject = buildSubject(order);
   const notifyUrl = `${config.alipay.notifyHost}/api/alipay/notify`;
 
@@ -169,7 +176,7 @@ export async function createWapPaymentUrl(
   if (order.status === 'paid') {
     return { orderNo: order.orderNo, totalAmount: '0.00', paid: true, payMethod: 'alipay' };
   }
-  const totalAmount = await toCnyAmount(order.price);
+  const totalAmount = payableCny(await toCnyAmount(order.price), order.discountAmount);
   const subject = buildSubject(order);
   const notifyUrl = `${config.alipay.notifyHost}/api/alipay/notify`;
 

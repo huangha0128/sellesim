@@ -423,6 +423,20 @@ export const adminApi = {
   ) => http.put(`/admin/kb/${id}`, data),
   deleteKbEntry: (id: string) => http.delete(`/admin/kb/${id}`),
 
+  // ---- 优惠券管理 ----
+  getCoupons: (params?: { keyword?: string; status?: string; page?: number; pageSize?: number }) =>
+    http.get('/admin/coupons', { params }),
+  createCoupon: (data: Record<string, unknown>) => http.post('/admin/coupons', data),
+  updateCoupon: (id: string, data: Record<string, unknown>) => http.put(`/admin/coupons/${id}`, data),
+  toggleCoupon: (id: string) => http.post(`/admin/coupons/${id}/toggle`),
+  deleteCoupon: (id: string) => http.delete(`/admin/coupons/${id}`),
+  grantCoupon: (id: string, data: { userIds?: string[]; emails?: string[] }) =>
+    http.post(`/admin/coupons/${id}/grant`, data),
+  getCouponRedemptions: (id: string, params?: { page?: number; pageSize?: number }) =>
+    http.get(`/admin/coupons/${id}/redemptions`, { params }),
+  getCouponGrants: (id: string, params?: { page?: number; pageSize?: number }) =>
+    http.get(`/admin/coupons/${id}/grants`, { params }),
+
   // ---- Open API v2：主体 / 密钥 / 定价 ----
   getSubjects: () => http.get('/admin/subjects'),
   createSubject: (data: {
