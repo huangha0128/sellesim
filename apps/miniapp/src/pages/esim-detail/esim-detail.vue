@@ -77,13 +77,10 @@
       </view>
     </view>
 
-    <!-- 操作按钮 -->
-    <view v-if="esim?.localEsimId" class="action-buttons">
-      <view v-if="canRenew" class="action-btn renew" @tap="goRenew">
+    <!-- 操作按钮（已移除「删除 eSIM」入口：eSIM 记录不允许用户删除） -->
+    <view v-if="esim?.localEsimId && canRenew" class="action-buttons">
+      <view class="action-btn renew" @tap="goRenew">
         <text>{{ fmt('esims.renew') }}</text>
-      </view>
-      <view class="action-btn danger" @tap="deleteEsim">
-        <text>{{ fmt('esims.delete') }}</text>
       </view>
     </view>
 
@@ -189,26 +186,6 @@ export default {
     goRenew() {
       uni.navigateTo({
         url: `/pages/detail/detail?country=${this.esim.pkg.countryCode}&mode=renew&esimId=${this.esimId}`
-      })
-    },
-    deleteEsim() {
-      uni.showModal({
-        title: this.fmt('esims.deleteTitle'),
-        content: this.fmt('esimDetail.deleteConfirm'),
-        confirmColor: '#DE4B5B',
-        success: async (res) => {
-          if (res.confirm) {
-            try {
-              await api.deleteEsim(this.esimId)
-              uni.showToast({ title: this.fmt('esims.deleted'), icon: 'success' })
-              setTimeout(() => {
-                uni.navigateBack()
-              }, 1500)
-            } catch (e) {
-              uni.showToast({ title: this.fmt('esims.deleteFailed'), icon: 'none' })
-            }
-          }
-        }
       })
     }
   }

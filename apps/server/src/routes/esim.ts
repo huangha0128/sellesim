@@ -40,15 +40,10 @@ export default (prisma: PrismaClient) => {
     res.json({ code: 0, data: { esim: updated } });
   });
 
-  router.delete('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
-    const esim = await prisma.esim.findFirst({
-      where: { id: req.params.id, userId: req.userId },
-    });
-    if (!esim) {
-      return res.json({ code: 1, message: 'eSIM 不存在' });
-    }
-    await prisma.esim.delete({ where: { id: req.params.id } });
-    res.json({ code: 0, data: {} });
+  // eSIM 记录不允许用户删除：直接删除会造成已支付订单失去卡信息、Tiger 侧绑定残留、
+  // ICCID 回流卡片池后被重复发放。保留该路由仅为兜底旧版小程序，一律拒绝且不做任何删除。
+  router.delete('/:id', authMiddleware, async (_req: AuthRequest, res: Response) => {
+    res.json({ code: 1, message: 'eSIM 记录不支持删除' });
   });
 
   return router;
