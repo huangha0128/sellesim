@@ -57,7 +57,9 @@ COPY --from=build /app/apps/server ./apps/server
 
 EXPOSE 6660
 
-# 启动：初始化数据库 → 填充基础数据 → 启动 API 服务
+# 启动：初始化数据库 → 填充基础数据 → 回填会话邮箱快照 → 启动 API 服务
 # --no-install 强制 npx 使用镜像内已安装的 prisma（5.10.0），避免 npx 临时下载其他版本导致 engine 版本不匹配
 # --accept-data-loss：套餐已改为实时来自 TigerESIM，需删除本地 Package 表与 Esim.pkgId 外键列
-CMD ["sh", "-c", "set -e; cd apps/server && npx --no-install prisma db push --accept-data-loss && node bootstrap-sync.mjs && exec node dist/index.js"]
+# backfill-chat-contact-email.mjs：幂等回填 ChatSession.contact_email（只处理 NULL 行），
+# 补齐快照功能上线前的存量会话，并在每次启动时自愈漏快照的会话
+CMD ["sh", "-c", "set -e; cd apps/server && npx --no-install prisma db push --accept-data-loss && node bootstrap-sync.mjs && node scripts/backfill-chat-contact-email.mjs && exec node dist/index.js"]
