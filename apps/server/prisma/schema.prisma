@@ -298,6 +298,9 @@ model ChatSession {
   id          String        @id @default(uuid())
   userId      String        @map("user_id")
   user        User          @relation(fields: [userId], references: [id])
+  // 联系邮箱快照：会话创建时该用户最新一笔订单的邮箱（无订单则回退注册邮箱）。
+  // 创建后不再刷新，旧会话始终保留发起当时的邮箱；显示端一律读此字段。
+  contactEmail String?      @map("contact_email")
   status      String        @default("ai")
   needHuman   Boolean       @default(false) @map("need_human")
   lastMessage String?       @map("last_message") @db.Text

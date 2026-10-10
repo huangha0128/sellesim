@@ -297,7 +297,7 @@ export default function SupportViewPage() {
         {user && (
           <span className="flex items-center gap-1 text-sm text-muted-foreground">
             <User size={13} />
-            {user.nickname || '用户'} · {user.email || '-'}
+            {user.nickname || '用户'} · {session?.contactEmail || user.email || '-'}
           </span>
         )}
         {session && session.status !== 'closed' && (

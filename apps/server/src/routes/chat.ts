@@ -61,6 +61,19 @@ export default (prisma: PrismaClient) => {
     return { lastSender: sender, lastMessage: content.slice(0, 200) };
   }
 
+  // 联系邮箱快照：取该用户当前最新一笔订单的邮箱，无订单则回退注册邮箱。
+  // 仅在会话创建时写入一次，后台显示的邮箱以此快照为准。
+  async function snapshotContactEmail(userId: string): Promise<string | null> {
+    const order = await prisma.order.findFirst({
+      where: { userId },
+      orderBy: { createdAt: 'desc' },
+      select: { email: true },
+    });
+    if (order?.email) return order.email;
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+    return user?.email || null;
+  }
+
   // POST /api/chat/sessions  create (or reuse the recent open one)
   router.post('/sessions', authMiddleware, async (req: AuthRequest, res: Response) => {
     const existing = await prisma.chatSession.findFirst({
@@ -78,7 +91,8 @@ export default (prisma: PrismaClient) => {
     }
     if (existing && !isIdle(existing)) return res.json({ code: 0, data: { session: existing } });
 
-    const session = await prisma.chatSession.create({ data: { userId: req.userId as string } });
+    const contactEmail = await snapshotContactEmail(req.userId as string);
+    const session = await prisma.chatSession.create({ data: { userId: req.userId as string, contactEmail } });
     res.json({ code: 0, data: { session } });
   });
 
@@ -109,7 +123,9 @@ export default (prisma: PrismaClient) => {
         data: { status: 'closed', closedAt: new Date(), lastSender: 'system', lastMessage: '会话超时已归档' },
       });
       broadcastToSession(session.id, { type: 'status', session: { id: session.id, status: 'closed' } });
-      session = await prisma.chatSession.create({ data: { userId: req.userId as string } });
+      session = await prisma.chatSession.create({
+        data: { userId: req.userId as string, contactEmail: await snapshotContactEmail(req.userId as string) },
+      });
       rotated = true;
     }
 

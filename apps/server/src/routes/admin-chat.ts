@@ -7,32 +7,8 @@ import { storeUpload } from './upload';
 
 // Admin-side customer support endpoints. Mounted at /api/admin/chat, admin auth required.
 
-// Override the profile email shown under a user in the session list with the
-// email recorded on that user's most recent order (fallback: profile email),
-// so the displayed email reflects what the user actually used at checkout.
-async function attachLatestOrderEmail(
-  prisma: PrismaClient,
-  sessions: Array<{ userId: string | null; user: { email: string } | null | undefined }>
-): Promise<void> {
-  const userIds = [...new Set(sessions.map((s) => s.userId).filter(Boolean) as string[])];
-  if (!userIds.length) return;
-
-  // Newest-first; the first order seen per user is the latest one.
-  const orders = await prisma.order.findMany({
-    where: { userId: { in: userIds } },
-    orderBy: { createdAt: 'desc' },
-    select: { userId: true, email: true },
-  });
-  const latestByUser = new Map<string, string>();
-  for (const o of orders) {
-    if (o.userId && !latestByUser.has(o.userId)) latestByUser.set(o.userId, o.email);
-  }
-
-  for (const s of sessions) {
-    const email = s.userId ? latestByUser.get(s.userId) : undefined;
-    if (email && s.user) s.user.email = email;
-  }
-}
+// 用户条目下显示的邮箱为会话创建时的快照（contactEmail：当时最新订单邮箱，无订单则注册邮箱），
+// 后续新订单不会影响旧会话的显示；快照为空时回退用户资料邮箱。
 
 export default (prisma: PrismaClient) => {
   const router = Router();
@@ -59,7 +35,6 @@ export default (prisma: PrismaClient) => {
       prisma.chatSession.count({ where }),
     ]);
 
-    await attachLatestOrderEmail(prisma, sessions);
     res.json({ code: 0, data: { sessions, total, page, pageSize } });
   });
 
@@ -76,11 +51,10 @@ export default (prisma: PrismaClient) => {
       take: 50,
     });
 
-    await attachLatestOrderEmail(prisma, sessions);
     const items = sessions.map((s) => ({
       sessionId: s.id,
       nickname: s.user?.nickname || '用户',
-      email: s.user?.email || '',
+      email: s.contactEmail || s.user?.email || '',
       lastMessage: s.lastMessage || '',
       lastSender: s.lastSender || '',
       unreadAdmin: s.unreadAdmin || 0,

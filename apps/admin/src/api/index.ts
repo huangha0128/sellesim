@@ -229,6 +229,7 @@ export interface SupportUser {
 export interface SupportSession {
   id: string;
   status: string; // ai | human | closed
+  contactEmail?: string | null; // 会话创建时的联系邮箱快照（当时最新订单邮箱，无订单则注册邮箱）
   needHuman?: boolean;
   lastMessage?: string | null;
   lastSender?: string | null;

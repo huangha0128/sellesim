@@ -186,7 +186,7 @@ export default function SupportPage() {
                     <TableRow key={s.id}>
                       <TableCell>
                         <div className="font-medium text-ink">{s.user?.nickname || '用户'}</div>
-                        <div className="text-xs text-muted-foreground">{s.user?.email || '-'}</div>
+                        <div className="text-xs text-muted-foreground">{s.contactEmail || s.user?.email || '-'}</div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
