@@ -201,7 +201,7 @@ export default {
     },
     goLogin() {
       if (!store.isLoggedIn) {
-        uni.navigateTo({ url: '/pages/login/login' })
+        uni.reLaunch({ url: '/pages/login/login' })
       }
     },
     goOrders() {

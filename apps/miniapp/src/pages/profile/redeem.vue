@@ -59,7 +59,7 @@ export default {
   },
   methods: {
     goLogin() {
-      uni.navigateTo({ url: '/pages/login/login' })
+      uni.reLaunch({ url: '/pages/login/login' })
     },
     async doRedeem() {
       if (this.redeeming) return

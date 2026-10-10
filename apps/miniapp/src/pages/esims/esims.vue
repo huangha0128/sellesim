@@ -176,7 +176,7 @@ export default {
         const res = await api.getMyEsims()
         if (res.code === 401) {
           uni.showToast({ title: this.fmt('common.needLogin'), icon: 'none' })
-          uni.navigateTo({ url: '/pages/login/login' })
+          uni.reLaunch({ url: '/pages/login/login' })
           return
         }
         if (res.data.esims) {

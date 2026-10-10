@@ -186,7 +186,7 @@ export default {
         const res = await api.getOrders()
         if (res.code === 401) {
           uni.showToast({ title: this.fmt('common.needLogin'), icon: 'none' })
-          uni.navigateTo({ url: '/pages/login/login' })
+          uni.reLaunch({ url: '/pages/login/login' })
           return
         }
         if (res.data.orders) {
@@ -220,7 +220,7 @@ export default {
               uni.showToast({ title: this.fmt('orders.deleteSuccess'), icon: 'none' })
               await this.refresh()
             } else if (res.code === 401) {
-              uni.navigateTo({ url: '/pages/login/login' })
+              uni.reLaunch({ url: '/pages/login/login' })
             } else {
               uni.showToast({ title: res.message || this.fmt('orders.networkError'), icon: 'none' })
             }

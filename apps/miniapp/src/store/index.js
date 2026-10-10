@@ -4,7 +4,7 @@ const USER_KEY = 'yy_user'
 const TOKEN_KEY = 'yy_token'
 const ORDERS_KEY = 'yy_orders'
 const ESIMS_KEY = 'yy_esims'
-const AGREED_KEY = 'yy_agreement_agreed'
+const LOGIN_AGREED_KEY = 'yy_agreement_login'
 
 function load(key, fallback) {
   try {
@@ -42,16 +42,16 @@ export const store = reactive({
   user: load(USER_KEY, { id: '', nickname: '', avatar: '', email: '' }),
   orders: load(ORDERS_KEY, []),
   esims: load(ESIMS_KEY, []),
-  // 用户协议/隐私政策同意状态（持久化，勾选一次后不再重复要求）
-  agreed: loadStr(AGREED_KEY, '') === '1',
+  // 登录页协议同意状态（用户协议/隐私政策，持久化，同意一次后续不再要求）
+  loginAgreed: loadStr(LOGIN_AGREED_KEY, '') === '1',
 
   get isLoggedIn() {
     return !!this.token
   },
 
-  setAgreed(value) {
-    this.agreed = !!value
-    saveStr(AGREED_KEY, value ? '1' : '')
+  setLoginAgreed(value) {
+    this.loginAgreed = !!value
+    saveStr(LOGIN_AGREED_KEY, value ? '1' : '')
   },
 
   setToken(token) {

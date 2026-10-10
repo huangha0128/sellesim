@@ -360,7 +360,7 @@ export default {
         console.log('[order-detail] response code:', res && res.code, 'message:', res && res.message)
         if (res.code === 401) {
           this.error = this.fmt('common.needLogin')
-          uni.navigateTo({ url: '/pages/login/login' })
+          uni.reLaunch({ url: '/pages/login/login' })
           return
         }
         if (res.code === 0 && res.data.order) {
@@ -433,7 +433,7 @@ export default {
               uni.showToast({ title: this.fmt('orders.deleteSuccess'), icon: 'none' })
               setTimeout(() => uni.navigateBack(), 600)
             } else if (res.code === 401) {
-              uni.navigateTo({ url: '/pages/login/login' })
+              uni.reLaunch({ url: '/pages/login/login' })
             } else {
               uni.showToast({ title: res.message || this.fmt('orders.networkError'), icon: 'none' })
             }
@@ -528,7 +528,7 @@ export default {
           this.order.refundImages = images.length ? JSON.stringify(images) : null
           this.load()
         } else if (res.code === 401) {
-          uni.navigateTo({ url: '/pages/login/login' })
+          uni.reLaunch({ url: '/pages/login/login' })
         } else {
           uni.showToast({ title: res.message || this.fmt('orders.networkError'), icon: 'none' })
         }

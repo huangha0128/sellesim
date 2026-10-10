@@ -1,5 +1,5 @@
-// const BASE_URL = 'https://www.bjyyxx.com/api';
-const BASE_URL = 'http://8.138.193.6/api';
+const BASE_URL = 'https://www.bjyyxx.com/api';
+// const BASE_URL = 'http://8.138.193.6/api';
 // const BASE_URL = 'http://localhost:6660/api';
 
 import { pickCountryName } from './countryLocales';

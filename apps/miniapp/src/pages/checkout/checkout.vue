@@ -150,13 +150,6 @@
         <view v-if="quote" class="cny-note">{{ fmt('coupon.cnyNote') }}</view>
       </view>
 
-      <view class="agree-row" @tap="toggleAgreed">
-        <view class="agree-box" :class="{ checked: agreed }">
-          <image v-if="agreed" src="/static/icons/co-check.png" mode="aspectFit" class="check-icon" />
-        </view>
-        <text class="agree-txt">{{ fmt('checkout.agree') }}</text>
-      </view>
-
       <view class="footer-safe"></view>
       </view>
     </template>
@@ -210,19 +203,6 @@
         <view class="footer-safe"></view>
       </view>
     </view>
-
-    <!-- 协议同意抽屉：原生 showModal 按钮文字会截断，改用自定义弹窗 -->
-    <view v-if="showAgreePopup" class="agree-mask" @tap="closeAgreePopup"></view>
-    <view v-if="showAgreePopup" class="agree-popup">
-      <view class="agree-popup-title">{{ fmt('checkout.agreeModalTitle') }}</view>
-      <scroll-view scroll-y class="agree-popup-body">
-        <text class="agree-popup-text">{{ fmt('checkout.agreeModalContent') }}</text>
-      </scroll-view>
-      <view class="agree-popup-btns">
-        <view class="agree-btn cancel" @tap="closeAgreePopup">{{ fmt('checkout.agreeCancel') }}</view>
-        <view class="agree-btn confirm" @tap="confirmAgree">{{ fmt('checkout.agreeConfirm') }}</view>
-      </view>
-    </view>
   </view>
 </template>
 
@@ -248,9 +228,6 @@ export default {
       pkg: null,
       email: '',
       payMethod: 'alipay',
-      // 隐私合规：协议默认不勾选，须由用户主动勾选同意
-      agreed: false,
-      showAgreePopup: false,
       submitting: false,
       // 购买方式：'new' 新购 / 'renew' 加购到已过期 eSIM
       buyMode: 'new',
@@ -322,8 +299,6 @@ export default {
     this.esimId = options.esimId || ''
     // 自动填充账号邮箱（「我的 → 我的邮箱地址」中设置的）
     this.email = (store.isLoggedIn && store.user.email) || ''
-    // 已同意过协议则自动勾选
-    this.agreed = store.agreed
     setNavTitle('pageTitle.checkout')
     this.load()
     this.loadReneEsims()
@@ -419,7 +394,7 @@ export default {
       if (!store.isLoggedIn) {
         uni.showToast({ title: this.fmt('checkout.needLogin'), icon: 'none' })
         const redirect = `/pages/checkout/checkout?pkgId=${this.pkgId}`
-        uni.navigateTo({ url: `/pages/login/login?redirect=${encodeURIComponent(redirect)}` })
+        uni.reLaunch({ url: `/pages/login/login?redirect=${encodeURIComponent(redirect)}` })
         return
       }
       this.loadMyCoupons()
@@ -448,25 +423,7 @@ export default {
       this.quote = null
       this.selectedUserCouponId = ''
     },
-    toggleAgreed() {
-      this.agreed = !this.agreed
-      store.setAgreed(this.agreed)
-    },
-    closeAgreePopup() {
-      this.showAgreePopup = false
-    },
-    confirmAgree() {
-      this.agreed = true
-      store.setAgreed(true)
-      this.showAgreePopup = false
-      this.submit()
-    },
-    // 未勾选协议时不再拦截，弹出自定义抽屉征得同意后持久化并直接继续下单
     async submit() {
-      if (!this.agreed) {
-        this.showAgreePopup = true
-        return
-      }
       if (!this.email || !this.email.includes('@')) {
         uni.showToast({ title: this.fmt('checkout.emailInvalid'), icon: 'none' })
         return
@@ -480,7 +437,7 @@ export default {
       if (!store.isLoggedIn) {
         uni.showToast({ title: this.fmt('checkout.needLogin'), icon: 'none' })
         const redirect = `/pages/checkout/checkout?pkgId=${this.pkgId}`
-        uni.navigateTo({
+        uni.reLaunch({
           url: `/pages/login/login?redirect=${encodeURIComponent(redirect)}`,
         })
         return
@@ -1198,38 +1155,6 @@ export default {
   padding: 18rpx 0;
 }
 
-.agree-row {
-  display: flex;
-  align-items: flex-start;
-  margin-top: 28rpx;
-  padding: 0 8rpx;
-}
-
-.agree-box {
-  width: 40rpx;
-  height: 40rpx;
-  border-radius: 10rpx;
-  border: 2rpx solid $line;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  margin-right: 16rpx;
-  transition: all 0.2s ease;
-
-  &.checked {
-    background: $brand;
-    border-color: $brand;
-  }
-}
-
-.agree-txt {
-  flex: 1;
-  font-size: 22rpx;
-  color: $ink-3;
-  line-height: 1.6;
-}
-
 .bottom-bar {
   position: fixed;
   left: 0;
@@ -1294,76 +1219,5 @@ export default {
 
 .footer-safe {
   height: 200rpx;
-}
-
-/* 协议同意抽屉（自定义，替代原生 showModal 避免按钮文字截断） */
-.agree-mask {
-  position: fixed;
-  left: 0;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
-  z-index: 300;
-}
-
-.agree-popup {
-  position: fixed;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: #ffffff;
-  border-radius: 32rpx 32rpx 0 0;
-  z-index: 301;
-  padding: 40rpx 40rpx calc(32rpx + env(safe-area-inset-bottom));
-  animation: slideUp 0.3s ease;
-}
-
-.agree-popup-title {
-  font-size: 34rpx;
-  font-weight: 700;
-  color: $ink;
-  text-align: center;
-  margin-bottom: 24rpx;
-}
-
-.agree-popup-body {
-  max-height: 40vh;
-  margin-bottom: 32rpx;
-}
-
-.agree-popup-text {
-  display: block;
-  font-size: 27rpx;
-  line-height: 1.7;
-  color: $ink-3;
-}
-
-.agree-popup-btns {
-  display: flex;
-  align-items: center;
-}
-
-.agree-btn {
-  flex: 1;
-  height: 88rpx;
-  border-radius: 999rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 30rpx;
-  font-weight: 600;
-}
-
-.agree-btn.cancel {
-  background: #f3f4f6;
-  color: $ink-3;
-  margin-right: 20rpx;
-}
-
-.agree-btn.confirm {
-  background: $gradient-brand;
-  color: #ffffff;
-  box-shadow: $shadow-brand;
 }
 </style>

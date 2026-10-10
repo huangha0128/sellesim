@@ -22,6 +22,9 @@
           <text class="link" @tap="goLegal('privacy')">{{ $t('login.privacy') }}</text>
         </view>
       </view>
+
+      <!-- 明确的跳过出口：不登录也可返回首页继续浏览，避免用户被困在登录页 -->
+      <text class="skip-link" @tap="skipLogin">{{ $t('login.skip') }}</text>
     </view>
 
     <view class="login-footer">
@@ -64,13 +67,13 @@ export default {
     if (options && options.redirect) {
       this.redirectUrl = decodeURIComponent(options.redirect)
     }
-    // 已同意过协议则自动勾选，无需重复勾选
-    this.agreed = store.agreed
+    // 已同意过协议则自动勾选，无需重复勾选（登录页协议独立持久化）
+    this.agreed = store.loginAgreed
   },
   methods: {
     toggleAgreed() {
       this.agreed = !this.agreed
-      store.setAgreed(this.agreed)
+      store.setLoginAgreed(this.agreed)
     },
     goLegal(type) {
       this.showAgreePopup = false
@@ -78,17 +81,20 @@ export default {
     },
     afterLogin() {
       if (this.redirectUrl) {
-        uni.redirectTo({ url: this.redirectUrl })
+        uni.reLaunch({ url: this.redirectUrl })
       } else {
         uni.reLaunch({ url: '/pages/profile/profile' })
       }
+    },
+    skipLogin() {
+      uni.reLaunch({ url: '/pages/index/index' })
     },
     closeAgreePopup() {
       this.showAgreePopup = false
     },
     confirmAgree() {
       this.agreed = true
-      store.setAgreed(true)
+      store.setLoginAgreed(true)
       this.showAgreePopup = false
       this.doLogin()
     },
@@ -207,6 +213,14 @@ export default {
 .subtitle {
   font-size: 28rpx;
   opacity: 0.9;
+}
+
+.skip-link {
+  margin-top: 32rpx;
+  font-size: 26rpx;
+  color: rgba(255, 255, 255, 0.78);
+  text-decoration: underline;
+  padding: 12rpx 24rpx;
 }
 
 .login-content {

@@ -21,7 +21,6 @@ import adminKbRoutes from './routes/admin-kb';
 import couponRoutes from './routes/coupon';
 import adminCouponRoutes from './routes/admin-coupons';
 import { initChatHub, type ChatSocket } from './services/chatHub';
-import { startSessionSweeper } from './services/sessionSweeper';
 import { refreshPackageCache, PACKAGE_REFRESH_INTERVAL_MS } from './tiger/view';
 import { retryPendingWebhooks, retryPendingSubjectWebhooks } from './services/webhook';
 import { genSalt, hashPassword } from './middleware/adminAuth';
@@ -122,8 +121,7 @@ server.listen(PORT, () => {
   console.log(` YYeSim 服务器运行在 http://localhost:${PORT}`);
 });
 
-// 会话空闲清理：每 1 小时归档空闲超过 24 小时的会话（Redis 分布式锁保证多实例下不重复执行）
-startSessionSweeper(prisma);
+// 会话不做任何自动归档：仅当后台客服点击「结束会话」时才置为 closed。
 
 // 兜底：为旧数据（lastMessageAt 为空）的会话补上最后消息时间，
 // 以 updatedAt 作为初始值。仅执行一次（WHERE ... IS NULL），不影响新写入。

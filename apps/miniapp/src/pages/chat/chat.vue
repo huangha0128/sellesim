@@ -188,14 +188,14 @@ export default {
     handleTokenExpired() {
       uni.showToast({ title: this.$t('common.needLogin'), icon: 'none' })
       this.loading = false
-      uni.navigateTo({
+      uni.reLaunch({
         url: '/pages/login/login?redirect=' + encodeURIComponent('/pages/chat/chat')
       })
     },
     async bootstrap() {
       if (!store.isLoggedIn) {
         uni.showToast({ title: this.$t('common.needLogin'), icon: 'none' })
-        uni.navigateTo({ url: '/pages/login/login' })
+        uni.reLaunch({ url: '/pages/login/login' })
         return
       }
       if (this.sessionId) return // 已初始化，保持实时连接
