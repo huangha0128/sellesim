@@ -38,7 +38,8 @@ export default {
     usageNotice: 'eSIM 使用须知',
     contact: '联系我们',
     chat: '在线客服',
-    pkgTypeIntro: '套餐类型介绍'
+    pkgTypeIntro: '套餐类型介绍',
+    coupon: '优惠券',
   },
   index: {
     slogan: '全球 200+ 地区流量',
@@ -567,7 +568,11 @@ export default {
   login: {
     subtitle: '全球流量，即买即用',
     btn: '支付宝一键登录',
-    agreePrefix: '登录即表示同意',
+    agreeRead: '我已阅读并同意',
+    agreeModalTitle: '用户协议及隐私保护',
+    agreeModalContent: '为保障您的合法权益，请阅读并同意以下协议《用户协议》《隐私政策》',
+    agreeConfirm: '同意并继续',
+    agreeCancel: '不同意',
     agreement: '《用户协议》',
     and: '和',
     privacy: '《隐私政策》',
@@ -694,6 +699,10 @@ export default {
     submitting: '提交中...',
     submit: '提交订单',
     agreeFirst: '请先阅读并同意协议',
+    agreeModalTitle: '购买服务协议及使用须知',
+    agreeModalContent: '提交订单前，请阅读并同意《购买服务协议》与《eSIM 使用须知》',
+    agreeConfirm: '同意并提交',
+    agreeCancel: '不同意',
     emailInvalid: '请填写正确的邮箱',
     orderFailed: '下单失败',
     needLogin: '请先登录后再下单',
@@ -717,11 +726,9 @@ export default {
   },
   coupon: {
     available: '{n} 张可用',
-    enterCode: '输入兑换码',
     cnyNote: '已使用优惠券，按人民币（CNY）结算',
     drawerTitle: '优惠券',
     codePlaceholder: '输入兑换码',
-    useCode: '使用',
     codeEmpty: '请输入兑换码',
     mine: '我的优惠券',
     mineEmpty: '暂无可用优惠券',
@@ -729,7 +736,12 @@ export default {
     noMin: '无门槛',
     expireAt: '有效期至 {date}',
     notUse: '不使用优惠券',
-    invalid: '优惠券不可用'
+    invalid: '优惠券不可用',
+    redeemMenu: '兑换优惠券',
+    redeemSub: '输入兑换码，券将存入你的账户，下单时可直接选用',
+    redeemBtn: '立即兑换',
+    redeemSuccess: '兑换成功，下单时可选用',
+    redeemTip: '兑换码由平台发放。下单时在「优惠券」入口选择使用，退款后券会自动返还到账户。'
   },
   payment: {
     eyebrow: 'PAYMENT',

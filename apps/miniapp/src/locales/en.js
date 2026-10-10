@@ -38,7 +38,8 @@ export default {
     usageNotice: 'eSIM Usage Notice',
     contact: 'Contact Us',
     chat: 'Online Support',
-    pkgTypeIntro: 'Plan Type Introduction'
+    pkgTypeIntro: 'Plan Type Introduction',
+    coupon: 'Coupons',
   },
   index: {
     slogan: 'Data in 200+ destinations worldwide',
@@ -565,7 +566,11 @@ export default {
   login: {
     subtitle: 'Global data, buy and use instantly',
     btn: 'Login with Alipay',
-    agreePrefix: 'By logging in you agree to',
+    agreeRead: 'I have read and agree to',
+    agreeModalTitle: 'User Agreement and Privacy Policy',
+    agreeModalContent: 'To protect your legal rights, please read and agree to the User Agreement and the Privacy Policy before continuing.',
+    agreeConfirm: 'Agree & Continue',
+    agreeCancel: 'Decline',
     agreement: 'User Agreement',
     and: 'and',
     privacy: 'Privacy Policy',
@@ -689,6 +694,10 @@ export default {
     submitting: 'Submitting...',
     submit: 'Place Order',
     agreeFirst: 'Please read and agree to the terms first',
+    agreeModalTitle: 'Purchase Agreement and eSIM Usage Notice',
+    agreeModalContent: 'Before placing the order, please read and agree to the Purchase Service Agreement and the eSIM Usage Notice.',
+    agreeConfirm: 'Agree & Order',
+    agreeCancel: 'Decline',
     emailInvalid: 'Please enter a valid email',
     orderFailed: 'Failed to place order',
     needLogin: 'Please log in first',
@@ -712,11 +721,9 @@ export default {
   },
   coupon: {
     available: '{n} available',
-    enterCode: 'Enter promo code',
     cnyNote: 'Coupon applied, charged in CNY',
     drawerTitle: 'Coupons',
     codePlaceholder: 'Enter promo code',
-    useCode: 'Apply',
     codeEmpty: 'Please enter a promo code',
     mine: 'My coupons',
     mineEmpty: 'No available coupons',
@@ -724,7 +731,12 @@ export default {
     noMin: 'No minimum',
     expireAt: 'Valid until {date}',
     notUse: "Don't use coupon",
-    invalid: 'Coupon unavailable'
+    invalid: 'Coupon unavailable',
+    redeemMenu: 'Redeem Coupon',
+    redeemSub: 'Enter a code. The coupon will be added to your account and ready at checkout',
+    redeemBtn: 'Redeem',
+    redeemSuccess: 'Redeemed! Use it at checkout',
+    redeemTip: 'Codes are issued by the platform. Choose the coupon at checkout; it returns to your account automatically after a refund.'
   },
   payment: {
     eyebrow: 'PAYMENT',

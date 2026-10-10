@@ -38,7 +38,8 @@ export default {
     usageNotice: 'eSIM 使用須知',
     contact: '聯絡我們',
     chat: '線上客服',
-    pkgTypeIntro: '套餐類型介紹'
+    pkgTypeIntro: '套餐類型介紹',
+    coupon: '優惠券',
   },
   index: {
     slogan: '全球 200+ 地區流量',
@@ -567,7 +568,11 @@ export default {
   login: {
     subtitle: '全球流量，即買即用',
     btn: '支付寶一鍵登入',
-    agreePrefix: '登入即表示同意',
+    agreeRead: '我已閱讀並同意',
+    agreeModalTitle: '用戶協議及隱私保護',
+    agreeModalContent: '為保障您的合法權益，請閱讀並同意以下協議《用戶協議》《隱私政策》',
+    agreeConfirm: '同意並繼續',
+    agreeCancel: '不同意',
     agreement: '《用戶協議》',
     and: '和',
     privacy: '《隱私政策》',
@@ -692,6 +697,10 @@ export default {
     submitting: '提交中...',
     submit: '提交訂單',
     agreeFirst: '請先閱讀並同意協議',
+    agreeModalTitle: '購買服務協議及使用須知',
+    agreeModalContent: '提交訂單前，請閱讀並同意《購買服務協議》與《eSIM 使用須知》',
+    agreeConfirm: '同意並提交',
+    agreeCancel: '不同意',
     emailInvalid: '請填寫正確的信箱',
     orderFailed: '下單失敗',
     needLogin: '請先登入後再下單',
@@ -715,11 +724,9 @@ export default {
   },
   coupon: {
     available: '{n} 張可用',
-    enterCode: '輸入兌換碼',
     cnyNote: '已使用優惠券，按人民幣（CNY）結算',
     drawerTitle: '優惠券',
     codePlaceholder: '輸入兌換碼',
-    useCode: '使用',
     codeEmpty: '請輸入兌換碼',
     mine: '我的優惠券',
     mineEmpty: '暫無可用優惠券',
@@ -727,7 +734,12 @@ export default {
     noMin: '無門檻',
     expireAt: '有效期至 {date}',
     notUse: '不使用優惠券',
-    invalid: '優惠券不可用'
+    invalid: '優惠券不可用',
+    redeemMenu: '兌換優惠券',
+    redeemSub: '輸入兌換碼，券將存入你的帳戶，下單時可直接選用',
+    redeemBtn: '立即兌換',
+    redeemSuccess: '兌換成功，下單時可選用',
+    redeemTip: '兌換碼由平台發放。下單時在「優惠券」入口選擇使用，退款後券會自動返還到帳戶。'
   },
   payment: {
     eyebrow: 'PAYMENT',

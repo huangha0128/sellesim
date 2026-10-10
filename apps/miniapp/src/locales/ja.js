@@ -38,7 +38,8 @@ export default {
     usageNotice: 'eSIM 利用上の注意',
     contact: 'お問い合わせ',
     chat: 'オンラインサポート',
-    pkgTypeIntro: 'プランタイプ紹介'
+    pkgTypeIntro: 'プランタイプ紹介',
+    coupon: 'クーポン',
   },
   index: {
     slogan: '世界 200 以上の地域でデータ通信',
@@ -567,7 +568,11 @@ export default {
   login: {
     subtitle: 'グローバルデータ、買ってすぐ使える',
     btn: 'Alipay でログイン',
-    agreePrefix: 'ログインすることで同意する',
+    agreeRead: '以下を読み、同意の上ご利用ください',
+    agreeModalTitle: '利用規約及びプライバシーポリシー',
+    agreeModalContent: 'お客様の権益を保護するため、事前に「利用規約」および「プライバシーポリシー」をお読みになり、同意してください',
+    agreeConfirm: '同意して続行',
+    agreeCancel: '同意しない',
     agreement: '「利用規約」',
     and: 'および',
     privacy: '「プライバシーポリシー」',
@@ -694,6 +699,10 @@ export default {
     submitting: '送信中...',
     submit: '注文を確定',
     agreeFirst: '先に契約条項を読んで同意してください',
+    agreeModalTitle: '購入サービス契約及びeSIMご利用案内',
+    agreeModalContent: '注文を確定する前に、「購入サービス契約」および「eSIM ご利用案内」をお読みになり、同意してください',
+    agreeConfirm: '同意して注文',
+    agreeCancel: '同意しない',
     emailInvalid: '正しいメールアドレスを入力してください',
     orderFailed: '注文に失敗しました',
     needLogin: '注文前にログインしてください',
@@ -715,14 +724,11 @@ export default {
     buyDrawerTitle: '追加する eSIM を選択',
     buyPreselectGone: '対象カードは更新できないため、新規購入に切り替えました'
   },
-  couponDiag: {},
-coupon: {
+  coupon: {
     available: '{n} 枚利用可能',
-    enterCode: 'コードを入力',
     cnyNote: 'クーポン適用、人民元（CNY）で決済',
     drawerTitle: 'クーポン',
     codePlaceholder: 'コードを入力',
-    useCode: '使う',
     codeEmpty: 'コードを入力してください',
     mine: 'マイクーポン',
     mineEmpty: '利用可能なクーポンはありません',
@@ -730,7 +736,12 @@ coupon: {
     noMin: '条件なし',
     expireAt: '{date} まで有効',
     notUse: 'クーポンを使わない',
-    invalid: 'クーポンは利用できません'
+    invalid: 'クーポンは利用できません',
+    redeemMenu: 'クーポンコード引き換え',
+    redeemSub: 'コードを入力すると、クーポンがアカウントに追加され、注文時にご利用いただけます',
+    redeemBtn: '引き換える',
+    redeemSuccess: '引き換え完了。注文時にご利用いただけます',
+    redeemTip: 'コードはプラットフォームから発行されます。注文時に「クーポン」から選択してご利用ください。返金後は自動的にアカウントへ戻ります。'
   },
   payment: {
     eyebrow: 'PAYMENT',

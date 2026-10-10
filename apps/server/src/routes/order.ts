@@ -20,7 +20,6 @@ export default (prisma: PrismaClient) => {
         payMethod: req.body.payMethod || 'alipay',
         orderType: req.body.orderType || 'new',
         targetEsimId: req.body.targetEsimId,
-        couponCode: req.body.couponCode,
         userCouponId: req.body.userCouponId,
       });
       res.json({ code: 0, data: { order } });

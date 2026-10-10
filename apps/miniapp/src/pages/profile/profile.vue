@@ -77,6 +77,13 @@
         <text class="menu-txt">{{ $t('profile.menuEmail') }}</text>
         <text class="menu-arrow">›</text>
       </view>
+      <view class="menu-item" hover-class="menu-item--hover" @click="goRedeem">
+        <view class="menu-icon-wrap ic-green">
+          <image class="menu-icon" src="/static/icons/prof-order.png" mode="aspectFit" />
+        </view>
+        <text class="menu-txt">{{ $t('coupon.redeemMenu') }}</text>
+        <text class="menu-arrow">›</text>
+      </view>
       <view class="menu-item" hover-class="menu-item--hover" @click="goGuide">
         <view class="menu-icon-wrap ic-green">
           <image class="menu-icon" src="/static/icons/feat-signal.png" mode="aspectFit" />
@@ -211,6 +218,9 @@ export default {
     },
     goEmail() {
       uni.navigateTo({ url: '/pages/profile/email' })
+    },
+    goRedeem() {
+      uni.navigateTo({ url: '/pages/profile/redeem' })
     },
     goFaq() {
       uni.navigateTo({ url: '/pages/profile/faq' })

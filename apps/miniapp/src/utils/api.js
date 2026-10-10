@@ -1,5 +1,5 @@
-const BASE_URL = 'https://www.bjyyxx.com/api';
-// const BASE_URL = 'http://8.138.193.6/api';
+// const BASE_URL = 'https://www.bjyyxx.com/api';
+const BASE_URL = 'http://8.138.193.6/api';
 // const BASE_URL = 'http://localhost:6660/api';
 
 import { pickCountryName } from './countryLocales';
@@ -292,8 +292,8 @@ export const api = {
     return res;
   },
 
-  async createOrder({ pkgId, dataIndex, days, email, payMethod = 'alipay', orderType = 'new', targetEsimId, couponCode, userCouponId }) {
-    return request('POST', '/orders', { pkgId, dataIndex, days, email, payMethod, orderType, targetEsimId, couponCode, userCouponId });
+  async createOrder({ pkgId, dataIndex, days, email, payMethod = 'alipay', orderType = 'new', targetEsimId, userCouponId }) {
+    return request('POST', '/orders', { pkgId, dataIndex, days, email, payMethod, orderType, targetEsimId, userCouponId });
   },
 
   // 我的可用优惠券（未使用且券模板启用）
@@ -301,9 +301,14 @@ export const api = {
     return request('GET', '/coupons/mine');
   },
 
-  // 校验优惠券（兑换码或我的券实例）对指定套餐的可用性与抵扣金额
-  async validateCoupon({ pkgId, code, userCouponId }) {
-    return request('POST', '/coupons/validate', { pkgId, code, userCouponId });
+  // 个人中心输入兑换码 → 兑换为账户优惠券
+  async redeemCoupon(code) {
+    return request('POST', '/coupons/redeem', { code });
+  },
+
+  // 校验我的优惠券实例对指定套餐的可用性与抵扣金额
+  async validateCoupon({ pkgId, userCouponId }) {
+    return request('POST', '/coupons/validate', { pkgId, userCouponId });
   },
 
   async getOrders() {

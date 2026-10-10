@@ -111,6 +111,14 @@
       }
     },
     {
+      "path": "pages/profile/redeem",
+      "style": {
+        "navigationBarTitleText": "兑换优惠券",
+        "navigationBarBackgroundColor": "#F5F7F8",
+        "navigationBarTextStyle": "black"
+      }
+    },
+    {
       "path": "pages/profile/faq",
       "style": {
         "navigationBarTitleText": "常见问题",

@@ -38,7 +38,8 @@ export default {
     usageNotice: 'Aviso de uso eSIM',
     contact: 'Contáctanos',
     chat: 'Soporte en línea',
-    pkgTypeIntro: 'Introducción al tipo de plan'
+    pkgTypeIntro: 'Introducción al tipo de plan',
+    coupon: 'Cupones',
   },
   index: {
     slogan: 'Datos en más de 200 destinos del mundo',
@@ -567,7 +568,11 @@ export default {
   login: {
     subtitle: 'Datos globales, cómpralos y úsalos al instante',
     btn: 'Iniciar sesión con Alipay',
-    agreePrefix: 'Al iniciar sesión aceptas',
+    agreeRead: 'He leído y acepto',
+    agreeModalTitle: 'Contrato de usuario y política de privacidad',
+    agreeModalContent: 'Para proteger sus derechos, lea y acepte el contrato de usuario y la política de privacidad antes de continuar',
+    agreeConfirm: 'Aceptar y continuar',
+    agreeCancel: 'Rechazar',
     agreement: 'el contrato de usuario',
     and: 'y',
     privacy: 'la política de privacidad',
@@ -694,6 +699,10 @@ export default {
     submitting: 'Enviando...',
     submit: 'Hacer pedido',
     agreeFirst: 'Primero lee y acepta los términos',
+    agreeModalTitle: 'Contrato de compra y aviso de uso de eSIM',
+    agreeModalContent: 'Antes de hacer el pedido, lee y acepta el contrato de compra y el aviso de uso de eSIM.',
+    agreeConfirm: 'Aceptar y pedir',
+    agreeCancel: 'Rechazar',
     emailInvalid: 'Introduce un correo válido',
     orderFailed: 'Fallo al hacer el pedido',
     needLogin: 'Inicia sesión primero',
@@ -715,13 +724,11 @@ export default {
     buyDrawerTitle: 'Selecciona la eSIM a recargar',
     buyPreselectGone: 'La tarjeta objetivo no se puede renovar, se cambió a una compra nueva'
   },
-coupon: {
+  coupon: {
     available: '{n} disponibles',
-    enterCode: 'Introducir código',
     cnyNote: 'Cupón aplicado, pago en CNY',
     drawerTitle: 'Cupones',
     codePlaceholder: 'Introducir código',
-    useCode: 'Aplicar',
     codeEmpty: 'Introduce un código',
     mine: 'Mis cupones',
     mineEmpty: 'No hay cupones disponibles',
@@ -729,7 +736,12 @@ coupon: {
     noMin: 'Sin mínimo',
     expireAt: 'Válido hasta {date}',
     notUse: 'No usar cupón',
-    invalid: 'Cupón no disponible'
+    invalid: 'Cupón no disponible',
+    redeemMenu: 'Canjear cupón',
+    redeemSub: 'Introduce un código: el cupón se añadirá a tu cuenta y podrás usarlo al pagar',
+    redeemBtn: 'Canjear',
+    redeemSuccess: '¡Canjeado! Úsalo al pagar',
+    redeemTip: 'Los códigos los emite la plataforma. Selecciona el cupón al pagar; se devolverá automáticamente a tu cuenta tras un reembolso.'
   },
   payment: {
     eyebrow: 'PAYMENT',

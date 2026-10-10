@@ -5,11 +5,11 @@ import { readDisplayConfig, DEFAULT_DISPLAY_CONFIG } from '../pricing/priceOverr
  * 优惠券服务（仅小程序内部订单使用，开放平台不接入）。
  *  - 券模板 Coupon：满减（fixed，CNY 面额）/ 折扣（percent，1-100）
  *    过期方式：指定日期（date）/ 发放后 N 天（days）/ 永久（never）
- *  - 两种使用方式：
- *    1. 下单页输入兑换码（code）→ 直接核销 Coupon（usedCount+1），不产生 UserCoupon
- *    2. 后台发放（UserCoupon 实例）→ 用户在「我的优惠券」选择使用
- *  - 退款完成后券自动返还：发放券复位为未使用；兑换码核销则生成一张
- *    UserCoupon（source=code）回到用户账户，可再次使用
+ *  - 券的获取：
+ *    1. 个人中心输入兑换码 → 兑换为账户 UserCoupon（source=code，占用 totalQuota 名额）
+ *    2. 后台定向发放 UserCoupon 实例（source=grant）
+ *  - 使用：下单时选择「我的优惠券」核销（unused → used，原子防并发重复使用）
+ *  - 退款完成后券自动返还：UserCoupon 复位为未使用（已过有效期则置过期），可再次使用
  *  - 抵扣金额一律按 CNY 计算，封顶至最低支付 0.01，不找零不折现
  */
 
@@ -53,23 +53,6 @@ export function computeUserCouponExpiry(
   return null;
 }
 
-/** 兑换码券（无 UserCoupon 实例）在 code 流程下是否已过有效期窗口 */
-function couponExpired(
-  coupon: { expireType: string; validFrom?: Date | null; validUntil?: Date | null; validDays?: number | null; createdAt: Date },
-  now: Date,
-): boolean {
-  if (coupon.expireType === 'date') {
-    if (coupon.validFrom && now < new Date(coupon.validFrom)) return true;
-    if (coupon.validUntil && now > new Date(coupon.validUntil)) return true;
-    return false;
-  }
-  if (coupon.expireType === 'days') {
-    const days = Math.max(1, Math.floor(coupon.validDays || 0));
-    return now.getTime() > new Date(coupon.createdAt).getTime() + days * DAY_MS;
-  }
-  return false;
-}
-
 /** 计算抵扣金额（CNY）：封顶至订单 CNY 价 - 0.01，保证最低支付 0.01 */
 export function computeDiscountCny(
   coupon: { type: string; amount?: number | null; percent?: number | null },
@@ -87,8 +70,7 @@ export function computeDiscountCny(
 
 export interface CouponQuote {
   couponId: string;
-  userCouponId: string | null;
-  code: string | null;
+  userCouponId: string;
   name: string;
   type: string;
   amount: number | null;
@@ -104,76 +86,52 @@ type Db = PrismaClient | Prisma.TransactionClient;
 
 /**
  * 校验并计算优惠券抵扣（只读，不核销）。
- * code 流程：校验状态/有效期/总量/每人限用/门槛；
- * userCouponId 流程：校验归属/未使用/未过期/券模板状态/门槛。
+ * 仅支持「我的优惠券」实例：校验归属/未使用/未过期/券模板状态/门槛。
  * 供 /coupons/validate 预览与 createOrder 事务内复用，错误抛 CouponError（中文文案）。
  */
 export async function quoteCoupon(
   prisma: Db,
-  opts: { userId: string; cnyPrice: number; couponCode?: string; userCouponId?: string },
+  opts: { userId: string; cnyPrice: number; userCouponId?: string },
 ): Promise<CouponQuote> {
   const now = new Date();
   const { userId, cnyPrice } = opts;
-  if (opts.couponCode && opts.userCouponId) {
-    throw new CouponError('一次只能使用一张优惠券');
-  }
   if (!(cnyPrice > 0)) {
     throw new CouponError('订单价格异常，无法使用优惠券');
   }
-
-  const build = (
-    c: { id: string; name: string; type: string; amount: number | null; percent: number | null; minSpend: number },
-    extra: { userCouponId: string | null; code: string | null },
-  ): CouponQuote => {
-    const discountCny = computeDiscountCny(c, cnyPrice);
-    return {
-      couponId: c.id,
-      ...extra,
-      name: c.name,
-      type: c.type,
-      amount: c.amount,
-      percent: c.percent,
-      minSpend: c.minSpend,
-      discountCny,
-      payableCny: round2(Math.max(MIN_PAYABLE_CNY, cnyPrice - discountCny)),
-    };
-  };
-
-  // 发放券实例流程
-  if (opts.userCouponId) {
-    const uc = await prisma.userCoupon.findUnique({
-      where: { id: opts.userCouponId },
-      include: { coupon: true },
-    });
-    if (!uc || uc.userId !== userId) throw new CouponError('优惠券不存在');
-    if (uc.status === 'used') throw new CouponError('该优惠券已被使用');
-    if (uc.status === 'expired' || (uc.expiresAt && now > new Date(uc.expiresAt))) {
-      throw new CouponError('该优惠券已过期');
-    }
-    const c = uc.coupon;
-    if (!c || c.status !== 'active') throw new CouponError('该优惠券已停用');
-    if (cnyPrice < c.minSpend) throw new CouponError(`订单满 ${c.minSpend} 元可用`);
-    return build(c, { userCouponId: uc.id, code: null });
+  if (!opts.userCouponId) {
+    throw new CouponError('请选择要使用的优惠券');
   }
 
-  // 兑换码流程
-  const code = String(opts.couponCode || '').trim();
-  if (!code) throw new CouponError('请输入兑换码');
-  const c = await prisma.coupon.findUnique({ where: { code } });
-  if (!c) throw new CouponError('兑换码不存在');
-  if (c.status !== 'active') throw new CouponError('该优惠券已停用');
-  if (couponExpired(c, now)) throw new CouponError('该优惠券已过期');
-  if (c.totalQuota != null && c.usedCount >= c.totalQuota) throw new CouponError('该优惠券已被领完');
-  const usedByUser = await prisma.couponRedemption.count({ where: { couponId: c.id, userId } });
-  if (usedByUser >= c.perUserLimit) throw new CouponError('该优惠券每个账号限用 ' + c.perUserLimit + ' 次');
+  const uc = await prisma.userCoupon.findUnique({
+    where: { id: opts.userCouponId },
+    include: { coupon: true },
+  });
+  if (!uc || uc.userId !== userId) throw new CouponError('优惠券不存在');
+  if (uc.status === 'used') throw new CouponError('该优惠券已被使用');
+  if (uc.status === 'expired' || (uc.expiresAt && now > new Date(uc.expiresAt))) {
+    throw new CouponError('该优惠券已过期');
+  }
+  const c = uc.coupon;
+  if (!c || c.status !== 'active') throw new CouponError('该优惠券已停用');
   if (cnyPrice < c.minSpend) throw new CouponError(`订单满 ${c.minSpend} 元可用`);
-  return build(c, { userCouponId: null, code: c.code });
+
+  const discountCny = computeDiscountCny(c, cnyPrice);
+  return {
+    couponId: c.id,
+    userCouponId: uc.id,
+    name: c.name,
+    type: c.type,
+    amount: c.amount,
+    percent: c.percent,
+    minSpend: c.minSpend,
+    discountCny,
+    payableCny: round2(Math.max(MIN_PAYABLE_CNY, cnyPrice - discountCny)),
+  };
 }
 
 /**
  * 事务内核销优惠券（createOrder 内调用，与订单创建同事务，失败整体回滚）。
- * - 发放券：updateMany 仅允许 unused → used（原子，防并发重复使用）
- * - 兑换码：以事务内读到的 usedCount 为乐观锁条件原子 +1（防超发）
+ * updateMany 仅允许 unused → used（原子，防并发重复使用）。
  */
 export async function redeemInTx(
   tx: Prisma.TransactionClient,
@@ -183,24 +141,11 @@ export async function redeemInTx(
   orderNo: string,
 ): Promise<void> {
   const now = new Date();
-  if (quote.userCouponId) {
-    const r = await tx.userCoupon.updateMany({
-      where: { id: quote.userCouponId, userId, status: 'unused' },
-      data: { status: 'used', usedAt: now, usedOrderId: orderId },
-    });
-    if (r.count !== 1) throw new CouponError('优惠券已被使用，请更换后重试');
-  } else {
-    const fresh = await tx.coupon.findUnique({ where: { id: quote.couponId } });
-    if (!fresh || fresh.status !== 'active') throw new CouponError('该优惠券已停用');
-    if (fresh.totalQuota != null && fresh.usedCount >= fresh.totalQuota) {
-      throw new CouponError('该优惠券已被领完');
-    }
-    const r = await tx.coupon.updateMany({
-      where: { id: quote.couponId, usedCount: fresh.usedCount },
-      data: { usedCount: { increment: 1 } },
-    });
-    if (r.count !== 1) throw new CouponError('优惠券核销冲突，请重试');
-  }
+  const r = await tx.userCoupon.updateMany({
+    where: { id: quote.userCouponId, userId, status: 'unused' },
+    data: { status: 'used', usedAt: now, usedOrderId: orderId },
+  });
+  if (r.count !== 1) throw new CouponError('优惠券已被使用，请更换后重试');
   await tx.couponRedemption.create({
     data: {
       couponId: quote.couponId,
@@ -214,10 +159,79 @@ export async function redeemInTx(
 }
 
 /**
+ * 个人中心输入兑换码 → 兑换为账户 UserCoupon（source=code）。
+ * 校验：券启用 / date 型有效期窗口 / totalQuota 余量（usedCount 占位，事务内乐观锁防超发）
+ * / perUserLimit（按用户名下 unused+used 实例数计）。days 型券过期时间从兑换时刻起算。
+ */
+export async function redeemCodeToUserCoupon(
+  prisma: PrismaClient,
+  userId: string,
+  rawCode: string,
+) {
+  const now = new Date();
+  const code = String(rawCode || '').trim();
+  if (!code) throw new CouponError('请输入兑换码');
+  const c = await prisma.coupon.findUnique({ where: { code } });
+  if (!c) throw new CouponError('兑换码不存在');
+  if (c.status !== 'active') throw new CouponError('该优惠券已停用');
+  if (c.expireType === 'date') {
+    if (c.validFrom && now < new Date(c.validFrom)) throw new CouponError('该优惠券尚未开始');
+    if (c.validUntil && now > new Date(c.validUntil)) throw new CouponError('该优惠券已过期');
+  }
+  if (c.totalQuota != null && c.usedCount >= c.totalQuota) {
+    throw new CouponError('该优惠券已被领完');
+  }
+  const owned = await prisma.userCoupon.count({
+    where: { couponId: c.id, userId, status: { in: ['unused', 'used'] } },
+  });
+  if (owned >= c.perUserLimit) {
+    throw new CouponError('该优惠券每个账号限领 ' + c.perUserLimit + ' 张');
+  }
+  const expiresAt = computeUserCouponExpiry(c, now);
+  return prisma.$transaction(async (tx) => {
+    if (c.totalQuota != null) {
+      const fresh = await tx.coupon.findUnique({ where: { id: c.id } });
+      if (!fresh || fresh.status !== 'active') throw new CouponError('该优惠券已停用');
+      if (fresh.totalQuota != null && fresh.usedCount >= fresh.totalQuota) {
+        throw new CouponError('该优惠券已被领完');
+      }
+      const r = await tx.coupon.updateMany({
+        where: { id: c.id, usedCount: fresh.usedCount },
+        data: { usedCount: { increment: 1 } },
+      });
+      if (r.count !== 1) throw new CouponError('领取冲突，请重试');
+    }
+    return tx.userCoupon.create({
+      data: {
+        couponId: c.id,
+        userId,
+        status: 'unused',
+        source: 'code',
+        grantedAt: now,
+        expiresAt,
+      },
+      include: {
+        coupon: {
+          select: {
+            id: true,
+            name: true,
+            type: true,
+            amount: true,
+            percent: true,
+            minSpend: true,
+            expireType: true,
+            validUntil: true,
+          },
+        },
+      },
+    });
+  });
+}
+
+/**
  * 订单退款完成后返还优惠券（refundOrder 成功后调用，非事务，失败由调用方兜底日志）：
- * - 发放券：UserCoupon 复位为未使用（已过有效期则置过期）
- * - 兑换码：生成一张 UserCoupon（source=code）回到用户账户，可再次使用
- * 同步回退 usedCount 并在核销记录上打 refundedAt（幂等：已返还直接跳过）。
+ * UserCoupon 复位为未使用（已过有效期则置过期），可再次使用。
+ * 打 refundedAt 标记（幂等：已返还直接跳过）。
  */
 export async function releaseForRefund(prisma: PrismaClient, orderId: string): Promise<void> {
   const redemption = await prisma.couponRedemption.findUnique({ where: { orderId } });
@@ -227,40 +241,19 @@ export async function releaseForRefund(prisma: PrismaClient, orderId: string): P
     where: { id: redemption.id },
     data: { refundedAt: now },
   });
-  await prisma.coupon.updateMany({
-    where: { id: redemption.couponId, usedCount: { gt: 0 } },
-    data: { usedCount: { decrement: 1 } },
+  if (!redemption.userCouponId) return;
+  const uc = await prisma.userCoupon.findUnique({ where: { id: redemption.userCouponId } });
+  if (!uc) return;
+  const expired = !!uc.expiresAt && now > new Date(uc.expiresAt);
+  await prisma.userCoupon.update({
+    where: { id: uc.id },
+    data: { status: expired ? 'expired' : 'unused', usedAt: null, usedOrderId: null },
   });
-  if (redemption.userCouponId) {
-    const uc = await prisma.userCoupon.findUnique({ where: { id: redemption.userCouponId } });
-    if (uc) {
-      const expired = !!uc.expiresAt && now > new Date(uc.expiresAt);
-      await prisma.userCoupon.update({
-        where: { id: uc.id },
-        data: { status: expired ? 'expired' : 'unused', usedAt: null, usedOrderId: null },
-      });
-    }
-  } else if (redemption.userId) {
-    const coupon = await prisma.coupon.findUnique({ where: { id: redemption.couponId } });
-    if (coupon) {
-      const expiresAt = computeUserCouponExpiry(coupon, now);
-      await prisma.userCoupon.create({
-        data: {
-          couponId: coupon.id,
-          userId: redemption.userId,
-          status: expiresAt && expiresAt <= now ? 'expired' : 'unused',
-          source: 'code',
-          grantedAt: now,
-          expiresAt,
-        },
-      });
-    }
-  }
 }
 
 /**
  * 删除待支付订单时释放占用的券（在删除订单的事务内调用）：
- * 删除核销记录、回退 usedCount、复位 UserCoupon（订单未支付，不生成新券）。
+ * 删除核销记录、复位 UserCoupon（订单未支付，券不产生任何消耗）。
  */
 export async function releaseForPendingDelete(
   tx: Prisma.TransactionClient,
@@ -269,20 +262,14 @@ export async function releaseForPendingDelete(
   const redemption = await tx.couponRedemption.findUnique({ where: { orderId } });
   if (!redemption) return;
   await tx.couponRedemption.delete({ where: { id: redemption.id } });
-  await tx.coupon.updateMany({
-    where: { id: redemption.couponId, usedCount: { gt: 0 } },
-    data: { usedCount: { decrement: 1 } },
+  if (!redemption.userCouponId) return;
+  const uc = await tx.userCoupon.findUnique({ where: { id: redemption.userCouponId } });
+  if (!uc) return;
+  const expired = !!uc.expiresAt && new Date() > new Date(uc.expiresAt);
+  await tx.userCoupon.update({
+    where: { id: uc.id },
+    data: { status: expired ? 'expired' : 'unused', usedAt: null, usedOrderId: null },
   });
-  if (redemption.userCouponId) {
-    const uc = await tx.userCoupon.findUnique({ where: { id: redemption.userCouponId } });
-    if (uc) {
-      const expired = !!uc.expiresAt && new Date() > new Date(uc.expiresAt);
-      await tx.userCoupon.update({
-        where: { id: uc.id },
-        data: { status: expired ? 'expired' : 'unused', usedAt: null, usedOrderId: null },
-      });
-    }
-  }
 }
 
 /** 我的可用优惠券：先惰性把过期未用实例置 expired，再返回未使用且券模板仍启用的实例 */

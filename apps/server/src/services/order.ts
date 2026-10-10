@@ -35,13 +35,12 @@ export interface CreateOrderParams {
   targetEsimId?: string;
   /** 外部项目自己的订单号（仅外部开放 API 使用，用于对账与按单反查） */
   extOrderNo?: string;
-  /** 优惠券（二选一）：下单页输入的兑换码，或我的优惠券实例 ID */
-  couponCode?: string;
+  /** 我的优惠券实例 ID（下单时核销） */
   userCouponId?: string;
 }
 
 export async function createOrder(prisma: PrismaClient, params: CreateOrderParams): Promise<any> {
-  const { pkgId, email, userId, payMethod = 'alipay', orderType = 'new', targetEsimId, extOrderNo, couponCode, userCouponId } = params;
+  const { pkgId, email, userId, payMethod = 'alipay', orderType = 'new', targetEsimId, extOrderNo, userCouponId } = params;
 
   if (!pkgId || !email) {
     throw new OrderCreateError('缺少必要参数');
@@ -103,21 +102,19 @@ export async function createOrder(prisma: PrismaClient, params: CreateOrderParam
   };
 
   // 带优惠券下单：核销与建单同事务（券校验失败/核销冲突 → 整体回滚）
-  if (couponCode || userCouponId) {
+  if (userCouponId) {
     return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const cnyPrice = await orderPriceToCny(Number(pkg.price));
       const quote = await quoteCoupon(tx, {
         userId,
         cnyPrice,
-        couponCode: couponCode ? String(couponCode) : undefined,
-        userCouponId: userCouponId ? String(userCouponId) : undefined,
+        userCouponId: String(userCouponId),
       });
       const order = await tx.order.create({
         data: {
           ...baseData,
           couponId: quote.couponId,
           userCouponId: quote.userCouponId,
-          couponCode: quote.code,
           discountAmount: quote.discountCny,
         },
       });

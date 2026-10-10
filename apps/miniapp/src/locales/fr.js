@@ -38,7 +38,8 @@ export default {
     usageNotice: 'Avis d\'utilisation eSIM',
     contact: 'Nous contacter',
     chat: 'Assistance en ligne',
-    pkgTypeIntro: 'Présentation du type de forfait'
+    pkgTypeIntro: 'Présentation du type de forfait',
+    coupon: 'Coupons',
   },
   index: {
     slogan: 'Données dans 200+ destinations dans le monde',
@@ -567,7 +568,11 @@ export default {
   login: {
     subtitle: 'Données mondiales, achetez et utilisez immédiatement',
     btn: 'Se connecter avec Alipay',
-    agreePrefix: 'En vous connectant, vous acceptez',
+    agreeRead: 'J\'ai lu et j\'accepte',
+    agreeModalTitle: 'Conditions d\'utilisation et politique de confidentialité',
+    agreeModalContent: 'Pour protéger vos droits, veuillez lire et accepter les conditions d\'utilisation et la politique de confidentialité avant de continuer',
+    agreeConfirm: 'Accepter et continuer',
+    agreeCancel: 'Refuser',
     agreement: 'le contrat d\'utilisation',
     and: 'et',
     privacy: 'la politique de confidentialité',
@@ -694,6 +699,10 @@ export default {
     submitting: 'Envoi...',
     submit: 'Passer la commande',
     agreeFirst: 'Veuillez d\'abord lire et accepter les conditions',
+    agreeModalTitle: 'Contrat d\'achat et notice d\'utilisation eSIM',
+    agreeModalContent: 'Avant de passer commande, veuillez lire et accepter le contrat d\'achat et la notice d\'utilisation eSIM.',
+    agreeConfirm: 'Accepter et commander',
+    agreeCancel: 'Refuser',
     emailInvalid: 'Veuillez saisir un e-mail valide',
     orderFailed: 'Échec de la commande',
     needLogin: 'Veuillez d\'abord vous connecter',
@@ -715,13 +724,11 @@ export default {
     buyDrawerTitle: 'Sélectionner l\'eSIM à recharger',
     buyPreselectGone: 'Carte cible non rechargeable, passage à un nouvel achat'
   },
-coupon: {
+  coupon: {
     available: '{n} disponibles',
-    enterCode: 'Entrer un code',
     cnyNote: 'Coupon appliqué, paiement en CNY',
     drawerTitle: 'Coupons',
     codePlaceholder: 'Entrer un code',
-    useCode: 'Appliquer',
     codeEmpty: 'Veuillez saisir un code',
     mine: 'Mes coupons',
     mineEmpty: 'Aucun coupon disponible',
@@ -729,7 +736,12 @@ coupon: {
     noMin: 'Sans minimum',
     expireAt: "Valide jusqu'au {date}",
     notUse: 'Ne pas utiliser de coupon',
-    invalid: 'Coupon indisponible'
+    invalid: 'Coupon indisponible',
+    redeemMenu: 'Utiliser un code',
+    redeemSub: 'Saisissez un code : le coupon sera ajouté à votre compte et utilisable à la commande',
+    redeemBtn: 'Utiliser',
+    redeemSuccess: 'Code utilisé ! À employer lors de votre commande',
+    redeemTip: 'Les codes sont émis par la plateforme. Sélectionnez le coupon au moment de la commande ; il est automatiquement recrédité sur votre compte après remboursement.'
   },
   payment: {
     eyebrow: 'PAYMENT',

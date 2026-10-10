@@ -135,7 +135,7 @@
           <view class="coupon-entry">
             <text v-if="quote" class="coupon-applied">{{ quote.name }}</text>
             <text v-else class="coupon-link">
-              {{ myCouponCount > 0 ? fmt('coupon.available', { n: myCouponCount }) : fmt('coupon.enterCode') }} ›
+              {{ myCouponCount > 0 ? fmt('coupon.available', { n: myCouponCount }) : fmt('coupon.mineEmpty') }} ›
             </text>
             <text class="amount-value free">- ¥{{ discountNum }}</text>
           </view>
@@ -150,7 +150,7 @@
         <view v-if="quote" class="cny-note">{{ fmt('coupon.cnyNote') }}</view>
       </view>
 
-      <view class="agree-row" @tap="agreed = !agreed">
+      <view class="agree-row" @tap="toggleAgreed">
         <view class="agree-box" :class="{ checked: agreed }">
           <image v-if="agreed" src="/static/icons/co-check.png" mode="aspectFit" class="check-icon" />
         </view>
@@ -171,7 +171,7 @@
       </view>
       <view
         class="submit-btn"
-        :class="{ disabled: !agreed || submitting }"
+        :class="{ disabled: submitting }"
         hover-class="submit-btn--hover"
         @tap="submit"
       >
@@ -187,10 +187,6 @@
         <view class="drawer-close" @tap="closeCouponDrawer">✕</view>
       </view>
       <view class="drawer-body">
-        <view class="code-box">
-          <input v-model="couponCode" class="code-input" :placeholder="fmt('coupon.codePlaceholder')" />
-          <view class="code-btn" :class="{ disabled: applyingCoupon }" @tap="applyCode">{{ fmt('coupon.useCode') }}</view>
-        </view>
         <text class="coupon-section-title">{{ fmt('coupon.mine') }}</text>
         <view v-if="!myCoupons.length" class="drawer-empty-text">{{ fmt('coupon.mineEmpty') }}</view>
         <view
@@ -212,6 +208,19 @@
         </view>
         <view v-if="quote || selectedUserCouponId" class="coupon-clear" @tap="clearCoupon">{{ fmt('coupon.notUse') }}</view>
         <view class="footer-safe"></view>
+      </view>
+    </view>
+
+    <!-- 协议同意抽屉：原生 showModal 按钮文字会截断，改用自定义弹窗 -->
+    <view v-if="showAgreePopup" class="agree-mask" @tap="closeAgreePopup"></view>
+    <view v-if="showAgreePopup" class="agree-popup">
+      <view class="agree-popup-title">{{ fmt('checkout.agreeModalTitle') }}</view>
+      <scroll-view scroll-y class="agree-popup-body">
+        <text class="agree-popup-text">{{ fmt('checkout.agreeModalContent') }}</text>
+      </scroll-view>
+      <view class="agree-popup-btns">
+        <view class="agree-btn cancel" @tap="closeAgreePopup">{{ fmt('checkout.agreeCancel') }}</view>
+        <view class="agree-btn confirm" @tap="confirmAgree">{{ fmt('checkout.agreeConfirm') }}</view>
       </view>
     </view>
   </view>
@@ -239,16 +248,17 @@ export default {
       pkg: null,
       email: '',
       payMethod: 'alipay',
-      agreed: true,
+      // 隐私合规：协议默认不勾选，须由用户主动勾选同意
+      agreed: false,
+      showAgreePopup: false,
       submitting: false,
       // 购买方式：'new' 新购 / 'renew' 加购到已过期 eSIM
       buyMode: 'new',
       renewEsims: [],
       selectedEsimId: '',
       showEsimDrawer: false,
-      // 优惠券：抽屉/输入码/我的券/已选抵扣快照（validate 接口返回的 quote）
+      // 优惠券：抽屉/我的券/已选抵扣快照（validate 接口返回的 quote）
       showCouponDrawer: false,
-      couponCode: '',
       myCoupons: [],
       selectedUserCouponId: '',
       quote: null,
@@ -312,6 +322,8 @@ export default {
     this.esimId = options.esimId || ''
     // 自动填充账号邮箱（「我的 → 我的邮箱地址」中设置的）
     this.email = (store.isLoggedIn && store.user.email) || ''
+    // 已同意过协议则自动勾选
+    this.agreed = store.agreed
     setNavTitle('pageTitle.checkout')
     this.load()
     this.loadReneEsims()
@@ -416,29 +428,6 @@ export default {
     closeCouponDrawer() {
       this.showCouponDrawer = false
     },
-    // 应用兑换码（服务端校验，quote 快照用于展示与下单）
-    async applyCode() {
-      const code = (this.couponCode || '').trim()
-      if (!code) {
-        uni.showToast({ title: this.fmt('coupon.codeEmpty'), icon: 'none' })
-        return
-      }
-      this.applyingCoupon = true
-      try {
-        const res = await api.validateCoupon({ pkgId: this.pkgId, code })
-        if (res.code === 0) {
-          this.quote = res.data.quote
-          this.selectedUserCouponId = ''
-          this.showCouponDrawer = false
-        } else {
-          uni.showToast({ title: res.message || this.fmt('coupon.invalid'), icon: 'none' })
-        }
-      } catch (e) {
-        uni.showToast({ title: this.fmt('common.networkError'), icon: 'none' })
-      } finally {
-        this.applyingCoupon = false
-      }
-    },
     // 选择我的优惠券实例
     async chooseCoupon(c) {
       if (this.selectedUserCouponId === c.id) return
@@ -447,7 +436,6 @@ export default {
         if (res.code === 0) {
           this.quote = res.data.quote
           this.selectedUserCouponId = c.id
-          this.couponCode = ''
           this.showCouponDrawer = false
         } else {
           uni.showToast({ title: res.message || this.fmt('coupon.invalid'), icon: 'none' })
@@ -459,11 +447,24 @@ export default {
     clearCoupon() {
       this.quote = null
       this.selectedUserCouponId = ''
-      this.couponCode = ''
     },
+    toggleAgreed() {
+      this.agreed = !this.agreed
+      store.setAgreed(this.agreed)
+    },
+    closeAgreePopup() {
+      this.showAgreePopup = false
+    },
+    confirmAgree() {
+      this.agreed = true
+      store.setAgreed(true)
+      this.showAgreePopup = false
+      this.submit()
+    },
+    // 未勾选协议时不再拦截，弹出自定义抽屉征得同意后持久化并直接继续下单
     async submit() {
       if (!this.agreed) {
-        uni.showToast({ title: this.fmt('checkout.agreeFirst'), icon: 'none' })
+        this.showAgreePopup = true
         return
       }
       if (!this.email || !this.email.includes('@')) {
@@ -486,12 +487,8 @@ export default {
       }
       this.submitting = true
       try {
-        // 已应用的优惠券：券实例优先，其次兑换码（quote 为服务端校验快照）
-        const couponParams = {}
-        if (this.quote) {
-          if (this.quote.userCouponId) couponParams.userCouponId = this.quote.userCouponId
-          else if (this.quote.code) couponParams.couponCode = this.quote.code
-        }
+        // 已应用的优惠券（quote 为服务端校验快照）
+        const couponParams = this.quote ? { userCouponId: this.quote.userCouponId } : {}
         const res = await api.createOrder({
           pkgId: this.pkgId,
           email: this.email,
@@ -1115,40 +1112,6 @@ export default {
   text-align: right;
 }
 
-.code-box {
-  display: flex;
-  align-items: center;
-  gap: 16rpx;
-  margin-bottom: 28rpx;
-}
-
-.code-input {
-  flex: 1;
-  height: 76rpx;
-  background: $bg-soft;
-  border-radius: $radius-sm;
-  padding: 0 24rpx;
-  font-size: 26rpx;
-  color: $ink;
-}
-
-.code-btn {
-  flex-shrink: 0;
-  height: 76rpx;
-  display: flex;
-  align-items: center;
-  padding: 0 36rpx;
-  border-radius: 999rpx;
-  background: $brand;
-  color: #ffffff;
-  font-size: 26rpx;
-  font-weight: 700;
-
-  &.disabled {
-    opacity: 0.5;
-  }
-}
-
 .coupon-section-title {
   display: block;
   font-size: 24rpx;
@@ -1331,5 +1294,76 @@ export default {
 
 .footer-safe {
   height: 200rpx;
+}
+
+/* 协议同意抽屉（自定义，替代原生 showModal 避免按钮文字截断） */
+.agree-mask {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 300;
+}
+
+.agree-popup {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #ffffff;
+  border-radius: 32rpx 32rpx 0 0;
+  z-index: 301;
+  padding: 40rpx 40rpx calc(32rpx + env(safe-area-inset-bottom));
+  animation: slideUp 0.3s ease;
+}
+
+.agree-popup-title {
+  font-size: 34rpx;
+  font-weight: 700;
+  color: $ink;
+  text-align: center;
+  margin-bottom: 24rpx;
+}
+
+.agree-popup-body {
+  max-height: 40vh;
+  margin-bottom: 32rpx;
+}
+
+.agree-popup-text {
+  display: block;
+  font-size: 27rpx;
+  line-height: 1.7;
+  color: $ink-3;
+}
+
+.agree-popup-btns {
+  display: flex;
+  align-items: center;
+}
+
+.agree-btn {
+  flex: 1;
+  height: 88rpx;
+  border-radius: 999rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 30rpx;
+  font-weight: 600;
+}
+
+.agree-btn.cancel {
+  background: #f3f4f6;
+  color: $ink-3;
+  margin-right: 20rpx;
+}
+
+.agree-btn.confirm {
+  background: $gradient-brand;
+  color: #ffffff;
+  box-shadow: $shadow-brand;
 }
 </style>
