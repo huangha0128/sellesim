@@ -6,7 +6,7 @@ import { sendEsimEmail, sendRenewEmail } from './email';
 import { readDisplayConfig, DEFAULT_DISPLAY_CONFIG } from '../pricing/priceOverride';
 import { readMaxRefundRejectCount } from './refund';
 import { config } from '../config';
-import { blacklistIccid, unbindTigerPackages } from '../tiger';
+import { blacklistIccid, unbindTigerPackages, rollbackTigerBinding } from '../tiger';
 import { resolveEsimActivation } from '../tiger/activation';
 import type { RefundDeps } from './refund';
 
@@ -228,7 +228,14 @@ export async function fulfillPaidOrder(
     }
     // renewEsim 内部会再次校验该卡当前套餐已到期
     const esimData = await renewEsim(prisma, updated, target);
-    const esim = await prisma.esim.create({ data: { ...esimData, userId: order.userId } });
+    let esim;
+    try {
+      esim = await prisma.esim.create({ data: { ...esimData, userId: order.userId } });
+    } catch (e) {
+      // 落库失败回滚刚创建的续费绑定，避免目标卡残留新套餐
+      await rollbackTigerBinding(esimData.tigerBindingId, esimData.iccid);
+      throw e;
+    }
 
     sendRenewEmailSafe(updated, target, esim).catch((e) =>
       console.error(`[email] 订单 ${updated.orderNo} 续费通知发送失败：`, e.message),
@@ -237,13 +244,28 @@ export async function fulfillPaidOrder(
   }
 
   // 新购/变更：下发新 eSIM
-  const esimData = await provisionEsim(prisma, updated);
-  const esim = await prisma.esim.create({ data: { ...esimData, userId: order.userId } });
-
-  sendEsimEmailSafe(updated, esimData).catch((e) =>
-    console.error(`[email] 订单 ${updated.orderNo} 激活码邮件发送失败：`, e.message),
-  );
+  const esim = await provisionNewOrderEsim(prisma, updated);
   return { order: updated, esim };
+}
+
+/**
+ * 为已支付的新购订单下发 eSIM 并落库（fulfillPaidOrder 与补偿任务 provisionReconciler 共用）。
+ * 落库失败时回滚刚创建的 Tiger 绑定，保证「卡池中的卡无残留绑定」；
+ * 下发本身失败（含取码重试后仍失败）由 provisionEsim 内部回滚绑定后抛出。
+ */
+export async function provisionNewOrderEsim(prisma: PrismaClient, order: any): Promise<any> {
+  const esimData = await provisionEsim(prisma, order);
+  let esim;
+  try {
+    esim = await prisma.esim.create({ data: { ...esimData, userId: order.userId } });
+  } catch (e) {
+    await rollbackTigerBinding(esimData.tigerBindingId, esimData.iccid);
+    throw e;
+  }
+  sendEsimEmailSafe(order, esimData).catch((e) =>
+    console.error(`[email] 订单 ${order.orderNo} 激活码邮件发送失败：`, e.message),
+  );
+  return esim;
 }
 
 // ================= 退款依赖装配 =================

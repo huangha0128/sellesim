@@ -24,3 +24,25 @@ export async function unbindTigerPackages(
     console.warn(`[tiger] 退款解绑套餐失败（iccid=${esim.iccid}）：${e?.message || e}`);
   }
 }
+
+/**
+ * 按绑定 pk 精确回滚单条套餐绑定（下发取码失败后调用）。
+ * 与 unbindTigerPackages（清空整卡）不同，这里只删本次下发生成的那条绑定，
+ * 避免误删卡上其他套餐；pk 未知时仅告警，交由人工处理。
+ */
+export async function rollbackTigerBinding(
+  bindingId: number | undefined,
+  iccid: string,
+): Promise<void> {
+  if (!tigerClient.configured) return;
+  if (!bindingId || bindingId <= 0) {
+    console.warn(`[tiger] 绑定 pk 未知，无法自动回滚（iccid=${iccid}），请到 Tiger 后台人工检查残留套餐`);
+    return;
+  }
+  try {
+    await tigerClient.deleteCardPackage(bindingId);
+    console.log(`[tiger] 已回滚下发绑定：iccid=${iccid} pk=${bindingId}`);
+  } catch (e: any) {
+    console.warn(`[tiger] 回滚下发绑定失败（iccid=${iccid} pk=${bindingId}）：${e?.message || e}`);
+  }
+}

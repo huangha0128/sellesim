@@ -23,6 +23,7 @@ import adminCouponRoutes from './routes/admin-coupons';
 import { initChatHub, type ChatSocket } from './services/chatHub';
 import { refreshPackageCache, PACKAGE_REFRESH_INTERVAL_MS } from './tiger/view';
 import { retryPendingWebhooks, retryPendingSubjectWebhooks } from './services/webhook';
+import { startProvisionReconciler } from './services/provisionReconciler';
 import { genSalt, hashPassword } from './middleware/adminAuth';
 
 const app = express();
@@ -153,6 +154,11 @@ if (process.env.ENABLE_WEBHOOK_RETRY !== 'false') {
     retryPendingWebhooks(prisma);
     retryPendingSubjectWebhooks(prisma);
   }, 60_000);
+
+  // ---- 已支付无 eSIM 订单的补偿下发定时器 ----
+  // 与 webhook 重试同规则：双机部署时仅主服（main）承担，
+  // 避免两个后端对同一批订单重复下发 eSIM。
+  startProvisionReconciler(prisma);
 }
 
 export { prisma };

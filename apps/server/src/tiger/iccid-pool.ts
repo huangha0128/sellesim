@@ -47,15 +47,41 @@ export async function iccidPoolCount(prisma: PrismaClient, fetcher?: IccidFetche
   return (await resolvePool(prisma, fetcher)).length;
 }
 
-/** 取一张尚未在本地 esim 表中使用过、且不在黑名单中的 ICCID；无可用卡返回 null */
-export async function getAvailableIccid(prisma: PrismaClient, fetcher?: IccidFetcher): Promise<string | null> {
+/** 残留绑定检查器：返回 true 表示该卡在 Tiger 侧已有套餐绑定（复用会导致双重绑定） */
+export type ResidualBindingChecker = (iccid: string) => Promise<boolean>;
+
+/**
+ * 取一张尚未在本地 esim 表中使用过、且不在黑名单中的 ICCID；无可用卡返回 null。
+ * 传入 hasResidualBinding 时（Tiger 模式），复用前逐张检查 Tiger 侧是否已有套餐绑定，
+ * 带残留绑定的卡（历史退款/下发失败遗留）跳过，避免与新订单双重绑定同一张卡。
+ */
+export async function getAvailableIccid(
+  prisma: PrismaClient,
+  fetcher?: IccidFetcher,
+  hasResidualBinding?: ResidualBindingChecker,
+): Promise<string | null> {
   const ids = await resolvePool(prisma, fetcher);
   if (ids.length === 0) return null;
   const used = new Set((await prisma.esim.findMany({ select: { iccid: true } })).map((e) => e.iccid));
   const blacklisted = new Set(
     (await prisma.cardBlacklist.findMany({ select: { iccid: true } })).map((b) => b.iccid),
   );
-  return ids.find((i) => !used.has(i) && !blacklisted.has(i)) || null;
+  const candidates = ids.filter((i) => !used.has(i) && !blacklisted.has(i));
+  if (!hasResidualBinding) return candidates[0] ?? null;
+  for (const iccid of candidates) {
+    try {
+      if (await hasResidualBinding(iccid)) {
+        console.warn(`[iccid-pool] 卡片 ${iccid} 在 Tiger 侧已有套餐绑定（残留），跳过复用`);
+        continue;
+      }
+    } catch (e: any) {
+      // 检查失败时保守跳过：宁可本次不下发（由补偿任务重试），也不把带残留绑定的卡卖给新用户
+      console.warn(`[iccid-pool] 检查卡片 ${iccid} 残留绑定失败，保守跳过：${e?.message || e}`);
+      continue;
+    }
+    return iccid;
+  }
+  return null;
 }
 
 /** 将一张 ICCID 加入黑名单：退款解绑套餐后永久禁止再次绑定套餐下单 */

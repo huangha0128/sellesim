@@ -60,6 +60,34 @@ describe('getAvailableIccid 取卡', () => {
   });
 });
 
+describe('getAvailableIccid 残留绑定检查', () => {
+  it('跳过 Tiger 侧已有绑定（残留）的卡片', async () => {
+    const prisma = makePrisma(['A', 'B', 'C'], []);
+    const hasResidual = async (iccid: string) => iccid === 'A';
+    expect(await getAvailableIccid(prisma, undefined, hasResidual)).toBe('B');
+  });
+
+  it('全部候选卡都有残留绑定时返回 null', async () => {
+    const prisma = makePrisma(['A', 'B'], []);
+    const hasResidual = async () => true;
+    expect(await getAvailableIccid(prisma, undefined, hasResidual)).toBeNull();
+  });
+
+  it('残留绑定检查抛错时保守跳过该卡', async () => {
+    const prisma = makePrisma(['A', 'B'], []);
+    const hasResidual = async (iccid: string) => {
+      if (iccid === 'A') throw new Error('tiger api down');
+      return false;
+    };
+    expect(await getAvailableIccid(prisma, undefined, hasResidual)).toBe('B');
+  });
+
+  it('未传检查器时保持原行为（返回第一张可用卡）', async () => {
+    const prisma = makePrisma(['A', 'B'], []);
+    expect(await getAvailableIccid(prisma)).toBe('A');
+  });
+});
+
 describe('iccidPoolCount 池统计', () => {
   it('统计合并去重后的卡片总数', async () => {
     const prisma = makePrisma(['A', 'B'], []);
