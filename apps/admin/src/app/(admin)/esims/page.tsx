@@ -117,6 +117,7 @@ export default function EsimsPage() {
                   <TableRow>
                     <TableHead>国家/地区</TableHead>
                     <TableHead>套餐</TableHead>
+                    <TableHead>所属用户</TableHead>
                     <TableHead>订单号</TableHead>
                     <TableHead>ICCID</TableHead>
                     <TableHead>激活码</TableHead>
@@ -142,6 +143,20 @@ export default function EsimsPage() {
                           <div>{e.pkgName || e.order?.pkgName || '—'}</div>
                           {e.pkgNameEn && <div className="text-[11px] text-muted-foreground">{e.pkgNameEn}</div>}
                         </div>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-[12.5px]">
+                        {e.user ? (
+                          <div>
+                            <div>{e.user.nickname || e.user.id}</div>
+                            {(e.user.email || e.order?.email) && (
+                              <div className="max-w-40 truncate text-[11px] text-muted-foreground" title={e.user.email || e.order?.email}>
+                                {e.user.email || e.order?.email}
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">未归属</span>
+                        )}
                       </TableCell>
                       <TableCell className="font-mono text-[12px] text-muted-foreground">{e.order?.orderNo || e.orderId || '—'}</TableCell>
                       <TableCell className="whitespace-nowrap font-mono text-[12.5px]">{e.iccid}</TableCell>

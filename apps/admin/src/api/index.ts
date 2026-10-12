@@ -168,6 +168,7 @@ export interface Esim {
     email?: string;
     userId?: string | null;
   } | null;
+  user?: { id: string; nickname?: string; alipayUserId?: string; email?: string } | null;
 }
 
 export interface Card {

@@ -86,6 +86,7 @@ export function tigerDisplayEsim(item: any, local: any, iccid: string): any {
     tigerPid: local?.tigerPid || pkg.pid,
     tigerBindingId: toNumber(item?.id),
     order: local?.order,
+    user: local?.user ?? null,
     createdAt: local?.createdAt || normalizeTigerTime(item?.created_at),
     source: 'tiger',
   };

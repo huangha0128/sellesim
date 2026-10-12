@@ -253,7 +253,7 @@ export default (prisma: PrismaClient) => {
   router.get('/esims', async (req: Request, res: Response) => {
     const esims = await prisma.esim.findMany({
       orderBy: { createdAt: 'desc' },
-      include: { order: true },
+      include: { order: true, user: true },
     });
     // 与小程序端一致：按 ICCID 实时向 Tiger 富化 usage/status（带 2 分钟 TTL 缓存）
     const displayEsims = await enrichEsims(esims);
