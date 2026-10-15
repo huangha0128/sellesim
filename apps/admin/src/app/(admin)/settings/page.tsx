@@ -37,6 +37,7 @@ export default function SettingsPage() {
   const [aiBailianApiKey, setAiBailianApiKey] = useState('');
   const [aiBailianModel, setAiBailianModel] = useState('');
   const [aiSystemPrompt, setAiSystemPrompt] = useState('');
+  const [aiNotifyEmails, setAiNotifyEmails] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
   const [aiErrorMsg, setAiErrorMsg] = useState('');
 
@@ -55,6 +56,7 @@ export default function SettingsPage() {
         setAiBailianApiKey(data.aiBailianApiKey ?? '');
         setAiBailianModel(data.aiBailianModel ?? '');
         setAiSystemPrompt(data.aiSystemPrompt ?? '');
+        setAiNotifyEmails(data.aiChatNotifyEmails ?? '');
       })
       .catch((e) => setErrorMsg(getErrorMessage(e, '读取设置失败')));
   }, []);
@@ -84,6 +86,7 @@ export default function SettingsPage() {
         aiBailianApiKey: aiProvider === 'bailian' ? activeKey : '',
         aiBailianModel: aiProvider === 'bailian' ? activeModel : '',
         aiSystemPrompt: aiSystemPrompt.trim(),
+        aiChatNotifyEmails: aiNotifyEmails.trim(),
       });
       const body = unwrap<unknown>(res);
       if (body.code !== 0) {
@@ -325,6 +328,23 @@ export default function SettingsPage() {
                 </div>
               </>
             )}
+          </div>
+
+          <Separator className="my-5" />
+
+          <div className="space-y-2">
+            <Label htmlFor="ai-notify-emails">聊天记录通知邮箱（可选）</Label>
+            <textarea
+              id="ai-notify-emails"
+              rows={2}
+              value={aiNotifyEmails}
+              onChange={(e) => setAiNotifyEmails(e.target.value)}
+              placeholder="例如：boss@example.com,support@example.com"
+              className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm shadow-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <p className="text-[12px] text-muted-foreground">
+              AI 客服与用户每进行一轮对话，该轮聊天内容（用户提问 + AI 回复）将自动发送到这些邮箱。多个邮箱用逗号分隔，留空则不发送。
+            </p>
           </div>
 
           <Separator className="my-5" />

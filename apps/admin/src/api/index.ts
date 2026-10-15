@@ -219,6 +219,7 @@ export interface Settings {
   aiBailianApiKey?: string;
   aiBailianModel?: string;
   aiSystemPrompt?: string;
+  aiChatNotifyEmails?: string; // AI 客服聊天记录通知邮箱（逗号分隔，空 = 不发送）
 }
 
 // ---- 在线客服（AI + 人工）----
@@ -401,6 +402,7 @@ export const adminApi = {
     aiBailianApiKey?: string;
     aiBailianModel?: string;
     aiSystemPrompt?: string;
+    aiChatNotifyEmails?: string;
   }) => http.put('/admin/settings', data),
 
   // ---- 在线客服（AI + 人工）----

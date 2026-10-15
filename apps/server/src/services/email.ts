@@ -218,6 +218,107 @@ async function dispatchMail(opts: DispatchOptions, tag: string, orderNo: string)
   console.log(`[email] ${tag} 已发送至 ${opts.to}（订单 ${orderNo}）`);
 }
 
+/** HTML 转义，防止聊天内容破坏邮件排版 */
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+interface ChatNotifyMessage {
+  role: string; // user | ai | admin | system
+  content: string;
+  createdAt?: Date | string;
+}
+
+interface SendAiChatNotifyEmailOptions {
+  to: string[]; // 通知邮箱列表
+  sessionId: string;
+  sessionStatus: string; // ai | human | closed
+  userName?: string | null;
+  contactEmail?: string | null;
+  messages: ChatNotifyMessage[];
+}
+
+const CHAT_ROLE_LABELS: Record<string, string> = {
+  user: '用户',
+  ai: 'AI 客服',
+  admin: '人工客服',
+  system: '系统',
+};
+
+/** AI 客服聊天记录通知：每轮对话结束后把该轮消息发送到配置的通知邮箱 */
+export async function sendAiChatNotifyEmail(opts: SendAiChatNotifyEmailOptions): Promise<void> {
+  const statusText = opts.sessionStatus === 'ai' ? 'AI 应答中' : opts.sessionStatus === 'human' ? '已转人工' : '已结束';
+  const who = opts.userName || opts.contactEmail || '用户';
+
+  const messageRows = opts.messages
+    .map((m) => {
+      const time = m.createdAt
+        ? new Date(m.createdAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })
+        : '';
+      return `
+      <tr>
+        <td style="padding:10px 4px;border-bottom:1px solid ${C_LINE};vertical-align:top;">
+          <p style="margin:0 0 2px;font-size:12px;color:${C_BRAND};font-family:${FONT_STACK};font-weight:600;">
+            ${CHAT_ROLE_LABELS[m.role] || m.role}${time ? ` <span style="font-weight:400;color:${C_INK_2};">· ${time}</span>` : ''}
+          </p>
+          <p style="margin:0;font-size:13px;color:${C_INK};font-family:${FONT_STACK};line-height:1.7;white-space:pre-wrap;word-break:break-word;">${escapeHtml(m.content || '')}</p>
+        </td>
+      </tr>`;
+    })
+    .join('');
+
+  const title = 'AI 客服聊天记录';
+  const bodyRows = `
+      <tr>
+        <td style="padding:0 24px 16px;">
+          ${summaryCard('会话信息', [
+            ['用户', escapeHtml(who)],
+            ['联系邮箱', escapeHtml(opts.contactEmail || '-')],
+            ['会话状态', statusText],
+            ['会话编号', opts.sessionId],
+          ])}
+        </td>
+      </tr>
+      <tr>
+        <td style="padding:0 24px 16px;">
+          <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background:#FFFFFF;border:1px solid ${C_LINE};border-radius:12px;padding:12px 20px 4px;">
+            <tr>
+              <td>
+                <p style="margin:0 0 4px;font-size:13px;font-weight:600;color:${C_BRAND};font-family:${FONT_STACK};">本轮消息</p>
+                <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation">
+                  ${messageRows}
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>`;
+
+  const plain = opts.messages
+    .map((m) => {
+      const time = m.createdAt
+        ? new Date(m.createdAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai', hour12: false })
+        : '';
+      return `[${CHAT_ROLE_LABELS[m.role] || m.role}${time ? ` ${time}` : ''}]\n${m.content || ''}`;
+    })
+    .join('\n\n');
+
+  await dispatchMail(
+    {
+      to: opts.to.join(','),
+      subject: `【AI客服记录】${who} · ${opts.sessionId.slice(0, 8)}`,
+      html: wrapDocument(title, await renderShell({ title, bodyRows })),
+      text: `${title}\n\n会话信息\n  用户：${who}\n  联系邮箱：${opts.contactEmail || '-'}\n  会话状态：${statusText}\n  会话编号：${opts.sessionId}\n\n${plain}`,
+    },
+    'AI客服聊天记录',
+    opts.sessionId.slice(0, 8)
+  );
+}
+
 /** 发卡成功：正文只给简要信息，安装指南（含激活二维码）放在 PDF 附件中 */
 export async function sendEsimEmail(opts: SendEsimEmailOptions): Promise<void> {
   const { supportAddr, siteUrl } = getSenderIdentity();

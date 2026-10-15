@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
 import { generateAiReply } from '../services/ai';
 import { broadcastToSession } from '../services/chatHub';
+import { sendAiChatNotifyEmail } from '../services/email';
 
 // ---------------------------------------------------------------------------
 // Image attachments for chat messages.
@@ -67,6 +68,33 @@ export default (prisma: PrismaClient) => {
     if (order?.email) return order.email;
     const user = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
     return user?.email || null;
+  }
+
+  // 后台配置的通知邮箱（Setting.aiChatNotifyEmails，逗号分隔）。为空 = 不发送。
+  async function readNotifyEmails(): Promise<string[]> {
+    const row = await prisma.setting.findUnique({ where: { key: 'aiChatNotifyEmails' } });
+    if (!row?.value) return [];
+    return row.value.split(',').map((s) => s.trim()).filter(Boolean);
+  }
+
+  // AI 客服本轮对话结束后的邮件通知：把本轮消息发送到配置的通知邮箱。
+  // 异步执行且吞掉异常，邮件失败不影响聊天主流程。
+  async function notifyAiChatRound(sessionId: string, userId: string, status: string, contactEmail: string | null, messages: Array<{ role: string; content: string; createdAt: Date }>) {
+    try {
+      const to = await readNotifyEmails();
+      if (!to.length) return;
+      const user = await prisma.user.findUnique({ where: { id: userId }, select: { nickname: true, email: true } });
+      await sendAiChatNotifyEmail({
+        to,
+        sessionId,
+        sessionStatus: status,
+        userName: user?.nickname || null,
+        contactEmail: contactEmail || user?.email || null,
+        messages,
+      });
+    } catch (e: any) {
+      console.error('[chat] AI 客服聊天记录邮件发送失败：', e?.message || e);
+    }
   }
 
   // POST /api/chat/sessions  create (or reuse the recent open one)
@@ -182,6 +210,12 @@ export default (prisma: PrismaClient) => {
     // 实时推送：新消息 + 最新会话状态（客户端按 id 去重，避免重连/并发导致的重复渲染）
     const newMessages = [userMsg, ...(aiMsg ? [aiMsg] : []), ...(sysMsg ? [sysMsg] : [])];
     broadcastToSession(session.id, { type: 'messages', session: final, messages: newMessages });
+
+    // AI 阶段：后台配置了通知邮箱时，把本轮对话内容异步发送过去（不阻塞响应）
+    if (session.status === 'ai') {
+      notifyAiChatRound(session.id, session.userId, final.status, session.contactEmail, newMessages);
+    }
+
     res.json({ code: 0, data: { session: final, messages: newMessages } });
   });
 

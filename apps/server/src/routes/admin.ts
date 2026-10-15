@@ -643,6 +643,7 @@ export default (prisma: PrismaClient) => {
             'aiBailianApiKey',
             'aiBailianModel',
             'aiSystemPrompt',
+            'aiChatNotifyEmails',
           ],
         },
       },
@@ -666,6 +667,7 @@ export default (prisma: PrismaClient) => {
           aiBailianApiKey: map.get('aiBailianApiKey') || '',
           aiBailianModel: map.get('aiBailianModel') || '',
           aiSystemPrompt: map.get('aiSystemPrompt') || '',
+          aiChatNotifyEmails: map.get('aiChatNotifyEmails') || '',
         },
       },
     });
@@ -689,6 +691,7 @@ export default (prisma: PrismaClient) => {
         aiBailianApiKey,
         aiBailianModel,
         aiSystemPrompt,
+        aiChatNotifyEmails,
       } = req.body || {};
       const writes = [];
       if (displayCurrency === 'USD' || displayCurrency === 'CNY') {
@@ -756,6 +759,25 @@ export default (prisma: PrismaClient) => {
             }),
           );
         }
+      }
+      // ---- AI 客服聊天记录通知邮箱（空 = 不发送；多个邮箱以逗号分隔存储）----
+      if (aiChatNotifyEmails !== undefined && aiChatNotifyEmails !== null) {
+        const emails = String(aiChatNotifyEmails)
+          .split(/[,，;；\s]+/)
+          .map((s) => s.trim())
+          .filter(Boolean);
+        const invalid = emails.find((e) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e));
+        if (invalid) {
+          return res.json({ code: 1, message: `通知邮箱格式不正确：${invalid}` });
+        }
+        const normalized = [...new Set(emails)].join(',');
+        writes.push(
+          prisma.setting.upsert({
+            where: { key: 'aiChatNotifyEmails' },
+            update: { value: normalized },
+            create: { key: 'aiChatNotifyEmails', value: normalized },
+          }),
+        );
       }
       if (writes.length === 0) {
         return res.json({ code: 1, message: '请至少提供 displayCurrency、usdCnyRate、maxRefundRejectCount 或 AI 客服配置' });
