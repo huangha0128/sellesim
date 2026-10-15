@@ -4,7 +4,6 @@ import {
   queryData,
   queryPackages,
   recommendPackages,
-  requestRefund,
 } from './aiTools';
 import { retrieveKb } from './vector';
 
@@ -64,17 +63,17 @@ const DEFAULT_SYSTEM_PROMPT = `你是在线客服小 Y，服务于「YYeSim」eS
 - get_orders：查当前用户真实订单；get_data_usage：查用户真实 eSIM/流量；
 - search_kb：从向量知识库检索产品知识（安装、退款、上网、购买等）；
 - get_packages：查平台在售套餐目录（国家/流量/天数/价格）；
-- recommend_package：按目的地推荐套餐（参数 region=国家）；
-- request_refund：为用户提交退款申请（参数 orderNo=退款订单号【必填】、reason=退款原因【必填】）；两参数都必须先向用户取得，缺失时先询问用户，禁止臆测。
+- recommend_package：按目的地推荐套餐（参数 region=国家）。
 工具结果为空 = 平台没有该信息，绝不能编造缺省值来自圆其说。
-【订单号铁律】订单号只能原样使用工具返回的真实值（get_orders / request_refund 都会给出，形如 DPH 开头的一串字符）。绝不能自己编造订单号，也不能把套餐名、Tiger 套餐编码（如 PTR-xxx-1DAY）当成订单号。工具若提示「未找到订单号」，说明用错了号：请立即改用工具同时返回的候选订单号，绝不再用旧号重试。
+【订单号铁律】订单号只能原样使用工具返回的真实值（get_orders 会给出，形如 DPH 开头的一串字符）。绝不能自己编造订单号，也不能把套餐名、Tiger 套餐编码（如 PTR-xxx-1DAY）当成订单号。工具若提示「未找到订单号」，说明用错了号：请立即改用工具同时返回的候选订单号，绝不再用旧号重试。
 
-## 退款处理流程（重要，顺序不能颠倒）
-当用户表达「要退款 / 退钱 / 申请退款」时，严格按以下顺序进行：
-1. **先确认订单**：如果用户没有明确说明要退哪一笔订单，先调用 get_orders 查看该用户的订单，把可退款的「待激活」订单（含订单号、套餐、下单时间）列给用户，询问「请问您要退哪一笔？」。若用户已明确指定订单号，跳过本步。
-2. **再询问原因**：订单确定后，再问一句「请问您退款的原因是？」。
-3. **订单与原因都拿到后**才调用 request_refund（orderNo 与 reason 都必须填写，且均来自用户，不得臆测）。
-4. 工具返回结果后按结果如实回复用户（成功=已提交、等待审核、原路退回；失败=如实说明失败原因）。绝不能编造「已退款成功」。
+## 退款处理规则（重要）
+退款操作不由 AI 办理，一律由相关人员后续跟进处理。当用户表达「要退款 / 退钱 / 申请退款」等退款诉求时：
+1. 不要调用任何工具，也不要询问订单号或退款原因，绝不替用户提交退款申请。
+2. 直接回复：「稍等，正在联系相关人员为您办理退款操作。」（如用户用其它语言提问，用相同语言做同义表述，含义必须一致）。
+3. 后续用户追问退款进度时，仍安抚「相关人员正在为您处理，请耐心稍候」，不要编造退款结果。
+4. need_human 必须保持 false（不要转人工），category 填 refund。
+5. 若用户只是咨询退款规则/政策（如哪些订单可退），仍可用 search_kb 检索后如实解答。
 
 ## 输出要求（非常重要）
 你必须只输出一个 JSON 对象，不要输出任何其它文字/围栏代码块。结构：
@@ -154,22 +153,6 @@ const TOOLS = [
       },
     },
   },
-  {
-    type: 'function',
-    function: {
-      name: 'request_refund',
-      description:
-        '为用户提交退款申请。用户表达「要退款/退钱/申请退款」时使用。必须先「确认订单→再问原因」，两项都拿到后才能调用：orderNo 与 reason 均为必填，且必须来自用户明确表达，不得臆测。仅「待激活」订单可退款。',
-      parameters: {
-        type: 'object',
-        properties: {
-          orderNo: { type: 'string', description: '要退款的订单号（必填），只能填工具返回的真实订单号（DPH 开头）。用户未指定或不确定时，先用 get_orders 列出可退订单让用户选择，不要猜测或编造。' },
-          reason: { type: 'string', description: '用户的退款原因（必填）。必须来自用户明确表达，未拿到原因时先询问用户，不要调用本工具。' },
-        },
-        required: ['orderNo', 'reason'],
-      },
-    },
-  },
 ] as const;
 
 /**
@@ -205,11 +188,6 @@ async function runToolCalls(
         if (!result) {
           result = '未检索到该目的地的在售套餐，建议用户在首页按目的地查找并下单，或咨询更具体的国家/地区。';
         }
-      } else if (name === 'request_refund') {
-        let arg: any = {};
-        try { arg = JSON.parse(c.function.arguments || '{}'); } catch { /* ignore */ }
-        const r = await requestRefund(prisma, userId, arg);
-        result = r.reply;
       } else {
         result = `未知工具：${name}`;
       }
