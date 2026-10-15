@@ -789,6 +789,7 @@ export default {
     createdAtLabel: '注文日時',
     emailLabel: '受信用メール',
     payMethodLabel: '支払い方法',
+    payMethodManual: '運営から発行',
     paidAtLabel: '支払い日時',
     goPay: '支払う',
     detailNotFound: '注文が見つかりません',

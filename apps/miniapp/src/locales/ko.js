@@ -789,6 +789,7 @@ export default {
     createdAtLabel: '주문 시간',
     emailLabel: '수신 이메일',
     payMethodLabel: '결제 수단',
+    payMethodManual: '관리자 발급',
     paidAtLabel: '결제 시간',
     goPay: '결제하러 가기',
     detailNotFound: '주문을 찾을 수 없습니다',

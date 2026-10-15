@@ -789,6 +789,7 @@ export default {
     createdAtLabel: 'Fecha del pedido',
     emailLabel: 'Correo de recepción',
     payMethodLabel: 'Método de pago',
+    payMethodManual: 'Emitido por admin',
     paidAtLabel: 'Pagado el',
     goPay: 'Pagar ahora',
     detailNotFound: 'Pedido no encontrado',

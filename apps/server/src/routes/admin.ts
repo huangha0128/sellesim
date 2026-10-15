@@ -11,7 +11,8 @@ import {
   DEFAULT_MAX_REFUND_REJECT_COUNT,
 } from '../services/refund';
 import { sendRefundEmail } from '../services/email';
-import { buildRefundDeps } from '../services/payment';
+import { buildRefundDeps, fulfillPaidOrder } from '../services/payment';
+import { createOrder, OrderCreateError } from '../services/order';
 import { clearAiCache } from '../services/ai';
 import { genAppSecret } from '../utils/hmac';
 import { clearWhitelistCache, clearSettingsCache } from '../pricing/priceOverride';
@@ -156,6 +157,71 @@ export default (prisma: PrismaClient) => {
       },
     });
     res.json({ code: 0, data: { orders } });
+  });
+
+  /** GET /api/admin/users?keyword= 用户搜索（昵称/邮箱/支付宝用户号/ID），供手动建单选择归属用户 */
+  router.get('/users', async (req: Request, res: Response) => {
+    const keyword = String(req.query.keyword || '').trim();
+    const users = await prisma.user.findMany({
+      where: keyword
+        ? {
+            OR: [
+              { nickname: { contains: keyword } },
+              { email: { contains: keyword } },
+              { alipayUserId: { contains: keyword } },
+              { id: keyword },
+            ],
+          }
+        : undefined,
+      orderBy: { createdAt: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        nickname: true,
+        email: true,
+        alipayUserId: true,
+        avatar: true,
+        createdAt: true,
+      },
+    });
+    res.json({ code: 0, data: { users } });
+  });
+
+  /**
+   * POST /api/admin/orders/manual 后台手动建单（免支付）
+   * body: { userId, pkgId, email, orderType?: 'new'|'renew', targetEsimId? }
+   * - 复用小程序同款下单入口 createOrder：同样的参数/续费资格/Tiger 套餐校验与订单字段
+   * - 创建后立即走 fulfillPaidOrder 统一履约：置已支付 + 下发/续费 eSIM + 发邮件
+   * - payMethod='manual' 标记来源，便于后台区分（退款等流程与普通已支付订单一致）
+   */
+  router.post('/orders/manual', async (req: AdminAuthRequest, res: Response) => {
+    const { userId, pkgId, email, orderType, targetEsimId } = req.body || {};
+    if (!userId || !pkgId || !email) {
+      return res.json({ code: 1, message: '请选择用户、套餐并填写收款邮箱' });
+    }
+    const user = await prisma.user.findUnique({ where: { id: String(userId) } });
+    if (!user) {
+      return res.json({ code: 1, message: '用户不存在' });
+    }
+    try {
+      const order = await createOrder(prisma, {
+        pkgId: String(pkgId),
+        email: String(email).trim(),
+        userId: String(userId),
+        payMethod: 'manual',
+        orderType: orderType === 'renew' ? 'renew' : 'new',
+        targetEsimId,
+      });
+      const { order: paidOrder, esim } = await fulfillPaidOrder(prisma, order);
+      res.json({ code: 0, data: { order: paidOrder, esim } });
+    } catch (e: any) {
+      if (e instanceof OrderCreateError) {
+        return res.status(e.status).json({ code: 1, message: e.message });
+      }
+      // 履约失败：订单可能已置 paid，eSIM 由 provisionReconciler 兜底重试（与模拟支付处理一致）
+      console.error('[admin] 手动建单履约失败：', e.message);
+      res.json({ code: 2, message: `订单已创建，但 eSIM 下发失败：${e.message}` });
+    }
   });
 
   /**

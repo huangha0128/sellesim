@@ -789,6 +789,7 @@ export default {
     createdAtLabel: '下单时间',
     emailLabel: '接收邮箱',
     payMethodLabel: '支付方式',
+    payMethodManual: '后台发放',
     paidAtLabel: '支付时间',
     goPay: '去支付',
     detailNotFound: '订单不存在',

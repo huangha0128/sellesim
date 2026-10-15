@@ -87,7 +87,7 @@
             </view>
             <view class="oc-info-row">
               <text class="oci-label">{{ fmt('orders.payMethodLabel') }}</text>
-              <text class="oci-value">{{ order.payMethod === 'alipay' ? fmt('checkout.alipayName') : order.payMethod }}</text>
+              <text class="oci-value">{{ payMethodText(order.payMethod) }}</text>
             </view>
             <view v-if="order.paidAt" class="oc-info-row">
               <text class="oci-label">{{ fmt('orders.paidAtLabel') }}</text>
@@ -164,6 +164,12 @@ export default {
     formatDateTime,
     categoryOf(order) {
       return categoryOf(order)
+    },
+    // 支付方式展示：manual=后台代建（免支付发放）
+    payMethodText(payMethod) {
+      if (payMethod === 'alipay') return this.fmt('checkout.alipayName')
+      if (payMethod === 'manual') return this.fmt('orders.payMethodManual')
+      return payMethod
     },
     countOf(key) {
       if (key === 'all') return this.store.orders.length

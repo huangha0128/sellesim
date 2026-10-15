@@ -784,6 +784,7 @@ export default {
     createdAtLabel: 'Order Time',
     emailLabel: 'Receiving Email',
     payMethodLabel: 'Payment Method',
+    payMethodManual: 'Issued by Admin',
     paidAtLabel: 'Paid At',
     goPay: 'Pay Now',
     detailNotFound: 'Order not found',

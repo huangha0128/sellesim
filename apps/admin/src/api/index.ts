@@ -338,6 +338,16 @@ export const adminApi = {
 
   getDashboard: () => http.get('/admin/dashboard'),
   getOrders: () => http.get('/admin/orders'),
+  /** 用户搜索（昵称/邮箱/支付宝用户号/ID），供手动建单选择归属用户 */
+  searchUsers: (keyword?: string) => http.get('/admin/users', { params: { keyword } }),
+  /** 后台手动建单（免支付）：复用小程序下单校验，创建后立即履约下发 eSIM */
+  createManualOrder: (data: {
+    userId: string;
+    pkgId: string;
+    email: string;
+    orderType?: 'new' | 'renew';
+    targetEsimId?: string;
+  }) => http.post('/admin/orders/manual', data),
   approveRefund: (orderNo: string, reason?: string) =>
     http.post(`/admin/orders/${orderNo}/refund`, { reason }),
   /** 后台主动退款（无需用户申请，仅未激活订单可退） */

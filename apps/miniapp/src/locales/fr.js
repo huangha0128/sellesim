@@ -789,6 +789,7 @@ export default {
     createdAtLabel: 'Date de commande',
     emailLabel: 'E-mail de réception',
     payMethodLabel: 'Mode de paiement',
+    payMethodManual: 'Émis par admin',
     paidAtLabel: 'Payé le',
     goPay: 'Payer maintenant',
     detailNotFound: 'Commande introuvable',

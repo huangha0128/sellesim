@@ -108,7 +108,7 @@
         </view>
         <view class="row">
           <text class="row-label">{{ fmt('orders.payMethodLabel') }}</text>
-          <text class="row-value">{{ order.payMethod === 'alipay' ? fmt('checkout.alipayName') : order.payMethod }}</text>
+          <text class="row-value">{{ payMethodText(order.payMethod) }}</text>
         </view>
         <view class="row">
           <text class="row-label">{{ fmt('orders.emailLabel') }}</text>
@@ -343,6 +343,12 @@ export default {
     formatDateTime,
     fmt(key, params) {
       return fmtNamed(translate(key, params), params)
+    },
+    // 支付方式展示：manual=后台代建（免支付发放）
+    payMethodText(payMethod) {
+      if (payMethod === 'alipay') return this.fmt('checkout.alipayName')
+      if (payMethod === 'manual') return this.fmt('orders.payMethodManual')
+      return payMethod
     },
     categoryOf(order) {
       return categoryOf(order)
