@@ -777,6 +777,15 @@ export default function OrdersPage() {
             确认对订单 <span className="font-mono font-medium text-ink">{approveTarget?.orderNo}</span>（¥
             {approveTarget?.price}）同意退款？退款将按原支付渠道原路退回，成功后该订单的 eSIM 将失效并归还卡片。
           </div>
+          {approveTarget?.payMethod === 'manual' ? (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-[12.5px] leading-relaxed text-amber-800">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                <span className="font-medium">注意：该订单为后台建单（免支付订单）。</span>
+                退款不会产生真实资金退回，且 ICCID 会被永久列入黑名单。确定需要退款吗？
+              </span>
+            </div>
+          ) : null}
           <div className="rounded-lg border p-3 text-[13px] leading-relaxed">
             <div className="text-muted-foreground">用户申请原因</div>
             <div className="mt-1 text-ink">{approveTarget?.refundReason || '—'}</div>
@@ -837,6 +846,15 @@ export default function OrdersPage() {
             确认对订单 <span className="font-mono font-medium text-ink">{manualTarget?.orderNo}</span>（¥
             {manualTarget?.price}）主动退款？退款将按原支付渠道原路退回；成功后该订单的 eSIM 将失效，ICCID 会被列入黑名单。
           </div>
+          {manualTarget?.payMethod === 'manual' ? (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-[12.5px] leading-relaxed text-amber-800">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>
+                <span className="font-medium">注意：该订单为后台建单（免支付订单）。</span>
+                退款不会产生真实资金退回，且 ICCID 会被永久列入黑名单。确定需要退款吗？
+              </span>
+            </div>
+          ) : null}
           <div className="space-y-1.5">
             <Label className="text-[12.5px] text-muted-foreground">备注原因（可选）</Label>
             <Textarea value={manualReason} rows={2} onChange={(e) => setManualReason(e.target.value)} placeholder="请输入备注原因" />
