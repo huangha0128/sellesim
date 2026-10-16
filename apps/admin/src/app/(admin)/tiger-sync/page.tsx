@@ -120,7 +120,7 @@ export default function TigerSyncPage() {
           </div>
 
           {result && (
-            <div className="mt-4 grid grid-cols-4 gap-3">
+            <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
               <MiniStat label="新增国家" value={result.regionsSynced ?? 0} />
               <MiniStat label="新增套餐" value={result.packagesSynced ?? 0} />
               <MiniStat label="套餐总数" value={result.packageTotal ?? 0} />

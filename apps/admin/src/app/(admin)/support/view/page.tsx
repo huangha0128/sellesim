@@ -275,7 +275,7 @@ export default function SupportViewPage() {
 
   return (
     <div className="animate-fade-up space-y-4">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <Button variant="outline" size="sm" onClick={() => router.push('/support')}>
           <ArrowLeft size={14} className="mr-1" />
           返回列表

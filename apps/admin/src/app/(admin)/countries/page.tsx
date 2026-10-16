@@ -154,7 +154,7 @@ export default function CountriesPage() {
   return (
     <div className="animate-fade-up space-y-5">
       <Card className="panel-card">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-3">
           <div>
             <CardTitle className="text-[15px] text-ink">国家/地区列表</CardTitle>
             <p className="text-[12px] text-muted-foreground">共 {countries.length} 个国家/地区</p>
@@ -230,7 +230,7 @@ export default function CountriesPage() {
           <DialogHeader>
             <DialogTitle>{editing ? '编辑国家' : '添加国家'}</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="代码">
               <Input value={form.code} disabled={!!editing} onChange={(e) => setForm({ ...form, code: e.target.value })} placeholder="如 JP" />
             </Field>

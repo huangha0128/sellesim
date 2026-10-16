@@ -424,7 +424,7 @@ export default function CouponsPage() {
                 className="font-mono"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-sm text-ink">类型</label>
                 <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v }))}>
@@ -447,7 +447,7 @@ export default function CouponsPage() {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-sm text-ink">使用门槛（元，0 不限）</label>
                 <Input type="number" value={form.minSpend} onChange={(e) => setForm((f) => ({ ...f, minSpend: e.target.value }))} />
@@ -457,7 +457,7 @@ export default function CouponsPage() {
                 <Input type="number" value={form.perUserLimit} onChange={(e) => setForm((f) => ({ ...f, perUserLimit: e.target.value }))} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-sm text-ink">发放总量（留空不限）</label>
                 <Input type="number" value={form.totalQuota} onChange={(e) => setForm((f) => ({ ...f, totalQuota: e.target.value }))} />
@@ -475,7 +475,7 @@ export default function CouponsPage() {
               </div>
             </div>
             {form.expireType === 'date' && (
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="mb-1 block text-sm text-ink">生效时间（可选）</label>
                   <Input type="datetime-local" value={form.validFrom} onChange={(e) => setForm((f) => ({ ...f, validFrom: e.target.value }))} />

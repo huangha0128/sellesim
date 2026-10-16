@@ -381,7 +381,7 @@ export default function OrdersPage() {
   return (
     <div className="animate-fade-up">
       <Card className="panel-card">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-3">
           <div>
             <CardTitle className="text-[15px] text-ink">订单列表</CardTitle>
             <p className="text-[12px] text-muted-foreground">共 {orders.length} 笔订单</p>

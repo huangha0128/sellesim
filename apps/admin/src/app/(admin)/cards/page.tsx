@@ -165,7 +165,7 @@ export default function CardsPage() {
       </div>
 
       <Card className="panel-card">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-3">
           <div>
             <CardTitle className="text-[15px] text-ink">卡片池管理</CardTitle>
             <p className="text-[12px] text-muted-foreground">

@@ -514,7 +514,7 @@ export default function SubjectDetailPage() {
 
   return (
     <div className="animate-fade-up space-y-5">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <Link href="/subjects">
           <Button size="sm" variant="outline">
             <ArrowLeft className="h-4 w-4" /> 返回
@@ -766,7 +766,7 @@ export default function SubjectDetailPage() {
           {/* 记账流水 */}
           <Card className="panel-card">
             <CardHeader className="pb-3">
-              <CardTitle className="flex items-center justify-between text-[15px] text-ink">
+              <CardTitle className="flex flex-wrap items-center justify-between gap-2 text-[15px] text-ink">
                 <span>记账流水（{ledgerTotal}）</span>
                 <div className="w-40">
                   <Select
@@ -1133,7 +1133,7 @@ export default function SubjectDetailPage() {
                 )}
               </div>
             </Field>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <Field label="固定售价">
                 <NumberField value={newPrice === '' ? 0 : Number(newPrice)} onChange={(v) => setNewPrice(String(v))} min={0} precision={2} step={0.1} />
               </Field>

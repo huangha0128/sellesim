@@ -301,7 +301,7 @@ export default function SubjectsPage() {
                 placeholder="如 张三数码"
               />
             </Field>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="门户登录用户名">
                 <Input
                   value={form.username}
@@ -317,7 +317,7 @@ export default function SubjectsPage() {
                 />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="联系人">
                 <Input value={form.contactName} onChange={(e) => setForm({ ...form, contactName: e.target.value })} placeholder="选填" />
               </Field>
@@ -332,7 +332,7 @@ export default function SubjectsPage() {
                 placeholder="https://agent-a.com/api/yyesim/webhook"
               />
             </Field>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="默认加价比例（%）">
                 <NumberField
                   value={form.defaultMarkupPercent === '' ? 0 : Number(form.defaultMarkupPercent)}
@@ -346,7 +346,7 @@ export default function SubjectsPage() {
                 <Input value={form.remark} onChange={(e) => setForm({ ...form, remark: e.target.value })} placeholder="选填" />
               </Field>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <Field label="授信额度上限（留空=不限，元）">
                 <Input
                   type="number"
@@ -392,7 +392,7 @@ export default function SubjectsPage() {
             <Field label="主体名称">
               <Input value={createdSecret?.name || ''} readOnly />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Field label="门户用户名">
                 <Input value={createdSecret?.username || ''} readOnly className="font-mono" />
               </Field>

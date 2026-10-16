@@ -106,7 +106,7 @@ export default function SupportPage() {
   return (
     <div className="animate-fade-up space-y-4">
       <Card className="panel-card">
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-3">
           <div className="flex items-center gap-2">
             <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <MessagesSquare size={16} />

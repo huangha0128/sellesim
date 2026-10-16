@@ -19,6 +19,8 @@ import {
   BookOpenText,
   Ticket,
   LogOut,
+  Menu,
+  X,
   type LucideIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -66,11 +68,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const current = TITLE_MAP[pathname] || '管理后台';
   // 登录态只在客户端可读，放 effect 里避免静态导出时的 hydration 不一致
   const [username, setUsername] = useState('admin');
+  // H5 端抽屉侧边栏
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   useEffect(() => {
     const admin = getAdmin();
     if (admin?.username) setUsername(admin.username);
   }, []);
+
+  // 路由变化时自动收起移动端抽屉
+  useEffect(() => {
+    setDrawerOpen(false);
+  }, [pathname]);
 
   // ---- 通知中心：待人工处理的会话（转人工事件 / 转人工后用户发来的新消息）----
   const [notifs, setNotifs] = useState<SupportNotification[]>([]);
@@ -148,8 +157,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="app-canvas flex min-h-screen">
-      {/* 侧边栏 */}
-      <aside className="sidebar-canvas sticky top-0 flex h-screen w-60 shrink-0 flex-col">
+      {/* 侧边栏：桌面端常驻 */}
+      <aside className="sidebar-canvas sticky top-0 hidden h-screen w-60 shrink-0 flex-col md:flex">
         <div className="flex h-16 items-center gap-3 px-5">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#5a53e0] to-[#7c6ff0] shadow-sm">
             <Zap className="h-5 w-5 text-white" />
@@ -161,33 +170,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
 
         <nav className="mt-2 flex-1 space-y-1 overflow-y-auto px-3">
-          {NAV_ITEMS.map((item) => {
-            const active = pathname === item.href || pathname.startsWith(item.href + '/');
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13.5px] transition-colors',
-                  active
-                    ? 'bg-accent font-medium text-accent-foreground'
-                    : 'text-muted-foreground hover:bg-muted hover:text-ink',
-                )}
-              >
-                <Icon
-                  className={cn(
-                    'h-[18px] w-[18px] transition-colors',
-                    active ? 'text-primary' : 'text-muted-foreground group-hover:text-ink',
-                  )}
-                />
-                <span>{item.label}</span>
-                {active && (
-                  <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-primary" />
-                )}
-              </Link>
-            );
-          })}
+          {NAV_ITEMS.map((item) => (
+            <NavLink key={item.href} item={item} active={pathname === item.href || pathname.startsWith(item.href + '/')} />
+          ))}
         </nav>
 
         <div className="border-t border-border/70 p-4">
@@ -203,18 +188,82 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
 
+      {/* 侧边栏：H5 端抽屉 */}
+      {drawerOpen && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setDrawerOpen(false)} />
+          <aside className="sidebar-canvas absolute left-0 top-0 flex h-full w-[264px] flex-col shadow-xl">
+            <div className="flex h-16 items-center justify-between px-5">
+              <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-[#5a53e0] to-[#7c6ff0] shadow-sm">
+                  <Zap className="h-5 w-5 text-white" />
+                </span>
+                <div className="leading-tight">
+                  <div className="text-[15px] font-semibold tracking-[0.02em] text-ink">YYeSim</div>
+                  <div className="text-[10.5px] uppercase tracking-[0.18em] text-muted-foreground">Console</div>
+                </div>
+              </div>
+              <button
+                onClick={() => setDrawerOpen(false)}
+                title="关闭菜单"
+                className="flex h-9 w-9 items-center justify-center rounded-lg border border-border/70 bg-card text-muted-foreground transition-colors hover:bg-muted"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <nav className="mt-2 flex-1 space-y-1 overflow-y-auto px-3">
+              {NAV_ITEMS.map((item) => (
+                <NavLink key={item.href} item={item} active={pathname === item.href || pathname.startsWith(item.href + '/')} />
+              ))}
+            </nav>
+
+            <div className="border-t border-border/70 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-secondary text-[12px] font-semibold text-ink">
+                    管
+                  </span>
+                  <div className="leading-tight">
+                    <div className="text-[13px] font-medium text-ink">管理员</div>
+                    <div className="text-[11px] text-muted-foreground">{username}</div>
+                  </div>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  title="退出登录"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg border border-border/70 bg-card text-muted-foreground transition-colors hover:bg-muted hover:text-ink"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </aside>
+        </div>
+      )}
+
       {/* 主区 */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border/70 bg-background/85 px-8 backdrop-blur-md">
-          <div>
-            <div className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              YYeSim Console
-            </div>
-            <div className="mt-0.5 text-[19px] font-bold leading-none tracking-tight text-ink">
-              {current}
+        <header className="sticky top-0 z-30 flex h-14 items-center justify-between gap-2 border-b border-border/70 bg-background/85 px-4 backdrop-blur-md sm:h-16 sm:px-8">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            {/* H5 端汉堡菜单 */}
+            <button
+              onClick={() => setDrawerOpen(true)}
+              title="打开菜单"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/70 bg-card text-muted-foreground transition-colors hover:bg-muted md:hidden"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+            <div className="min-w-0">
+              <div className="hidden text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground sm:block">
+                YYeSim Console
+              </div>
+              <div className="truncate text-[17px] font-bold leading-none tracking-tight text-ink sm:mt-0.5 sm:text-[19px]">
+                {current}
+              </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <div className="relative">
               <button
                 onClick={toggleNotif}
@@ -232,14 +281,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               {notifOpen && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setNotifOpen(false)} />
-                  <div className="absolute right-0 top-11 z-50 w-[340px] overflow-hidden rounded-xl border border-border/70 bg-card shadow-lg">
+                  <div className="absolute right-0 top-11 z-50 w-[min(340px,calc(100vw-1.5rem))] overflow-hidden rounded-xl border border-border/70 bg-card shadow-lg">
                     <div className="flex items-center justify-between border-b border-border/70 px-4 py-2.5">
                       <span className="text-[13px] font-semibold text-ink">通知</span>
                       <span className="text-[11px] text-muted-foreground">
                         {notifs.length ? `待人工处理 ${notifs.length}` : '暂无待处理'}
                       </span>
                     </div>
-                    <div className="max-h-[360px] overflow-y-auto">
+                    <div className="max-h-[60vh] overflow-y-auto">
                       {notifs.length === 0 ? (
                         <div className="px-4 py-8 text-center text-[12.5px] text-muted-foreground">
                           暂无新通知
@@ -291,13 +340,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </>
               )}
             </div>
-            <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[12px] font-medium text-emerald-700">
+            <span className="hidden rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-[12px] font-medium text-emerald-700 lg:inline-flex">
               生产环境
             </span>
             <button
               onClick={handleLogout}
               title="退出登录"
-              className="flex h-9 items-center gap-1.5 rounded-lg border border-border/70 bg-card px-3 text-[12.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-ink"
+              className="hidden h-9 items-center gap-1.5 rounded-lg border border-border/70 bg-card px-3 text-[12.5px] text-muted-foreground transition-colors hover:bg-muted hover:text-ink sm:flex"
             >
               <LogOut className="h-4 w-4" />
               退出
@@ -305,8 +354,34 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
-        <main className="flex-1 px-8 py-8">{children}</main>
+        <main className="flex-1 px-4 py-5 sm:px-8 sm:py-8">{children}</main>
       </div>
     </div>
+  );
+}
+
+function NavLink({ item, active }: { item: NavItem; active: boolean }) {
+  const Icon = item.icon;
+  return (
+    <Link
+      href={item.href}
+      className={cn(
+        'group relative flex items-center gap-3 rounded-xl px-3.5 py-2.5 text-[13.5px] transition-colors',
+        active
+          ? 'bg-accent font-medium text-accent-foreground'
+          : 'text-muted-foreground hover:bg-muted hover:text-ink',
+      )}
+    >
+      <Icon
+        className={cn(
+          'h-[18px] w-[18px] transition-colors',
+          active ? 'text-primary' : 'text-muted-foreground group-hover:text-ink',
+        )}
+      />
+      <span>{item.label}</span>
+      {active && (
+        <span className="absolute left-0 top-1/2 h-5 w-1 -translate-y-1/2 rounded-r-full bg-primary" />
+      )}
+    </Link>
   );
 }
