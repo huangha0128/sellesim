@@ -138,7 +138,7 @@ export async function applyRefundRequest(
 }
 
 /**
- * 后台执行退款：校验 → 调用支付宝退款 → 更新订单状态 → 释放 eSIM（ICCID 归还卡片池）。
+ * 后台执行退款：校验 → 调用支付宝退款 → 更新订单状态 → 释放 eSIM。
  * out_request_no 传订单号保证支付宝侧幂等，重复调用同一订单可安全返回。
  *
  * 两种入口：
@@ -163,7 +163,7 @@ export async function refundOrder(
     throw new Error('仅已支付订单可退款');
   }
   if (opts.adminInitiated) {
-    // 后台主动退款：不依赖用户申请，但仅未激活（本地 + Tiger 实时双重校验）的订单可退
+    // 后台主动退款：本地和 Tiger 实时状态均须未激活
     const esim = await deps.findEsimByOrderId(order.id);
     if (esim && esim.status !== 'pending') {
       throw new Error('套餐已激活，无法退款');
@@ -211,7 +211,7 @@ export async function refundOrder(
     ...(reason ? { refundReason: reason } : {}),
   });
 
-  // 释放 eSIM 记录：先解绑 Tiger 该 ICCID 上的套餐，再删本地记录（ICCID 归还卡片池，可再次使用）
+  // 释放 eSIM 记录：具体解绑和卡片处理由依赖实现
   const esim = await deps.findEsimByOrderId(order.id);
   if (esim) {
     await deps.deleteEsimByOrderId(order.id);

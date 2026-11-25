@@ -51,7 +51,7 @@ export default function DashboardPage() {
       try {
         const [s, o, e] = await Promise.all([
           adminApi.getDashboard(),
-          adminApi.getOrders(),
+          adminApi.getOrders({ page: 1, pageSize: 5 }),
           adminApi.getEsims(),
         ]);
         setStats(unwrap<DashboardStats>(s).data);

@@ -338,7 +338,8 @@ export const adminApi = {
   syncTigerAll: () => http.post('/admin/tiger/sync-all'),
 
   getDashboard: () => http.get('/admin/dashboard'),
-  getOrders: () => http.get('/admin/orders'),
+  getOrders: (params?: { page?: number; pageSize?: number; orderNo?: string; email?: string; status?: string }) =>
+    http.get('/admin/orders', { params }),
   /** 用户搜索（昵称/邮箱/支付宝用户号/ID），供手动建单选择归属用户 */
   searchUsers: (keyword?: string) => http.get('/admin/users', { params: { keyword } }),
   /** 后台手动建单（免支付）：复用小程序下单校验，创建后立即履约下发 eSIM */

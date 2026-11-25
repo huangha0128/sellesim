@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Bot, Coins, Save } from 'lucide-react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { Bot, Coins, KeyRound, Save } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import { adminApi, unwrap, getErrorMessage, type Settings } from '@/api';
+import { clearAuth, LOGIN_PATH } from '@/lib/auth';
 
 const DEFAULT_MAX_REFUND_REJECT_COUNT = 3;
 
@@ -40,6 +41,12 @@ export default function SettingsPage() {
   const [aiNotifyEmails, setAiNotifyEmails] = useState('');
   const [aiBusy, setAiBusy] = useState(false);
   const [aiErrorMsg, setAiErrorMsg] = useState('');
+  const [oldPassword, setOldPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPasswords, setShowPasswords] = useState(false);
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
 
   useEffect(() => {
     adminApi
@@ -60,6 +67,37 @@ export default function SettingsPage() {
       })
       .catch((e) => setErrorMsg(getErrorMessage(e, '读取设置失败')));
   }, []);
+
+  const changePassword = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setPasswordError('');
+    if (!oldPassword || !newPassword || !confirmPassword) {
+      setPasswordError('请填写原密码、新密码和确认密码');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPasswordError('新密码至少 8 位');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('两次输入的新密码不一致');
+      return;
+    }
+    setPasswordBusy(true);
+    try {
+      const body = unwrap<{ changed: boolean }>(await adminApi.changePassword(oldPassword, newPassword));
+      if (body.code !== 0) {
+        setPasswordError(body.message || '修改密码失败');
+        return;
+      }
+      clearAuth();
+      window.location.href = LOGIN_PATH;
+    } catch (e) {
+      setPasswordError(getErrorMessage(e, '修改密码失败'));
+    } finally {
+      setPasswordBusy(false);
+    }
+  };
 
   const saveAi = async () => {
     setAiBusy(true);
@@ -143,6 +181,43 @@ export default function SettingsPage() {
 
   return (
     <div className="animate-fade-up grid gap-5 lg:grid-cols-3">
+      <Card className="panel-card lg:col-span-2">
+        <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-3">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <KeyRound size={16} />
+          </span>
+          <CardTitle className="text-[15px] text-ink">修改管理员密码</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={changePassword} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="old-password">原密码</Label>
+              <Input id="old-password" type={showPasswords ? 'text' : 'password'} autoComplete="current-password" value={oldPassword}
+                onChange={(e) => setOldPassword(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="new-password">新密码（至少 8 位）</Label>
+              <Input id="new-password" type={showPasswords ? 'text' : 'password'} autoComplete="new-password" value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="confirm-password">确认新密码</Label>
+              <Input id="confirm-password" type={showPasswords ? 'text' : 'password'} autoComplete="new-password" value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)} />
+            </div>
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <input type="checkbox" checked={showPasswords} onChange={(e) => setShowPasswords(e.target.checked)} />
+              显示所有密码
+            </label>
+            {passwordError && <p role="alert" className="text-sm text-red-600">{passwordError}</p>}
+            <div className="flex justify-end">
+              <Button type="submit" disabled={passwordBusy}>
+                {passwordBusy ? '修改中…' : '修改密码'}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
       <Card className="panel-card lg:col-span-2">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
           <div className="flex items-center gap-2">

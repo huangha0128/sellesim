@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/EmptyState';
+import { ListPagination } from '@/components/ui/list-pagination';
 import {
   Table,
   TableBody,
@@ -86,6 +87,11 @@ function usageCell(e: Esim) {
 export default function EsimsPage() {
   const [esims, setEsims] = useState<Esim[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const totalPages = Math.max(1, Math.ceil(esims.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const visibleEsims = esims.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   useEffect(() => {
     (async () => {
@@ -99,6 +105,10 @@ export default function EsimsPage() {
       }
     })();
   }, []);
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   return (
     <div className="animate-fade-up">
@@ -132,7 +142,7 @@ export default function EsimsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {esims.map((e) => (
+                  {visibleEsims.map((e) => (
                     <TableRow key={e.id}>
                       <TableCell className="whitespace-nowrap">
                         <span className="font-medium text-ink">{e.pkgName || e.countryCode || e.order?.countryCode || '—'}</span>
@@ -179,6 +189,14 @@ export default function EsimsPage() {
               </Table>
             </div>
           )}
+          <ListPagination
+            page={currentPage}
+            pageSize={pageSize}
+            total={esims.length}
+            disabled={loading}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+          />
         </CardContent>
       </Card>
     </div>

@@ -211,6 +211,17 @@ describe('refundOrder 后台同意退款并执行', () => {
     expect(result.refunded).toBe(true);
   });
 
+  it.each([
+    [{ status: 'pending' }, '仅已支付订单可退款'],
+    [{ status: 'paid', refundedAt: new Date() }, '订单已退款'],
+  ])('后台主动退款仍拒绝未支付或已退款订单', async (orderOverrides, message) => {
+    const deps = makeDeps({ findOrder: vi.fn().mockResolvedValue(makeOrder(orderOverrides)) });
+    await expect(
+      refundOrder(deps, 'DPH1234567890', undefined, 'admin', { adminInitiated: true }),
+    ).rejects.toThrow(message);
+    expect(deps.alipayRefund).not.toHaveBeenCalled();
+  });
+
   it('后台主动退款：本地 eSIM 已激活时拒绝退款', async () => {
     const deps = makeDeps({
       findOrder: vi.fn().mockResolvedValue(makeOrder({ refundStatus: null })),

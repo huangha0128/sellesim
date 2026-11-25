@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshCw, Undo2, XCircle, History, RotateCcw, Plus, Search, CheckCircle2, AlertTriangle, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,6 +25,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { ListPagination } from '@/components/ui/list-pagination';
 import { adminApi, unwrap, getErrorMessage, type Order, type PackageItem } from '@/api';
 
 function fmt(dt?: string) {
@@ -34,6 +35,17 @@ function fmt(dt?: string) {
 }
 
 type BadgeVariant = 'success' | 'warning' | 'info' | 'destructive';
+
+const STATUS_OPTIONS = [
+  { value: '', label: '全部状态' },
+  { value: 'pending', label: '待支付' },
+  { value: 'paid', label: '已支付' },
+  { value: 'delivered', label: '已交付' },
+  { value: 'failed', label: '失败' },
+  { value: 'refund_requested', label: '退款申请中' },
+  { value: 'refund_rejected', label: '退款已拒绝' },
+  { value: 'refunded', label: '已退款' },
+];
 
 const refundStepText: Record<string, { text: string; cls: string }> = {
   requested: { text: '申请', cls: 'text-amber-700 bg-amber-50 border-amber-200' },
@@ -109,6 +121,15 @@ interface ManualResult {
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const [total, setTotal] = useState(0);
+  const [orderNoFilter, setOrderNoFilter] = useState('');
+  const [emailFilter, setEmailFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [filters, setFilters] = useState({ orderNo: '', email: '', status: '' });
+  const requestId = useRef(0);
 
   // 同意退款（执行退款）
   const [approveTarget, setApproveTarget] = useState<Order | null>(null);
@@ -148,21 +169,37 @@ export default function OrdersPage() {
   const [createWarn, setCreateWarn] = useState('');
   const [createResult, setCreateResult] = useState<ManualResult | null>(null);
 
-  const load = async () => {
+  const load = useCallback(async () => {
+    const currentRequest = ++requestId.current;
     setLoading(true);
+    setLoadError('');
     try {
-      const res = await adminApi.getOrders();
-      setOrders(unwrap<{ orders: Order[] }>(res).data.orders);
+      const res = await adminApi.getOrders({ page, pageSize, ...filters });
+      if (currentRequest !== requestId.current) return;
+      const body = unwrap<{ orders: Order[]; total: number }>(res);
+      if (body.code !== 0) throw new Error(body.message || '订单加载失败');
+      const lastPage = Math.max(1, Math.ceil(body.data.total / pageSize));
+      if (page > lastPage) {
+        setPage(lastPage);
+        return;
+      }
+      setOrders(body.data.orders);
+      setTotal(body.data.total);
     } catch (e) {
-      toast.error(getErrorMessage(e, '订单加载失败'));
+      if (currentRequest === requestId.current) {
+        const message = getErrorMessage(e, '订单加载失败');
+        setLoadError(message);
+        toast.error(message);
+      }
     } finally {
-      setLoading(false);
+      if (currentRequest === requestId.current) setLoading(false);
     }
-  };
+  }, [page, pageSize, filters]);
 
   useEffect(() => {
     load();
-  }, []);
+    return () => { requestId.current++; };
+  }, [load]);
 
   // ===== 手动建单：用户防抖搜索 =====
   useEffect(() => {
@@ -282,11 +319,11 @@ export default function OrdersPage() {
       const body = unwrap<{ order: ManualResult['order']; esim: ManualResult['esim'] }>(res);
       if (body.code === 0) {
         setCreateResult({ order: body.data.order, esim: body.data.esim });
-        load();
+        if (page === 1) load(); else setPage(1);
       } else if (body.code === 2) {
         // 订单已建但 eSIM 下发失败：展示警告并刷新列表（订单已在列表中）
         setCreateWarn(body.message || '订单已创建，但 eSIM 下发失败');
-        load();
+        if (page === 1) load(); else setPage(1);
       } else {
         toast.error(body.message || '创建失败，请重试');
       }
@@ -305,7 +342,10 @@ export default function OrdersPage() {
     if (o.status === 'refunded' || o.refundedAt || o.refundStatus === 'approved')
       return { text: '已退款', variant: 'info' };
     if (o.status === 'paid') return { text: '已支付', variant: 'success' };
-    return { text: '待支付', variant: 'warning' };
+    if (o.status === 'pending') return { text: '待支付', variant: 'warning' };
+    if (o.status === 'delivered') return { text: '已交付', variant: 'success' };
+    if (o.status === 'failed') return { text: '失败', variant: 'destructive' };
+    return { text: o.status || '未知状态', variant: 'info' };
   };
 
   // 后台主动退款条件：订单已支付（未退款）且套餐尚未激活
@@ -384,20 +424,56 @@ export default function OrdersPage() {
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-3">
           <div>
             <CardTitle className="text-[15px] text-ink">订单列表</CardTitle>
-            <p className="text-[12px] text-muted-foreground">共 {orders.length} 笔订单</p>
+            <p className="text-[12px] text-muted-foreground">共 {total} 笔订单</p>
           </div>
           <div className="flex items-center gap-2">
             <Button size="sm" onClick={() => setCreateOpen(true)}>
               <Plus className="h-4 w-4" /> 手动建单
             </Button>
-            <Button size="sm" variant="outline" onClick={load}>
+            <Button size="sm" variant="outline" onClick={() => load()}>
               <RefreshCw className="h-4 w-4" /> 刷新
             </Button>
           </div>
         </CardHeader>
         <CardContent>
-          {orders.length === 0 && !loading ? (
-            <EmptyState title="暂无订单" />
+          <form
+            className="mb-4 flex flex-wrap items-end gap-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              setPage(1);
+              setFilters({ orderNo: orderNoFilter.trim(), email: emailFilter.trim(), status: statusFilter });
+            }}
+          >
+            <div className="space-y-1">
+              <Label htmlFor="order-filter-number">订单号</Label>
+              <Input id="order-filter-number" value={orderNoFilter} onChange={(e) => setOrderNoFilter(e.target.value)} placeholder="输入订单号" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="order-filter-email">邮箱</Label>
+              <Input id="order-filter-email" value={emailFilter} onChange={(e) => setEmailFilter(e.target.value)} placeholder="输入邮箱" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="order-filter-status">状态</Label>
+              <select id="order-filter-status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}
+                className="flex h-9 rounded-md border border-input bg-background px-3 text-sm">
+                {STATUS_OPTIONS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+              </select>
+            </div>
+            <Button type="submit" size="sm"><Search className="h-4 w-4" /> 筛选</Button>
+            <Button type="button" size="sm" variant="outline" onClick={() => {
+              setOrderNoFilter('');
+              setEmailFilter('');
+              setStatusFilter('');
+              setPage(1);
+              setFilters({ orderNo: '', email: '', status: '' });
+            }}>重置</Button>
+          </form>
+          {loading ? (
+            <div className="py-6 text-center text-sm text-muted-foreground">订单加载中…</div>
+          ) : loadError ? (
+            <div role="alert" className="py-6 text-center text-sm text-destructive">{loadError}</div>
+          ) : orders.length === 0 ? (
+            <EmptyState title={filters.orderNo || filters.email || filters.status ? '没有符合条件的订单' : '暂无订单'} />
           ) : (
             <Table className="min-w-[1040px]">
               <TableHeader>
@@ -478,6 +554,14 @@ export default function OrdersPage() {
               </TableBody>
             </Table>
           )}
+          <ListPagination
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            disabled={loading}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+          />
         </CardContent>
       </Card>
 

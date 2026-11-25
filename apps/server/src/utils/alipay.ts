@@ -54,21 +54,23 @@ function verifySign(params: Record<string, string>, signature: string): boolean 
 function request(params: Record<string, string>): Promise<any> {
   return new Promise((resolve, reject) => {
     const signStr = sign(params);
-    const postData = querystring.stringify({ ...params, sign: signStr });
+    const { charset, ...bodyParams } = params;
+    const postData = querystring.stringify({ ...bodyParams, sign: signStr });
 
     const options = {
       hostname: 'openapi.alipay.com',
       port: 443,
-      path: '/gateway.do',
+      path: `/gateway.do?${querystring.stringify({ charset })}`,
       method: 'POST',
       headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Type': 'application/x-www-form-urlencoded; charset=utf-8',
         'Content-Length': Buffer.byteLength(postData),
       },
     };
 
     const req = https.request(options, (res) => {
       let data = '';
+      res.setEncoding('utf8');
       res.on('data', (chunk) => (data += chunk));
       res.on('end', () => {
         try {
@@ -180,7 +182,7 @@ async function refund(
 
   // 只有显式返回 code === '10000' 才算成功；缺失响应或返回 error_response 一律视为失败，
   // 避免"支付宝退款未成功"却被上层当作成功继续标记订单退款/发邮件
-  if (!response || error || (response.code && response.code !== '10000')) {
+  if (!response || error || response.code !== '10000') {
     const reason =
       response?.sub_msg || response?.msg || error?.sub_msg || error?.msg || '支付宝退款失败';
     return { code: 'FAIL', msg: reason, subMsg: reason };

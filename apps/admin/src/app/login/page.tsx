@@ -61,7 +61,7 @@ export default function LoginPage() {
                 value={username}
                 autoComplete="username"
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="admin"
+                placeholder="请输入用户名"
               />
             </div>
             <div className="space-y-2">

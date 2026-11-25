@@ -75,7 +75,7 @@
         </view>
 
         <!-- 底部：ICCID + 到期时间 -->
-        <view class="card-bottom">
+        <view v-if="card.displayEsim.activatedAt" class="card-bottom">
           <text class="card-iccid">{{ fmt('esims.expireLabel') }}</text>
           <text class="card-expire">{{ formatDate(card.displayEsim.expireAt) }}</text>
         </view>

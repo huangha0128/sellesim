@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { tigerClient, iccidPoolCount, getIccidPool, fetchTigerIccids } from '../tiger';
 import { syncAllFromTiger, syncRegionsFromTiger, syncPackagesFromTiger } from '../tiger/sync';
 import { enrichEsims } from '../tiger/esim-enrich';
@@ -147,16 +147,49 @@ export default (prisma: PrismaClient) => {
   });
 
   router.get('/orders', async (req: Request, res: Response) => {
+    const paginated = req.query.page !== undefined || req.query.pageSize !== undefined;
+    const page = req.query.page === undefined ? 1 : Number(req.query.page);
+    const pageSize = req.query.pageSize === undefined ? 20 : Number(req.query.pageSize);
+    if (paginated && (!Number.isSafeInteger(page) || page < 1 ||
+        !Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 100 ||
+        !Number.isSafeInteger((page - 1) * pageSize))) {
+      return res.status(400).json({ code: 400, message: '分页参数无效' });
+    }
+    const { orderNo, email, status } = req.query;
+    if ([orderNo, email, status].some((value) => value !== undefined && typeof value !== 'string')) {
+      return res.status(400).json({ code: 400, message: '筛选参数无效' });
+    }
+    const where: Prisma.OrderWhereInput = {};
+    if (typeof orderNo === 'string' && orderNo.trim()) where.orderNo = { contains: orderNo.trim() };
+    if (typeof email === 'string' && email.trim()) where.email = { contains: email.trim() };
+    if (typeof status === 'string' && status) {
+      if (status === 'refund_requested' || status === 'refund_rejected') {
+        where.refundStatus = status === 'refund_requested' ? 'requested' : 'rejected';
+      } else if (status === 'refunded') {
+        where.AND = [
+          { OR: [{ refundStatus: null }, { refundStatus: { notIn: ['requested', 'rejected'] } }] },
+          { OR: [{ status: 'refunded' }, { refundedAt: { not: null } }, { refundStatus: 'approved' }] },
+        ];
+      } else if (['pending', 'paid', 'delivered', 'failed'].includes(status)) {
+        where.status = status;
+        where.refundedAt = null;
+        where.OR = [{ refundStatus: null }, { refundStatus: { notIn: ['requested', 'rejected', 'approved'] } }];
+      } else {
+        return res.status(400).json({ code: 400, message: '订单状态无效' });
+      }
+    }
+    const total = paginated ? await prisma.order.count({ where }) : undefined;
     const orders = await prisma.order.findMany({
-      orderBy: { createdAt: 'desc' },
+      where,
+      orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+      ...(paginated ? { skip: (page - 1) * pageSize, take: pageSize } : {}),
       include: {
         user: true,
-        // 供后台判断能否主动退款（已激活的订单不可退）
         esim: { select: { status: true, activatedAt: true } },
         refundRequests: { orderBy: { createdAt: 'asc' } },
       },
     });
-    res.json({ code: 0, data: { orders } });
+    res.json({ code: 0, data: { orders, ...(paginated ? { total, page, pageSize } : {}) } });
   });
 
   /** GET /api/admin/users?keyword= 用户搜索（昵称/邮箱/支付宝用户号/ID），供手动建单选择归属用户 */

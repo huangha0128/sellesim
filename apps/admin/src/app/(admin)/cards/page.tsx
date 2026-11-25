@@ -10,6 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/EmptyState';
+import { ListPagination } from '@/components/ui/list-pagination';
 import {
   Table,
   TableBody,
@@ -56,6 +57,11 @@ export default function CardsPage() {
   const [mode, setMode] = useState<'tiger' | 'mock'>('mock');
   const [stats, setStats] = useState<CardStats>({ total: 0, available: 0, used: 0, blocked: 0, envOnly: 0 });
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(20);
+  const totalPages = Math.max(1, Math.ceil(cards.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const visibleCards = cards.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   const [addOpen, setAddOpen] = useState(false);
   const [addInput, setAddInput] = useState('');
@@ -85,6 +91,10 @@ export default function CardsPage() {
   useEffect(() => {
     load();
   }, []);
+
+  useEffect(() => {
+    setPage((current) => Math.min(current, totalPages));
+  }, [totalPages]);
 
   const handleAdd = async () => {
     const iccids = addInput
@@ -193,7 +203,7 @@ export default function CardsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {cards.map((c) => (
+                {visibleCards.map((c) => (
                   <TableRow key={c.iccid}>
                     <TableCell className="font-mono text-[12.5px]">{c.iccid}</TableCell>
                     <TableCell className="text-muted-foreground">{c.remark || '—'}</TableCell>
@@ -232,6 +242,14 @@ export default function CardsPage() {
               </TableBody>
             </Table>
           )}
+          <ListPagination
+            page={currentPage}
+            pageSize={pageSize}
+            total={cards.length}
+            disabled={loading}
+            onPageChange={setPage}
+            onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+          />
         </CardContent>
       </Card>
 

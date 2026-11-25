@@ -55,7 +55,7 @@
               <text class="info-label">{{ fmt('esims.activationDate') }}</text>
               <text class="info-value">{{ formatDateTime(esim.activatedAt) }}</text>
             </view>
-            <view class="info-item">
+            <view v-if="esim.activatedAt" class="info-item">
               <text class="info-label">{{ fmt('esims.expireLabel') }}</text>
               <text class="info-value">{{ formatDateTime(esim.expireAt) }}</text>
             </view>
