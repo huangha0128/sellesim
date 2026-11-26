@@ -159,6 +159,9 @@ export async function refundOrder(
   if (order.status === 'refunded' || order.refundedAt) {
     throw new Error('订单已退款，请勿重复操作');
   }
+  if (order.refundStatus === 'approved') {
+    throw new Error('该退款申请已处理，请勿重复操作');
+  }
   if (order.status !== 'paid') {
     throw new Error('仅已支付订单可退款');
   }
@@ -172,9 +175,6 @@ export async function refundOrder(
       throw new Error('套餐已激活，无法退款');
     }
   } else {
-    if (order.refundStatus === 'approved') {
-      throw new Error('该退款申请已处理，请勿重复操作');
-    }
     if (order.refundStatus === 'rejected') {
       throw new Error('该退款申请已被拒绝，无法退款');
     }

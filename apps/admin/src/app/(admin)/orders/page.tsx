@@ -36,6 +36,10 @@ function fmt(dt?: string) {
 
 type BadgeVariant = 'success' | 'warning' | 'info' | 'destructive';
 
+function isRefunded(o: Order): boolean {
+  return o.status === 'refunded' || !!o.refundedAt || o.refundStatus === 'approved';
+}
+
 const STATUS_OPTIONS = [
   { value: '', label: '全部状态' },
   { value: 'pending', label: '待支付' },
@@ -339,7 +343,7 @@ export default function OrdersPage() {
       return { text: '退款申请中', variant: 'warning', hint: o.refundReason || '等待审核' };
     if (o.refundStatus === 'rejected')
       return { text: '退款已拒绝', variant: 'destructive', hint: o.refundRejectReason || '' };
-    if (o.status === 'refunded' || o.refundedAt || o.refundStatus === 'approved')
+    if (isRefunded(o))
       return { text: '已退款', variant: 'info' };
     if (o.status === 'paid') return { text: '已支付', variant: 'success' };
     if (o.status === 'pending') return { text: '待支付', variant: 'warning' };
@@ -349,7 +353,8 @@ export default function OrdersPage() {
   };
 
   // 后台主动退款条件：订单已支付（未退款）且套餐尚未激活
-  const canManualRefund = (o: Order) => o.status === 'paid' && (!o.esim || o.esim.status === 'pending');
+  const canManualRefund = (o: Order) =>
+    o.status === 'paid' && !isRefunded(o) && (!o.esim || o.esim.status === 'pending');
 
   const confirmApprove = async () => {
     if (!approveTarget) return;
@@ -531,7 +536,7 @@ export default function OrdersPage() {
                       </TableCell>
                       <TableCell>{fmt(o.createdAt)}</TableCell>
                       <TableCell align="right">
-                        {o.refundStatus === 'requested' ? (
+                        {!isRefunded(o) && o.refundStatus === 'requested' ? (
                           <span className="inline-flex items-center gap-1.5">
                             <Button size="sm" variant="outline" className="text-emerald-700 hover:text-emerald-700" onClick={() => setApproveTarget(o)}>
                               <Undo2 className="h-4 w-4" /> 同意

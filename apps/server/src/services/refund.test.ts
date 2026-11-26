@@ -158,6 +158,17 @@ describe('refundOrder 后台同意退款并执行', () => {
     await expect(refundOrder(deps, 'DPH1234567890')).rejects.toThrow('订单已退款');
   });
 
+  it.each([false, true])('已同意的退款不可再次执行（后台主动退款：%s）', async (adminInitiated) => {
+    const deps = makeDeps({
+      findOrder: vi.fn().mockResolvedValue(makeOrder({ status: 'paid', refundedAt: null, refundStatus: 'approved' })),
+    });
+    await expect(
+      refundOrder(deps, 'DPH1234567890', undefined, 'admin', { adminInitiated }),
+    ).rejects.toThrow('该退款申请已处理');
+    expect(deps.alipayRefund).not.toHaveBeenCalled();
+    expect(deps.updateOrder).not.toHaveBeenCalled();
+  });
+
   it('支付宝退款失败时不修改订单、不删除 eSIM', async () => {
     const deps = makeDeps({
       alipayRefund: vi.fn(async () => ({ code: '40004', subMsg: '余额不足', msg: 'Business Failed' })),
